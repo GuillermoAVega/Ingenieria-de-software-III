@@ -129,19 +129,7 @@ describe("ClienteEdicionForm", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("muestra el diálogo de confirmación cuando los datos son válidos, sin llamar a editarCliente todavía", async () => {
-    buscarCliente.mockResolvedValue({ success: true, customer: EXISTING_CUSTOMER });
-    const user = userEvent.setup();
-    render(<ClienteEdicionForm />);
-
-    await buscar(user);
-    await user.click(await screen.findByRole("button", { name: "Guardar cambios" }));
-
-    expect(await screen.findByRole("button", { name: "Confirmar" })).toBeInTheDocument();
-    expect(editarCliente).not.toHaveBeenCalled();
-  });
-
-  it("al confirmar, llama a editarCliente y muestra el mensaje de éxito", async () => {
+  it("guarda directamente al presionar 'Guardar cambios', sin ningún modal de confirmación", async () => {
     buscarCliente.mockResolvedValue({ success: true, customer: EXISTING_CUSTOMER });
     editarCliente.mockResolvedValue({
       success: true,
@@ -153,29 +141,12 @@ describe("ClienteEdicionForm", () => {
 
     await buscar(user);
     await user.click(await screen.findByRole("button", { name: "Guardar cambios" }));
-    await user.click(await screen.findByRole("button", { name: "Confirmar" }));
 
+    expect(screen.queryByRole("button", { name: "Confirmar" })).not.toBeInTheDocument();
     expect(editarCliente).toHaveBeenCalledWith("30111222", expect.any(Object));
     expect(
       await screen.findByText("Cliente modificado exitosamente")
     ).toBeInTheDocument();
-  });
-
-  it("al cancelar, no llama a editarCliente y conserva los valores editados", async () => {
-    buscarCliente.mockResolvedValue({ success: true, customer: EXISTING_CUSTOMER });
-    const user = userEvent.setup();
-    render(<ClienteEdicionForm />);
-
-    await buscar(user);
-    const nombreInput = await screen.findByLabelText("Nombre");
-    await user.clear(nombreInput);
-    await user.type(nombreInput, "Juan Ignacio");
-    await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
-    await user.click(await screen.findByRole("button", { name: "Cancelar" }));
-
-    expect(editarCliente).not.toHaveBeenCalled();
-    expect(screen.queryByRole("button", { name: "Confirmar" })).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Nombre")).toHaveValue("Juan Ignacio");
   });
 
   it("si el backend rechaza por DNI duplicado, muestra la advertencia y conserva los valores", async () => {
@@ -189,7 +160,6 @@ describe("ClienteEdicionForm", () => {
 
     await buscar(user);
     await user.click(await screen.findByRole("button", { name: "Guardar cambios" }));
-    await user.click(await screen.findByRole("button", { name: "Confirmar" }));
 
     expect(await screen.findByText("El DNI ya está en uso")).toBeInTheDocument();
     expect(screen.getByLabelText("Nombre")).toHaveValue("Juan");
@@ -206,12 +176,28 @@ describe("ClienteEdicionForm", () => {
 
     await buscar(user);
     await user.click(await screen.findByRole("button", { name: "Guardar cambios" }));
-    await user.click(await screen.findByRole("button", { name: "Confirmar" }));
     await screen.findByText("El DNI ya está en uso");
 
     await user.click(screen.getByLabelText("DNI", { selector: "#edicion-dni" }));
     await user.click(screen.getByLabelText("Nombre"));
 
     expect(screen.getByText("El DNI ya está en uso")).toBeInTheDocument();
+  });
+
+  it("con un campo inválido, 'Guardar cambios' muestra los errores y no llama a editarCliente", async () => {
+    buscarCliente.mockResolvedValue({ success: true, customer: EXISTING_CUSTOMER });
+    const user = userEvent.setup();
+    render(<ClienteEdicionForm />);
+
+    await buscar(user);
+    const nombreInput = await screen.findByLabelText("Nombre");
+    await user.clear(nombreInput);
+    await user.type(nombreInput, "Juan123");
+    await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
+
+    expect(
+      await screen.findByText("El campo solo debe contener letras")
+    ).toBeInTheDocument();
+    expect(editarCliente).not.toHaveBeenCalled();
   });
 });

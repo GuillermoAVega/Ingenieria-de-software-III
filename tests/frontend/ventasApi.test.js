@@ -5,6 +5,7 @@ import {
   buscarVenta,
   buscarVentasDeCliente,
   cerrarVenta,
+  confirmarVenta,
   listarVentas,
   registrarVenta,
   reemplazarDetalleVenta,
@@ -58,6 +59,49 @@ describe("registrarVenta", () => {
     expect(result).toEqual({
       success: false,
       errors: [{ field: "dni", message: "Cliente no encontrado" }],
+    });
+  });
+});
+
+describe("confirmarVenta", () => {
+  it("devuelve success y la venta confirmada ante una respuesta 201", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        message: "Venta registrada y confirmada exitosamente",
+        sale: { id: 1, total: 701.0, status: "Confirmada" },
+      }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    const result = await confirmarVenta(VALID_INPUT);
+
+    expect(result).toEqual({
+      success: true,
+      message: "Venta registrada y confirmada exitosamente",
+      sale: { id: 1, total: 701.0, status: "Confirmada" },
+    });
+    expect(mockFetch).toHaveBeenCalledWith(
+      "/ventas/confirmar",
+      expect.objectContaining({ method: "POST" })
+    );
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body)).toEqual(VALID_INPUT);
+  });
+
+  it("devuelve success:false y la lista de errores ante una respuesta 422", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({
+        errors: [{ field: "items[0].quantity", message: "No hay stock suficiente para completar la operación" }],
+      }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    const result = await confirmarVenta(VALID_INPUT);
+
+    expect(result).toEqual({
+      success: false,
+      errors: [{ field: "items[0].quantity", message: "No hay stock suficiente para completar la operación" }],
     });
   });
 });

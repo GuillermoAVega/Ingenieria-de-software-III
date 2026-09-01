@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { anularVenta, buscarVentasDeCliente } from "../api/ventasApi.js";
+import { toDateOnly } from "../dateFormat.js";
 import { ANULACION_STATE, evaluateClienteSalesParaAnular } from "../ventaAnulacion.js";
 import "./VentaAnulacionForm.css";
 
@@ -143,7 +144,7 @@ export function VentaAnulacionForm() {
             {(evaluation.sales ?? []).map((sale) => (
               <tr key={sale.id}>
                 <td>{sale.id}</td>
-                <td>{sale.sale_date}</td>
+                <td>{toDateOnly(sale.sale_date)}</td>
                 <td>{sale.total}</td>
                 <td>
                   <button type="button" onClick={() => handleSelectSale(sale)}>

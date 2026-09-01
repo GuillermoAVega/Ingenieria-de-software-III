@@ -12,6 +12,7 @@ from app.backend.models import Customer, Product, ProductStatus, Sale, SaleItem,
 router = APIRouter()
 
 SUCCESS_MESSAGE = "Venta registrada exitosamente"
+CONFIRM_SUCCESS_MESSAGE = "Venta registrada y confirmada exitosamente"
 CUSTOMER_NOT_FOUND_MESSAGE = "Cliente no encontrado"
 PRODUCT_NOT_FOUND_MESSAGE = "Producto no encontrado"
 INACTIVE_PRODUCT_MESSAGE = "El producto no está disponible para la venta"
@@ -163,6 +164,40 @@ def registrar_venta(
         status_code=201,
         content={
             "message": SUCCESS_MESSAGE,
+            "sale": _serialize_sale(session, sale),
+        },
+    )
+
+
+@router.post("/ventas/confirmar")
+def confirmar_venta(
+    payload: dict[str, Any], session: Session = Depends(get_session)
+) -> JSONResponse:
+    errors: list[dict[str, str]] = []
+
+    dni = payload.get("dni")
+    customer = repository.find_by_dni(session, dni) if isinstance(dni, str) and dni else None
+    if customer is None:
+        errors.append({"field": "dni", "message": CUSTOMER_NOT_FOUND_MESSAGE})
+
+    resolved_items, item_errors = _resolve_items(
+        session,
+        payload.get("items"),
+        require_non_empty=True,
+        check_product_active=True,
+        check_stock=True,
+    )
+    errors.extend(item_errors)
+
+    if errors:
+        return JSONResponse(status_code=422, content={"errors": errors})
+
+    sale = repository_venta.create_confirmed_sale(session, customer, resolved_items)
+
+    return JSONResponse(
+        status_code=201,
+        content={
+            "message": CONFIRM_SUCCESS_MESSAGE,
             "sale": _serialize_sale(session, sale),
         },
     )

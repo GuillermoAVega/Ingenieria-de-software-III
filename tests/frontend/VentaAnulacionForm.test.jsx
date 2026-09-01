@@ -69,6 +69,22 @@ describe("VentaAnulacionForm", () => {
     expect(screen.getAllByRole("button", { name: "Anular" })).toHaveLength(2);
   });
 
+  it("muestra la fecha en formato año-mes-día, sin hora", async () => {
+    buscarVentasDeCliente.mockResolvedValue({
+      success: true,
+      sales: [
+        { id: 1, sale_date: "2026-01-15T10:00:00+00:00", status: "Confirmada", total: 701 },
+      ],
+    });
+    const user = userEvent.setup();
+    render(<VentaAnulacionForm />);
+
+    await buscar(user);
+
+    expect(await screen.findByText("2026-01-15")).toBeInTheDocument();
+    expect(screen.queryByText("2026-01-15T10:00:00+00:00")).not.toBeInTheDocument();
+  });
+
   it("presionar 'Anular' en una fila abre la confirmación con los datos de esa venta", async () => {
     buscarVentasDeCliente.mockResolvedValue({
       success: true,

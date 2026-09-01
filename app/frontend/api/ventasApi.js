@@ -165,6 +165,26 @@ export async function registrarVenta(input) {
 }
 
 /**
+ * @param {VentaRegistroInput} input
+ * @returns {Promise<VentaRegistroSuccess | VentaRegistroFailure>}
+ */
+export async function confirmarVenta(input) {
+  const response = await fetch(`${VENTAS_ENDPOINT}/confirmar`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+
+  const body = await response.json();
+
+  if (response.ok) {
+    return { success: true, message: body.message, sale: body.sale };
+  }
+
+  return { success: false, errors: body.errors };
+}
+
+/**
  * @param {number | string} id
  * @returns {Promise<VentaBusquedaSuccess | VentaBusquedaFailure>}
  */

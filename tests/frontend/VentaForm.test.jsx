@@ -7,7 +7,7 @@ import {
   buscarProducto,
   buscarProductosParaVenta,
 } from "../../app/frontend/api/productosApi.js";
-import { registrarVenta } from "../../app/frontend/api/ventasApi.js";
+import { confirmarVenta, registrarVenta } from "../../app/frontend/api/ventasApi.js";
 import { VentaForm } from "../../app/frontend/components/VentaForm.jsx";
 
 vi.mock("../../app/frontend/api/clientesApi.js", () => ({
@@ -19,6 +19,7 @@ vi.mock("../../app/frontend/api/productosApi.js", () => ({
 }));
 vi.mock("../../app/frontend/api/ventasApi.js", () => ({
   registrarVenta: vi.fn(),
+  confirmarVenta: vi.fn(),
 }));
 
 const ACTIVE_CUSTOMER = {
@@ -236,6 +237,22 @@ describe("VentaForm — agregar ítems al detalle", () => {
     expect(await screen.findAllByText("Coca-Cola 500ml")).toHaveLength(1);
     expect(screen.getByText("5")).toBeInTheDocument();
   });
+
+  it("quita un producto del detalle y recalcula el total", async () => {
+    buscarCliente.mockResolvedValue({ success: true, customer: ACTIVE_CUSTOMER });
+    buscarProductosParaVenta.mockResolvedValue({ products: [ACTIVE_PRODUCT] });
+    const user = userEvent.setup();
+    render(<VentaForm />);
+
+    await buscarClienteActivo(user);
+    await agregarItem(user, { quantity: "2" });
+    await screen.findByText("Coca-Cola 500ml");
+
+    await user.click(screen.getByRole("button", { name: "Quitar" }));
+
+    expect(screen.queryByText("Coca-Cola 500ml")).not.toBeInTheDocument();
+    expect(screen.getByText("Total: 0")).toBeInTheDocument();
+  });
 });
 
 describe("VentaForm — total, confirmación y registro", () => {
@@ -291,6 +308,33 @@ describe("VentaForm — total, confirmación y registro", () => {
     expect(screen.queryByLabelText("Producto")).not.toBeInTheDocument();
   });
 
+  it("'Confirmar venta' confirmado llama a confirmarVenta y muestra el mensaje de éxito", async () => {
+    buscarCliente.mockResolvedValue({ success: true, customer: ACTIVE_CUSTOMER });
+    buscarProductosParaVenta.mockResolvedValue({ products: [ACTIVE_PRODUCT] });
+    confirmarVenta.mockResolvedValue({
+      success: true,
+      message: "Venta registrada y confirmada exitosamente",
+      sale: { id: 1, total: 701, status: "Confirmada" },
+    });
+    const user = userEvent.setup();
+    render(<VentaForm />);
+
+    await buscarClienteActivo(user);
+    await agregarItem(user, { quantity: "2" });
+    await user.click(screen.getByRole("button", { name: "Confirmar venta" }));
+    await user.click(await screen.findByRole("button", { name: "Confirmar" }));
+
+    expect(confirmarVenta).toHaveBeenCalledWith({
+      dni: "30111222",
+      items: [{ sku: "ABC123", quantity: "2", unit_price: "350.5" }],
+    });
+    expect(registrarVenta).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText("Venta registrada y confirmada exitosamente")
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Producto")).not.toBeInTheDocument();
+  });
+
   it("Cancelar no llama a registrarVenta y conserva el detalle armado", async () => {
     buscarCliente.mockResolvedValue({ success: true, customer: ACTIVE_CUSTOMER });
     buscarProductosParaVenta.mockResolvedValue({ products: [ACTIVE_PRODUCT] });
@@ -302,6 +346,89 @@ describe("VentaForm — total, confirmación y registro", () => {
     await user.click(screen.getByRole("button", { name: "Registrar venta" }));
     await user.click(await screen.findByRole("button", { name: "Cancelar" }));
 
+    expect(registrarVenta).not.toHaveBeenCalled();
+    expect(screen.getByText("Coca-Cola 500ml")).toBeInTheDocument();
+  });
+
+  it("'Confirmar venta' muestra su propio diálogo sin llamar a confirmarVenta todavía", async () => {
+    buscarCliente.mockResolvedValue({ success: true, customer: ACTIVE_CUSTOMER });
+    buscarProductosParaVenta.mockResolvedValue({ products: [ACTIVE_PRODUCT] });
+    const user = userEvent.setup();
+    render(<VentaForm />);
+
+    await buscarClienteActivo(user);
+    await agregarItem(user, { quantity: "2" });
+    await user.click(screen.getByRole("button", { name: "Confirmar venta" }));
+
+    expect(await screen.findByRole("button", { name: "Confirmar" })).toBeInTheDocument();
+    expect(confirmarVenta).not.toHaveBeenCalled();
+    expect(registrarVenta).not.toHaveBeenCalled();
+  });
+
+  it("'Confirmar venta' con error de stock insuficiente muestra el mensaje y conserva el detalle", async () => {
+    buscarCliente.mockResolvedValue({ success: true, customer: ACTIVE_CUSTOMER });
+    buscarProductosParaVenta.mockResolvedValue({ products: [ACTIVE_PRODUCT] });
+    confirmarVenta.mockResolvedValue({
+      success: false,
+      errors: [
+        {
+          field: "items[0].quantity",
+          message: "No hay stock suficiente para completar la operación",
+        },
+      ],
+    });
+    const user = userEvent.setup();
+    render(<VentaForm />);
+
+    await buscarClienteActivo(user);
+    await agregarItem(user, { quantity: "2" });
+    await user.click(screen.getByRole("button", { name: "Confirmar venta" }));
+    await user.click(await screen.findByRole("button", { name: "Confirmar" }));
+
+    expect(
+      await screen.findByText("No hay stock suficiente para completar la operación")
+    ).toBeInTheDocument();
+    expect(screen.getByText("Coca-Cola 500ml")).toBeInTheDocument();
+  });
+
+  it("'Confirmar venta' con error de producto inactivo muestra el mensaje y conserva el detalle", async () => {
+    buscarCliente.mockResolvedValue({ success: true, customer: ACTIVE_CUSTOMER });
+    buscarProductosParaVenta.mockResolvedValue({ products: [ACTIVE_PRODUCT] });
+    confirmarVenta.mockResolvedValue({
+      success: false,
+      errors: [
+        {
+          field: "items[0].sku",
+          message: "El producto no está disponible para la venta",
+        },
+      ],
+    });
+    const user = userEvent.setup();
+    render(<VentaForm />);
+
+    await buscarClienteActivo(user);
+    await agregarItem(user, { quantity: "2" });
+    await user.click(screen.getByRole("button", { name: "Confirmar venta" }));
+    await user.click(await screen.findByRole("button", { name: "Confirmar" }));
+
+    expect(
+      await screen.findByText("El producto no está disponible para la venta")
+    ).toBeInTheDocument();
+    expect(screen.getByText("Coca-Cola 500ml")).toBeInTheDocument();
+  });
+
+  it("cancelar la confirmación de 'Confirmar venta' no llama a ninguna API", async () => {
+    buscarCliente.mockResolvedValue({ success: true, customer: ACTIVE_CUSTOMER });
+    buscarProductosParaVenta.mockResolvedValue({ products: [ACTIVE_PRODUCT] });
+    const user = userEvent.setup();
+    render(<VentaForm />);
+
+    await buscarClienteActivo(user);
+    await agregarItem(user, { quantity: "2" });
+    await user.click(screen.getByRole("button", { name: "Confirmar venta" }));
+    await user.click(await screen.findByRole("button", { name: "Cancelar" }));
+
+    expect(confirmarVenta).not.toHaveBeenCalled();
     expect(registrarVenta).not.toHaveBeenCalled();
     expect(screen.getByText("Coca-Cola 500ml")).toBeInTheDocument();
   });

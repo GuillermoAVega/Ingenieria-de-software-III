@@ -116,6 +116,20 @@ describe("VentaEdicionForm — búsqueda por cliente", () => {
     expect(screen.getByRole("button", { name: "Editar venta 2" })).toBeDisabled();
   });
 
+  it("muestra la fecha en formato año-mes-día, sin hora", async () => {
+    buscarVentasDeCliente.mockResolvedValue({
+      success: true,
+      sales: [{ id: 1, sale_date: "2026-01-15T10:00:00+00:00", status: "Borrador", total: 701 }],
+    });
+    const user = userEvent.setup();
+    render(<VentaEdicionForm />);
+
+    await buscarCliente(user);
+
+    expect(await screen.findByText("2026-01-15")).toBeInTheDocument();
+    expect(screen.queryByText("2026-01-15T10:00:00+00:00")).not.toBeInTheDocument();
+  });
+
   it("presionar editar sobre una venta en Borrador abre la vista de edición", async () => {
     buscarVentasDeCliente.mockResolvedValue({ success: true, sales: [DRAFT_SALE_SUMMARY] });
     buscarVenta.mockResolvedValue({ success: true, sale: DRAFT_SALE });

@@ -2,8 +2,14 @@ import { useEffect, useState } from "react";
 
 import { buscarCliente } from "../api/clientesApi.js";
 import { buscarProductosParaVenta } from "../api/productosApi.js";
-import { registrarVenta } from "../api/ventasApi.js";
-import { POSITIVE_NUMBER_MESSAGE, addItem, computeTotal, validateQuantityFormat } from "../ventaDetalle.js";
+import { confirmarVenta, registrarVenta } from "../api/ventasApi.js";
+import {
+  POSITIVE_NUMBER_MESSAGE,
+  addItem,
+  computeTotal,
+  removeItem,
+  validateQuantityFormat,
+} from "../ventaDetalle.js";
 import "./VentaForm.css";
 
 const INACTIVE_CUSTOMER_MESSAGE = "No se pueden emitir ventas a clientes dados de baja";
@@ -39,8 +45,10 @@ export function VentaForm() {
   );
   const [itemError, setItemError] = useState("");
 
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [isRegistering, setIsRegistering] = useState(false);
+  const [pendingAction, setPendingAction] = useState(
+    /** @type {"registrar" | "confirmar" | null} */ (null)
+  );
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
@@ -76,7 +84,7 @@ export function VentaForm() {
     setQuantityInput("");
     setItems([]);
     setItemError("");
-    setShowConfirm(false);
+    setPendingAction(null);
   }
 
   /** @param {string} value */
@@ -115,6 +123,11 @@ export function VentaForm() {
     }
   }
 
+  /** @param {string} sku */
+  function handleRemoveItem(sku) {
+    setItems(removeItem(items, sku));
+  }
+
   /** @param {import("react").FormEvent<HTMLFormElement>} event */
   function handleAddItem(event) {
     event.preventDefault();
@@ -143,10 +156,11 @@ export function VentaForm() {
     setQuantityInput("");
   }
 
-  async function handleConfirm() {
-    setIsRegistering(true);
+  async function handleConfirmAction() {
+    setIsSubmitting(true);
     try {
-      const result = await registrarVenta({
+      const submit = pendingAction === "confirmar" ? confirmarVenta : registrarVenta;
+      const result = await submit({
         dni: dniInput,
         items: items.map((item) => ({
           sku: item.sku,
@@ -162,14 +176,14 @@ export function VentaForm() {
       }
 
       setItemError(result.errors[0].message);
-      setShowConfirm(false);
+      setPendingAction(null);
     } finally {
-      setIsRegistering(false);
+      setIsSubmitting(false);
     }
   }
 
-  function handleCancel() {
-    setShowConfirm(false);
+  function handleCancelAction() {
+    setPendingAction(null);
   }
 
   const total = computeTotal(items);
@@ -298,6 +312,7 @@ export function VentaForm() {
                 <th>Cantidad</th>
                 <th>Precio unitario</th>
                 <th>Subtotal</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -308,6 +323,11 @@ export function VentaForm() {
                   <td>{item.quantity}</td>
                   <td>{item.unitPrice}</td>
                   <td>{item.quantity * item.unitPrice}</td>
+                  <td>
+                    <button type="button" onClick={() => handleRemoveItem(item.sku)}>
+                      Quitar
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -315,28 +335,45 @@ export function VentaForm() {
 
           <p className="venta-form__total">Total: {total}</p>
 
-          <button
-            type="button"
-            disabled={items.length === 0}
-            onClick={() => setShowConfirm(true)}
-          >
-            Registrar venta
-          </button>
+          <div className="venta-form__actions">
+            <button
+              type="button"
+              disabled={items.length === 0}
+              onClick={() => setPendingAction("registrar")}
+            >
+              Registrar venta
+            </button>
+            <button
+              type="button"
+              disabled={items.length === 0}
+              onClick={() => setPendingAction("confirmar")}
+            >
+              Confirmar venta
+            </button>
+          </div>
         </>
       )}
 
-      {showConfirm && (
+      {pendingAction && (
         <div className="venta-form__confirm">
-          <p>¿Confirmás registrar esta venta?</p>
+          <p>
+            {pendingAction === "confirmar"
+              ? "¿Confirmás esta venta? Quedará Confirmada y se descontará el stock de inmediato."
+              : "¿Confirmás registrar esta venta? Quedará en Borrador, sin descontar stock."}
+          </p>
           <div className="venta-form__confirm-actions">
-            <button type="button" onClick={handleConfirm} disabled={isRegistering}>
-              {isRegistering ? "Registrando…" : "Confirmar"}
+            <button type="button" onClick={handleConfirmAction} disabled={isSubmitting}>
+              {isSubmitting
+                ? pendingAction === "confirmar"
+                  ? "Confirmando…"
+                  : "Registrando…"
+                : "Confirmar"}
             </button>
             <button
               type="button"
               className="venta-form__cancel"
-              onClick={handleCancel}
-              disabled={isRegistering}
+              onClick={handleCancelAction}
+              disabled={isSubmitting}
             >
               Cancelar
             </button>

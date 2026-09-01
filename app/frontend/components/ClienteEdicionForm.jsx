@@ -15,9 +15,9 @@ const EMPTY_FORM = {
 };
 
 /**
- * Formulario de modificación de cliente (HU-CLI-03): búsqueda por DNI,
- * formulario pre-cargado, validación inmediata y confirmación explícita
- * antes de guardar los cambios.
+ * Formulario de modificación de cliente (HU-CLI-03, HU-CLI-05): búsqueda
+ * por DNI, formulario pre-cargado, validación inmediata y guardado
+ * directo al presionar "Guardar cambios", sin confirmación adicional.
  * @returns {import("react").JSX.Element}
  */
 export function ClienteEdicionForm() {
@@ -32,7 +32,6 @@ export function ClienteEdicionForm() {
   const [fieldErrors, setFieldErrors] = useState(
     /** @type {Record<string, string>} */ ({})
   );
-  const [showConfirm, setShowConfirm] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -43,7 +42,6 @@ export function ClienteEdicionForm() {
     setSuccessMessage("");
     setSearchResult(null);
     setFieldErrors({});
-    setShowConfirm(false);
     setIsSearching(true);
     try {
       const result = await buscarCliente(searchDni);
@@ -100,22 +98,17 @@ export function ClienteEdicionForm() {
   }
 
   /** @param {import("react").FormEvent<HTMLFormElement>} event */
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
     setSuccessMessage("");
 
     const frontendErrors = validateClienteForm(formValues);
     if (Object.keys(frontendErrors).length > 0) {
       setFieldErrors(frontendErrors);
-      setShowConfirm(false);
       return;
     }
 
     setFieldErrors({});
-    setShowConfirm(true);
-  }
-
-  async function handleConfirm() {
     setIsSaving(true);
     try {
       const result = await editarCliente(
@@ -128,7 +121,6 @@ export function ClienteEdicionForm() {
         setSearchResult(null);
         setSearchDni("");
         setFormValues(EMPTY_FORM);
-        setShowConfirm(false);
         return;
       }
 
@@ -138,14 +130,9 @@ export function ClienteEdicionForm() {
         errorsByField[error.field] = error.message;
       }
       setFieldErrors(errorsByField);
-      setShowConfirm(false);
     } finally {
       setIsSaving(false);
     }
-  }
-
-  function handleCancel() {
-    setShowConfirm(false);
   }
 
   const errorCount = Object.keys(fieldErrors).length;
@@ -243,28 +230,9 @@ export function ClienteEdicionForm() {
           })}
 
           <button type="submit" disabled={isSaving}>
-            Guardar cambios
+            {isSaving ? "Guardando…" : "Guardar cambios"}
           </button>
         </form>
-      )}
-
-      {showConfirm && (
-        <div className="cliente-edicion__confirm">
-          <p>¿Confirmás guardar estos cambios?</p>
-          <div className="cliente-edicion__confirm-actions">
-            <button type="button" onClick={handleConfirm} disabled={isSaving}>
-              {isSaving ? "Guardando…" : "Confirmar"}
-            </button>
-            <button
-              type="button"
-              className="cliente-edicion__cancel"
-              onClick={handleCancel}
-              disabled={isSaving}
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
       )}
     </div>
   );

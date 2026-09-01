@@ -212,6 +212,163 @@ def test_registrar_venta_con_cantidad_mayor_al_stock_se_registra_igual(client):
     assert producto["stock"] == 1
 
 
+def test_confirmar_venta_exitosa_con_un_item(client):
+    client.post("/clientes", json=VALID_CLIENT_PAYLOAD)
+    client.post("/productos", json=VALID_PRODUCT_PAYLOAD)
+
+    payload = {
+        "dni": "30111222",
+        "items": [{"sku": "ABC123", "quantity": "2", "unit_price": "350.50"}],
+    }
+    response = client.post("/ventas/confirmar", json=payload)
+
+    assert response.status_code == 201
+    body = response.json()["sale"]
+    assert body["status"] == "Confirmada"
+    assert body["total"] == 701.0
+    assert body["customer"]["dni"] == 30111222
+    assert len(body["items"]) == 1
+    assert body["items"][0]["sku"] == "ABC123"
+    assert body["items"][0]["quantity"] == 2
+
+    producto = client.get("/productos/ABC123").json()["product"]
+    assert producto["stock"] == 98
+
+
+def test_confirmar_venta_exitosa_con_varios_items(client):
+    client.post("/clientes", json=VALID_CLIENT_PAYLOAD)
+    client.post("/productos", json=VALID_PRODUCT_PAYLOAD)
+    other_product = dict(VALID_PRODUCT_PAYLOAD, sku="XYZ999", unit_price="200", stock="50")
+    client.post("/productos", json=other_product)
+
+    payload = {
+        "dni": "30111222",
+        "items": [
+            {"sku": "ABC123", "quantity": "2", "unit_price": "350.50"},
+            {"sku": "XYZ999", "quantity": "3", "unit_price": "200"},
+        ],
+    }
+    response = client.post("/ventas/confirmar", json=payload)
+
+    assert response.status_code == 201
+    body = response.json()["sale"]
+    assert body["status"] == "Confirmada"
+    assert body["total"] == 2 * 350.5 + 3 * 200.0
+
+    producto_a = client.get("/productos/ABC123").json()["product"]
+    producto_b = client.get("/productos/XYZ999").json()["product"]
+    assert producto_a["stock"] == 98
+    assert producto_b["stock"] == 47
+
+
+def test_confirmar_venta_cliente_no_encontrado_devuelve_422(client):
+    client.post("/productos", json=VALID_PRODUCT_PAYLOAD)
+    payload = {
+        "dni": "30111222",
+        "items": [{"sku": "ABC123", "quantity": "2", "unit_price": "350.50"}],
+    }
+
+    response = client.post("/ventas/confirmar", json=payload)
+
+    assert response.status_code == 422
+    assert response.json()["errors"] == [
+        {"field": "dni", "message": "Cliente no encontrado"}
+    ]
+
+    listado = client.get("/ventas").json()["sales"]
+    assert listado == []
+
+
+def test_confirmar_venta_items_vacios_devuelve_422(client):
+    client.post("/clientes", json=VALID_CLIENT_PAYLOAD)
+    payload = {"dni": "30111222", "items": []}
+
+    response = client.post("/ventas/confirmar", json=payload)
+
+    assert response.status_code == 422
+    assert response.json()["errors"] == [
+        {"field": "items", "message": "La venta debe tener al menos un ítem"}
+    ]
+
+    listado = client.get("/ventas").json()["sales"]
+    assert listado == []
+
+
+def test_confirmar_venta_con_producto_inactivo_devuelve_422_sin_crear_venta(client):
+    client.post("/clientes", json=VALID_CLIENT_PAYLOAD)
+    inactive_product = dict(VALID_PRODUCT_PAYLOAD, sku="INACT1", unit_price="50", stock="10")
+    client.post("/productos", json=inactive_product)
+    client.patch("/productos/INACT1/baja")
+
+    payload = {
+        "dni": "30111222",
+        "items": [{"sku": "INACT1", "quantity": "1", "unit_price": "50"}],
+    }
+    response = client.post("/ventas/confirmar", json=payload)
+
+    assert response.status_code == 422
+    assert response.json()["errors"] == [
+        {"field": "items[0].sku", "message": "El producto no está disponible para la venta"}
+    ]
+
+    listado = client.get("/ventas").json()["sales"]
+    assert listado == []
+    producto = client.get("/productos/INACT1").json()["product"]
+    assert producto["stock"] == 10
+
+
+def test_confirmar_venta_con_stock_insuficiente_devuelve_422_sin_crear_venta(client):
+    client.post("/clientes", json=VALID_CLIENT_PAYLOAD)
+    poco_stock = dict(VALID_PRODUCT_PAYLOAD, stock="1")
+    client.post("/productos", json=poco_stock)
+
+    payload = {
+        "dni": "30111222",
+        "items": [{"sku": "ABC123", "quantity": "5", "unit_price": "350.50"}],
+    }
+    response = client.post("/ventas/confirmar", json=payload)
+
+    assert response.status_code == 422
+    assert response.json()["errors"] == [
+        {
+            "field": "items[0].quantity",
+            "message": "No hay stock suficiente para completar la operación",
+        }
+    ]
+
+    listado = client.get("/ventas").json()["sales"]
+    assert listado == []
+    producto = client.get("/productos/ABC123").json()["product"]
+    assert producto["stock"] == 1
+
+
+def test_confirmar_venta_reporta_multiples_errores_combinados(client):
+    client.post("/clientes", json=VALID_CLIENT_PAYLOAD)
+    inactive_product = dict(VALID_PRODUCT_PAYLOAD, sku="INACT1", unit_price="50", stock="10")
+    client.post("/productos", json=inactive_product)
+    client.patch("/productos/INACT1/baja")
+    poco_stock = dict(VALID_PRODUCT_PAYLOAD, sku="POCO1", unit_price="10", stock="1")
+    client.post("/productos", json=poco_stock)
+
+    payload = {
+        "dni": "30111222",
+        "items": [
+            {"sku": "INACT1", "quantity": "1", "unit_price": "50"},
+            {"sku": "POCO1", "quantity": "5", "unit_price": "10"},
+        ],
+    }
+    response = client.post("/ventas/confirmar", json=payload)
+
+    assert response.status_code == 422
+    campos = {error["field"] for error in response.json()["errors"]}
+    assert campos == {"items[0].sku", "items[1].quantity"}
+
+    listado = client.get("/ventas").json()["sales"]
+    assert listado == []
+    producto_poco = client.get("/productos/POCO1").json()["product"]
+    assert producto_poco["stock"] == 1
+
+
 def _registrar_venta(client, quantity="2"):
     client.post("/clientes", json=VALID_CLIENT_PAYLOAD)
     client.post("/productos", json=VALID_PRODUCT_PAYLOAD)

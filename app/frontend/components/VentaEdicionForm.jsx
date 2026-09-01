@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import { buscarProductosParaVenta } from "../api/productosApi.js";
 import { buscarVenta, buscarVentasDeCliente, cerrarVenta, reemplazarDetalleVenta } from "../api/ventasApi.js";
+import { toDateOnly } from "../dateFormat.js";
 import {
   POSITIVE_NUMBER_MESSAGE,
   addItem,
@@ -306,7 +307,7 @@ export function VentaEdicionForm() {
             {(clienteEvaluation.sales ?? []).map((sale) => (
               <tr key={sale.id}>
                 <td>{sale.id}</td>
-                <td>{sale.sale_date}</td>
+                <td>{toDateOnly(sale.sale_date)}</td>
                 <td>{sale.status}</td>
                 <td>{sale.total}</td>
                 <td>
