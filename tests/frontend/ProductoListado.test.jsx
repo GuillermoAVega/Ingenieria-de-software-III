@@ -19,6 +19,16 @@ const PRODUCTS = [
 ];
 
 describe("ProductoListado", () => {
+  it("muestra el texto de ayuda sobre los criterios de búsqueda", () => {
+    listarProductos.mockResolvedValue({ products: [], page: 1, hasNext: false });
+
+    render(<ProductoListado />);
+
+    expect(
+      screen.getByText("Podés buscar por Nombre o Código/SKU.")
+    ).toBeInTheDocument();
+  });
+
   it("al montarse, pide la página 1 sin filtro y renderiza la tabla con los resultados", async () => {
     listarProductos.mockResolvedValue({ products: PRODUCTS, page: 1, hasNext: false });
 

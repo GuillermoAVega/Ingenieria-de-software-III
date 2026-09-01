@@ -56,6 +56,10 @@ export function ProductoListado() {
         </button>
       </form>
 
+      <p className="producto-listado__hint">
+        Podés buscar por Nombre o Código/SKU.
+      </p>
+
       {!isLoading && products.length === 0 ? (
         <p className="producto-listado__banner" role="status">
           No se encontraron resultados
