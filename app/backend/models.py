@@ -1,6 +1,6 @@
 import enum
 
-from sqlalchemy import Column, Enum as SqlEnum, Integer, String
+from sqlalchemy import Column, Enum as SqlEnum, Float, Integer, String
 
 from app.backend.database import Base
 
@@ -20,3 +20,15 @@ class Customer(Base):
     email = Column(String, nullable=False)
     phone = Column(String, nullable=False)
     status = Column(SqlEnum(ClientStatus), nullable=False, default=ClientStatus.ACTIVE)
+
+
+class Product(Base):
+    __tablename__ = "products"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    sku = Column(String, unique=True, nullable=False, index=True)
+    name = Column(String, nullable=False)
+    brand = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    unit_price = Column(Float, nullable=False)
+    stock = Column(Integer, nullable=False)

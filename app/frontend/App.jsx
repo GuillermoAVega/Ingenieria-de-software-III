@@ -4,6 +4,7 @@ import { ClienteBajaForm } from "./components/ClienteBajaForm.jsx";
 import { ClienteEdicionForm } from "./components/ClienteEdicionForm.jsx";
 import { ClienteForm } from "./components/ClienteForm.jsx";
 import { ClienteListado } from "./components/ClienteListado.jsx";
+import { ProductoForm } from "./components/ProductoForm.jsx";
 import "./App.css";
 
 const TABS = /** @type {const} */ ({
@@ -11,6 +12,7 @@ const TABS = /** @type {const} */ ({
   BAJA: "BAJA",
   EDICION: "EDICION",
   LISTADO: "LISTADO",
+  ALTA_PRODUCTO: "ALTA_PRODUCTO",
 });
 
 /** @returns {import("react").JSX.Element} */
@@ -48,12 +50,20 @@ export function App() {
         >
           Listar Clientes
         </button>
+        <button
+          type="button"
+          className={activeTab === TABS.ALTA_PRODUCTO ? "app-page__tab--active" : undefined}
+          onClick={() => setActiveTab(TABS.ALTA_PRODUCTO)}
+        >
+          Alta de Producto
+        </button>
       </nav>
 
       {activeTab === TABS.ALTA && <ClienteForm />}
       {activeTab === TABS.BAJA && <ClienteBajaForm />}
       {activeTab === TABS.EDICION && <ClienteEdicionForm />}
       {activeTab === TABS.LISTADO && <ClienteListado />}
+      {activeTab === TABS.ALTA_PRODUCTO && <ProductoForm />}
     </main>
   );
 }
