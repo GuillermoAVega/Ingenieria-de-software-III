@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-import { buscarProducto } from "../api/productosApi.js";
+import { buscarProductosParaVenta } from "../api/productosApi.js";
 import { buscarVenta, cerrarVenta, reemplazarDetalleVenta } from "../api/ventasApi.js";
 import {
   POSITIVE_NUMBER_MESSAGE,
@@ -12,7 +12,8 @@ import {
 import { EDICION_STATE, evaluateEdicionResult } from "../ventaEdicion.js";
 import "./VentaEdicionForm.css";
 
-const INACTIVE_PRODUCT_MESSAGE = "El producto no está disponible para la venta";
+const NO_PRODUCTS_FOUND_MESSAGE = "No se encontraron productos";
+const PRODUCT_SEARCH_DEBOUNCE_MS = 300;
 
 /**
  * @param {import("../api/ventasApi.js").VentaItem[]} items
@@ -44,10 +45,51 @@ export function VentaEdicionForm() {
     /** @type {import("../ventaDetalle.js").VentaItem[]} */ ([])
   );
 
-  const [skuInput, setSkuInput] = useState("");
+  const [productQuery, setProductQuery] = useState("");
+  const [selectedProduct, setSelectedProduct] = useState(
+    /** @type {import("../api/productosApi.js").ProductoVentaCandidato | null} */ (null)
+  );
+  const [productResults, setProductResults] = useState(
+    /** @type {import("../api/productosApi.js").ProductoVentaCandidato[]} */ ([])
+  );
+  const [hasSearchedProducts, setHasSearchedProducts] = useState(false);
   const [quantityInput, setQuantityInput] = useState("");
   const [itemError, setItemError] = useState("");
-  const [isSearchingProduct, setIsSearchingProduct] = useState(false);
+
+  useEffect(() => {
+    if (selectedProduct || !productQuery.trim()) {
+      setProductResults([]);
+      setHasSearchedProducts(false);
+      return;
+    }
+    let cancelled = false;
+    const timeoutId = setTimeout(() => {
+      buscarProductosParaVenta(productQuery).then((result) => {
+        if (cancelled) {
+          return;
+        }
+        setProductResults(result.products);
+        setHasSearchedProducts(true);
+      });
+    }, PRODUCT_SEARCH_DEBOUNCE_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
+  }, [productQuery, selectedProduct]);
+
+  /** @param {string} value */
+  function handleProductQueryChange(value) {
+    setProductQuery(value);
+    setSelectedProduct(null);
+  }
+
+  /** @param {import("../api/productosApi.js").ProductoVentaCandidato} product */
+  function handleSelectProduct(product) {
+    setSelectedProduct(product);
+    setProductQuery(product.name);
+    setProductResults([]);
+  }
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
@@ -85,40 +127,31 @@ export function VentaEdicionForm() {
   }
 
   /** @param {import("react").FormEvent<HTMLFormElement>} event */
-  async function handleAddItem(event) {
+  function handleAddItem(event) {
     event.preventDefault();
     setItemError("");
-    setIsSearchingProduct(true);
-    try {
-      const result = await buscarProducto(skuInput);
-      if (!result.success) {
-        setItemError(result.errors[0].message);
-        return;
-      }
-      if (result.product.status === "Inactivo") {
-        setItemError(INACTIVE_PRODUCT_MESSAGE);
-        return;
-      }
 
-      const outcome = addItem(items, {
-        sku: result.product.sku,
-        name: result.product.name,
-        unitPrice: result.product.unit_price,
-        stock: result.product.stock,
-        quantity: quantityInput,
-      });
-
-      if (outcome.error) {
-        setItemError(outcome.error);
-        return;
-      }
-
-      setItems(outcome.items);
-      setSkuInput("");
-      setQuantityInput("");
-    } finally {
-      setIsSearchingProduct(false);
+    if (!selectedProduct) {
+      return;
     }
+
+    const outcome = addItem(items, {
+      sku: selectedProduct.sku,
+      name: selectedProduct.name,
+      unitPrice: selectedProduct.unit_price,
+      stock: selectedProduct.stock,
+      quantity: quantityInput,
+    });
+
+    if (outcome.error) {
+      setItemError(outcome.error);
+      return;
+    }
+
+    setItems(outcome.items);
+    setProductQuery("");
+    setSelectedProduct(null);
+    setQuantityInput("");
   }
 
   /** @param {string} sku */
@@ -230,16 +263,40 @@ export function VentaEdicionForm() {
       {isEditable && (
         <>
           <form className="venta-edicion__add-item" onSubmit={handleAddItem} noValidate>
-            <div className="venta-edicion__field">
-              <label htmlFor="edicion-sku">SKU</label>
+            <div className="venta-edicion__field venta-edicion__field--product">
+              <label htmlFor="edicion-producto">Producto</label>
               <input
-                id="edicion-sku"
-                name="sku"
+                id="edicion-producto"
+                name="producto"
                 type="text"
                 autoComplete="off"
-                value={skuInput}
-                onChange={(event) => setSkuInput(event.target.value)}
+                value={productQuery}
+                onChange={(event) => handleProductQueryChange(event.target.value)}
               />
+              {!selectedProduct && productQuery.trim() && (
+                <>
+                  {productResults.length > 0 ? (
+                    <ul className="venta-edicion__product-results">
+                      {productResults.map((product) => (
+                        <li key={product.sku}>
+                          <button
+                            type="button"
+                            onMouseDown={() => handleSelectProduct(product)}
+                          >
+                            {product.name} ({product.sku})
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    hasSearchedProducts && (
+                      <p className="venta-edicion__product-no-results">
+                        {NO_PRODUCTS_FOUND_MESSAGE}
+                      </p>
+                    )
+                  )}
+                </>
+              )}
             </div>
             <div className="venta-edicion__field">
               <label htmlFor="edicion-cantidad">Cantidad</label>
@@ -267,7 +324,7 @@ export function VentaEdicionForm() {
                 }}
               />
             </div>
-            <button type="submit" disabled={isSearchingProduct || !skuInput || !quantityInput}>
+            <button type="submit" disabled={!selectedProduct || !quantityInput}>
               Agregar
             </button>
           </form>

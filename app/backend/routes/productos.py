@@ -152,6 +152,28 @@ def listar_productos(
     )
 
 
+@router.get("/productos/buscar-venta")
+def buscar_producto_para_venta(
+    q: str | None = None, session: Session = Depends(get_session)
+) -> JSONResponse:
+    products = repository_producto.search_for_venta(session, q)
+
+    return JSONResponse(
+        status_code=200,
+        content={
+            "products": [
+                {
+                    "sku": product.sku,
+                    "name": product.name,
+                    "unit_price": product.unit_price,
+                    "stock": product.stock,
+                }
+                for product in products
+            ]
+        },
+    )
+
+
 @router.get("/productos/{sku}")
 def buscar_producto(
     sku: str, session: Session = Depends(get_session)

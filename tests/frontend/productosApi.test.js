@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   altaProducto,
   buscarProducto,
+  buscarProductosParaVenta,
   darDeBajaProducto,
   editarProducto,
   listarProductos,
@@ -214,5 +215,36 @@ describe("listarProductos", () => {
     await listarProductos({ q: "coca", page: 2 });
 
     expect(mockFetch).toHaveBeenCalledWith("/productos?q=coca&page=2");
+  });
+});
+
+describe("buscarProductosParaVenta", () => {
+  it("llama a /productos/buscar-venta con q y devuelve products", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        products: [{ sku: "ABC123", name: "Coca-Cola 500ml", unit_price: 350.5, stock: 100 }],
+      }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    const result = await buscarProductosParaVenta("coca");
+
+    expect(result).toEqual({
+      products: [{ sku: "ABC123", name: "Coca-Cola 500ml", unit_price: 350.5, stock: 100 }],
+    });
+    expect(mockFetch).toHaveBeenCalledWith("/productos/buscar-venta?q=coca");
+  });
+
+  it("devuelve products: [] cuando no hay coincidencias", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ products: [] }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    const result = await buscarProductosParaVenta("gaseosa");
+
+    expect(result).toEqual({ products: [] });
   });
 });

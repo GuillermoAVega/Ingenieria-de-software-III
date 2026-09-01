@@ -3,7 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { buscarCliente } from "../../app/frontend/api/clientesApi.js";
-import { buscarProducto } from "../../app/frontend/api/productosApi.js";
+import {
+  buscarProducto,
+  buscarProductosParaVenta,
+} from "../../app/frontend/api/productosApi.js";
 import { registrarVenta } from "../../app/frontend/api/ventasApi.js";
 import { VentaForm } from "../../app/frontend/components/VentaForm.jsx";
 
@@ -12,6 +15,7 @@ vi.mock("../../app/frontend/api/clientesApi.js", () => ({
 }));
 vi.mock("../../app/frontend/api/productosApi.js", () => ({
   buscarProducto: vi.fn(),
+  buscarProductosParaVenta: vi.fn(),
 }));
 vi.mock("../../app/frontend/api/ventasApi.js", () => ({
   registrarVenta: vi.fn(),
@@ -31,10 +35,7 @@ const ACTIVE_PRODUCT = {
   name: "Coca-Cola 500ml",
   unit_price: 350.5,
   stock: 10,
-  status: "Activo",
 };
-
-const INACTIVE_PRODUCT = { ...ACTIVE_PRODUCT, status: "Inactivo" };
 
 afterEach(() => {
   vi.clearAllMocks();
@@ -46,8 +47,20 @@ async function buscarClienteActivo(user) {
   await screen.findByText("Juan Perez");
 }
 
-async function agregarItem(user, { sku = "ABC123", quantity = "2" } = {}) {
-  await user.type(screen.getByLabelText("SKU"), sku);
+/**
+ * Escribe en el campo "Producto", espera las opciones devueltas por
+ * `buscarProductosParaVenta` (mockeado) y elige la indicada.
+ */
+async function elegirProducto(user, { criterio = "coca", product = ACTIVE_PRODUCT } = {}) {
+  await user.type(screen.getByLabelText("Producto"), criterio);
+  const opcion = await screen.findByRole("button", {
+    name: `${product.name} (${product.sku})`,
+  });
+  await user.click(opcion);
+}
+
+async function agregarItem(user, { criterio = "coca", product = ACTIVE_PRODUCT, quantity = "2" } = {}) {
+  await elegirProducto(user, { criterio, product });
   await user.type(screen.getByLabelText("Cantidad"), quantity);
   await user.click(screen.getByRole("button", { name: "Agregar" }));
 }
@@ -65,7 +78,7 @@ describe("VentaForm — búsqueda de cliente", () => {
     await user.click(screen.getByRole("button", { name: "Buscar cliente" }));
 
     expect(await screen.findByText("Cliente no encontrado")).toBeInTheDocument();
-    expect(screen.queryByLabelText("SKU")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Producto")).not.toBeInTheDocument();
   });
 
   it("muestra advertencia para un cliente Inactivo y no habilita agregar ítems", async () => {
@@ -79,7 +92,7 @@ describe("VentaForm — búsqueda de cliente", () => {
     expect(
       await screen.findByText("No se pueden emitir ventas a clientes dados de baja")
     ).toBeInTheDocument();
-    expect(screen.queryByLabelText("SKU")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Producto")).not.toBeInTheDocument();
   });
 
   it("con un cliente Activo, habilita agregar ítems", async () => {
@@ -89,44 +102,72 @@ describe("VentaForm — búsqueda de cliente", () => {
 
     await buscarClienteActivo(user);
 
-    expect(screen.getByLabelText("SKU")).toBeInTheDocument();
+    expect(screen.getByLabelText("Producto")).toBeInTheDocument();
+  });
+});
+
+describe("VentaForm — selección de producto (HU-VEN-05)", () => {
+  it("muestra las opciones encontradas al escribir un criterio", async () => {
+    buscarCliente.mockResolvedValue({ success: true, customer: ACTIVE_CUSTOMER });
+    buscarProductosParaVenta.mockResolvedValue({ products: [ACTIVE_PRODUCT] });
+    const user = userEvent.setup();
+    render(<VentaForm />);
+
+    await buscarClienteActivo(user);
+    await user.type(screen.getByLabelText("Producto"), "coca");
+
+    expect(
+      await screen.findByRole("button", { name: "Coca-Cola 500ml (ABC123)" })
+    ).toBeInTheDocument();
+    expect(buscarProductosParaVenta).toHaveBeenCalledWith("coca");
+  });
+
+  it("muestra 'No se encontraron productos' sin coincidencias", async () => {
+    buscarCliente.mockResolvedValue({ success: true, customer: ACTIVE_CUSTOMER });
+    buscarProductosParaVenta.mockResolvedValue({ products: [] });
+    const user = userEvent.setup();
+    render(<VentaForm />);
+
+    await buscarClienteActivo(user);
+    await user.type(screen.getByLabelText("Producto"), "gaseosa");
+
+    expect(await screen.findByText("No se encontraron productos")).toBeInTheDocument();
+  });
+
+  it("elegir una opción completa el ítem sin llamar a buscarProducto", async () => {
+    buscarCliente.mockResolvedValue({ success: true, customer: ACTIVE_CUSTOMER });
+    buscarProductosParaVenta.mockResolvedValue({ products: [ACTIVE_PRODUCT] });
+    const user = userEvent.setup();
+    render(<VentaForm />);
+
+    await buscarClienteActivo(user);
+    await agregarItem(user, { quantity: "2" });
+
+    expect(await screen.findByText("Coca-Cola 500ml")).toBeInTheDocument();
+    expect(buscarProducto).not.toHaveBeenCalled();
+  });
+
+  it("cambiar el texto tras elegir un producto descarta la selección (Agregar deshabilitado)", async () => {
+    buscarCliente.mockResolvedValue({ success: true, customer: ACTIVE_CUSTOMER });
+    buscarProductosParaVenta.mockResolvedValue({ products: [ACTIVE_PRODUCT] });
+    const user = userEvent.setup();
+    render(<VentaForm />);
+
+    await buscarClienteActivo(user);
+    await elegirProducto(user);
+    await user.type(screen.getByLabelText("Cantidad"), "2");
+    expect(screen.getByRole("button", { name: "Agregar" })).toBeEnabled();
+
+    await user.type(screen.getByLabelText("Producto"), " x");
+
+    expect(screen.getByRole("button", { name: "Agregar" })).toBeDisabled();
   });
 });
 
 describe("VentaForm — agregar ítems al detalle", () => {
-  it("muestra 'producto no encontrado' y no agrega nada", async () => {
-    buscarCliente.mockResolvedValue({ success: true, customer: ACTIVE_CUSTOMER });
-    buscarProducto.mockResolvedValue({
-      success: false,
-      errors: [{ field: "sku", message: "Producto no encontrado" }],
-    });
-    const user = userEvent.setup();
-    render(<VentaForm />);
-
-    await buscarClienteActivo(user);
-    await agregarItem(user);
-
-    expect(await screen.findByText("Producto no encontrado")).toBeInTheDocument();
-    expect(screen.queryByText("Coca-Cola 500ml")).not.toBeInTheDocument();
-  });
-
-  it("muestra advertencia para un producto Inactivo y no lo agrega", async () => {
-    buscarCliente.mockResolvedValue({ success: true, customer: ACTIVE_CUSTOMER });
-    buscarProducto.mockResolvedValue({ success: true, product: INACTIVE_PRODUCT });
-    const user = userEvent.setup();
-    render(<VentaForm />);
-
-    await buscarClienteActivo(user);
-    await agregarItem(user);
-
-    expect(
-      await screen.findByText("El producto no está disponible para la venta")
-    ).toBeInTheDocument();
-  });
-
   it("muestra advertencia de cantidad inválida", async () => {
     buscarCliente.mockResolvedValue({ success: true, customer: ACTIVE_CUSTOMER });
-    buscarProducto.mockResolvedValue({ success: true, product: ACTIVE_PRODUCT });
+    buscarProductosParaVenta.mockResolvedValue({ products: [ACTIVE_PRODUCT] });
     const user = userEvent.setup();
     render(<VentaForm />);
 
@@ -145,7 +186,7 @@ describe("VentaForm — agregar ítems al detalle", () => {
 
     await buscarClienteActivo(user);
     await user.type(screen.getByLabelText("Cantidad"), "0");
-    await user.click(screen.getByLabelText("SKU"));
+    await user.click(screen.getByLabelText("Producto"));
 
     expect(
       await screen.findByText("El valor debe ser un número positivo")
@@ -160,37 +201,16 @@ describe("VentaForm — agregar ítems al detalle", () => {
 
     await buscarClienteActivo(user);
     await user.click(screen.getByLabelText("Cantidad"));
-    await user.click(screen.getByLabelText("SKU"));
+    await user.click(screen.getByLabelText("Producto"));
 
     expect(
       screen.queryByText("El valor debe ser un número positivo")
     ).not.toBeInTheDocument();
   });
 
-  it("un error de SKU vigente no se borra al perder el foco de Cantidad con un valor válido", async () => {
-    buscarCliente.mockResolvedValue({ success: true, customer: ACTIVE_CUSTOMER });
-    buscarProducto.mockResolvedValue({
-      success: false,
-      errors: [{ field: "sku", message: "Producto no encontrado" }],
-    });
-    const user = userEvent.setup();
-    render(<VentaForm />);
-
-    await buscarClienteActivo(user);
-    await agregarItem(user);
-    await screen.findByText("Producto no encontrado");
-
-    const cantidadInput = screen.getByLabelText("Cantidad");
-    await user.clear(cantidadInput);
-    await user.type(cantidadInput, "3");
-    await user.click(screen.getByLabelText("SKU"));
-
-    expect(screen.getByText("Producto no encontrado")).toBeInTheDocument();
-  });
-
   it("muestra advertencia de stock insuficiente", async () => {
     buscarCliente.mockResolvedValue({ success: true, customer: ACTIVE_CUSTOMER });
-    buscarProducto.mockResolvedValue({ success: true, product: ACTIVE_PRODUCT });
+    buscarProductosParaVenta.mockResolvedValue({ products: [ACTIVE_PRODUCT] });
     const user = userEvent.setup();
     render(<VentaForm />);
 
@@ -202,9 +222,9 @@ describe("VentaForm — agregar ítems al detalle", () => {
     ).toBeInTheDocument();
   });
 
-  it("agregar el mismo SKU dos veces consolida la línea", async () => {
+  it("agregar el mismo producto dos veces consolida la línea", async () => {
     buscarCliente.mockResolvedValue({ success: true, customer: ACTIVE_CUSTOMER });
-    buscarProducto.mockResolvedValue({ success: true, product: ACTIVE_PRODUCT });
+    buscarProductosParaVenta.mockResolvedValue({ products: [ACTIVE_PRODUCT] });
     const user = userEvent.setup();
     render(<VentaForm />);
 
@@ -221,7 +241,7 @@ describe("VentaForm — agregar ítems al detalle", () => {
 describe("VentaForm — total, confirmación y registro", () => {
   it("muestra el total correcto según los ítems agregados", async () => {
     buscarCliente.mockResolvedValue({ success: true, customer: ACTIVE_CUSTOMER });
-    buscarProducto.mockResolvedValue({ success: true, product: ACTIVE_PRODUCT });
+    buscarProductosParaVenta.mockResolvedValue({ products: [ACTIVE_PRODUCT] });
     const user = userEvent.setup();
     render(<VentaForm />);
 
@@ -233,7 +253,7 @@ describe("VentaForm — total, confirmación y registro", () => {
 
   it("'Registrar venta' muestra el diálogo de confirmación sin llamar a registrarVenta todavía", async () => {
     buscarCliente.mockResolvedValue({ success: true, customer: ACTIVE_CUSTOMER });
-    buscarProducto.mockResolvedValue({ success: true, product: ACTIVE_PRODUCT });
+    buscarProductosParaVenta.mockResolvedValue({ products: [ACTIVE_PRODUCT] });
     const user = userEvent.setup();
     render(<VentaForm />);
 
@@ -247,7 +267,7 @@ describe("VentaForm — total, confirmación y registro", () => {
 
   it("Confirmar llama a registrarVenta y muestra el mensaje de éxito, reiniciando el formulario", async () => {
     buscarCliente.mockResolvedValue({ success: true, customer: ACTIVE_CUSTOMER });
-    buscarProducto.mockResolvedValue({ success: true, product: ACTIVE_PRODUCT });
+    buscarProductosParaVenta.mockResolvedValue({ products: [ACTIVE_PRODUCT] });
     registrarVenta.mockResolvedValue({
       success: true,
       message: "Venta registrada exitosamente",
@@ -268,12 +288,12 @@ describe("VentaForm — total, confirmación y registro", () => {
     expect(
       await screen.findByText("Venta registrada exitosamente")
     ).toBeInTheDocument();
-    expect(screen.queryByLabelText("SKU")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Producto")).not.toBeInTheDocument();
   });
 
   it("Cancelar no llama a registrarVenta y conserva el detalle armado", async () => {
     buscarCliente.mockResolvedValue({ success: true, customer: ACTIVE_CUSTOMER });
-    buscarProducto.mockResolvedValue({ success: true, product: ACTIVE_PRODUCT });
+    buscarProductosParaVenta.mockResolvedValue({ products: [ACTIVE_PRODUCT] });
     const user = userEvent.setup();
     render(<VentaForm />);
 

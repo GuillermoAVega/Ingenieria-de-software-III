@@ -259,3 +259,42 @@ def test_list_products_pagina_de_a_veinte(session):
     assert len(page_2) == 5
     assert has_next_2 is False
     assert {p.sku for p in page_1}.isdisjoint({p.sku for p in page_2})
+
+
+def test_search_for_venta_coincidencias_por_nombre_y_descripcion(session):
+    _create_product(session, sku="ABC123", name="Coca-Cola 500ml", description="Botella descartable")
+    _create_product(session, sku="XYZ999", name="Sprite 500ml", description="Lima limón")
+    _create_product(session, sku="DEF456", name="Agua mineral", description="Sin gas")
+
+    por_nombre = repository_producto.search_for_venta(session, "coca")
+    por_descripcion = repository_producto.search_for_venta(session, "descartable")
+
+    assert [p.sku for p in por_nombre] == ["ABC123"]
+    assert [p.sku for p in por_descripcion] == ["ABC123"]
+
+
+def test_search_for_venta_excluye_inactivos(session):
+    _create_product(session, sku="ABC123", name="Coca-Cola 500ml")
+    inactivo = _create_product(session, sku="XYZ999", name="Coca-Cola 1L")
+    repository_producto.deactivate_by_sku(session, "XYZ999")
+
+    results = repository_producto.search_for_venta(session, "coca")
+
+    assert [p.sku for p in results] == ["ABC123"]
+    assert inactivo.sku not in [p.sku for p in results]
+
+
+def test_search_for_venta_limita_resultados(session):
+    for i in range(25):
+        _create_product(session, sku=f"SKU{i:03d}", name=f"Producto {i:03d}")
+
+    results = repository_producto.search_for_venta(session, "producto")
+
+    assert len(results) == 20
+
+
+def test_search_for_venta_sin_query_devuelve_lista_vacia(session):
+    _create_product(session)
+
+    assert repository_producto.search_for_venta(session, "") == []
+    assert repository_producto.search_for_venta(session, None) == []

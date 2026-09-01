@@ -85,6 +85,32 @@ def list_products(
     return page_items, has_next
 
 
+def search_for_venta(
+    session: Session, query: str | None, limit: int = 20
+) -> list[Product]:
+    normalized_query = core.normalize_search_text(
+        core.trim_leading_trailing_space(query or "")
+    )
+    if not normalized_query:
+        return []
+
+    active_products = (
+        session.query(Product)
+        .filter(Product.status == ProductStatus.ACTIVE)
+        .order_by(Product.name)
+        .all()
+    )
+    matching = [
+        product
+        for product in active_products
+        if core_producto.matches_venta_search(
+            normalized_query, name=product.name, description=product.description
+        )
+    ]
+
+    return matching[:limit]
+
+
 def create_product(
     session: Session,
     sku: str,

@@ -66,6 +66,52 @@
   background: #fbfbfd;
 }
 
+.venta-form__field--product {
+  position: relative;
+}
+
+.venta-form__product-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  list-style: none;
+  background: #ffffff;
+  border: 1px solid #e2e5ea;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 10px rgba(16, 24, 40, 0.12);
+  max-height: 14rem;
+  overflow-y: auto;
+}
+
+.venta-form__product-results li button {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  font-size: 0.9rem;
+  color: #1f2430;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.venta-form__product-results li button:hover {
+  background: #f4f6fa;
+}
+
+.venta-form__product-no-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  color: #7c8595;
+}
+
 .venta-form__field input:focus {
   outline: none;
   border-color: #2f6fed;

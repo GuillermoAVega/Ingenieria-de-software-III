@@ -181,6 +181,39 @@ def test_alta_producto_asigna_estado_activo_por_defecto(client):
     assert response.json()["product"]["status"] == "Activo"
 
 
+def test_buscar_producto_para_venta_devuelve_sku_nombre_precio_stock(client):
+    client.post("/productos", json=VALID_PAYLOAD)
+    inactivo = dict(VALID_PAYLOAD, sku="XYZ999", name="Coca-Cola 1L")
+    client.post("/productos", json=inactivo)
+    client.patch("/productos/XYZ999/baja")
+
+    response = client.get("/productos/buscar-venta", params={"q": "coca"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["products"] == [
+        {"sku": "ABC123", "name": "Coca-Cola 500ml", "unit_price": 350.5, "stock": 100}
+    ]
+
+
+def test_buscar_producto_para_venta_por_descripcion(client):
+    client.post("/productos", json=VALID_PAYLOAD)
+
+    response = client.get("/productos/buscar-venta", params={"q": "descartable"})
+
+    assert response.status_code == 200
+    assert [p["sku"] for p in response.json()["products"]] == ["ABC123"]
+
+
+def test_buscar_producto_para_venta_sin_coincidencias(client):
+    client.post("/productos", json=VALID_PAYLOAD)
+
+    response = client.get("/productos/buscar-venta", params={"q": "gaseosa"})
+
+    assert response.status_code == 200
+    assert response.json()["products"] == []
+
+
 def test_buscar_producto_activo_devuelve_sus_datos(client):
     client.post("/productos", json=VALID_PAYLOAD)
 

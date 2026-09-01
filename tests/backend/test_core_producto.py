@@ -59,3 +59,43 @@ def test_matches_search_insensible_a_tildes():
 def test_matches_search_sin_coincidencia():
     query = core.normalize_search_text("gaseosa")
     assert core_producto.matches_search(query, sku="ABC123", name="Coca-Cola 500ml") is False
+
+
+def test_matches_venta_search_por_nombre():
+    query = core.normalize_search_text("coca")
+    assert (
+        core_producto.matches_venta_search(query, name="Coca-Cola 500ml", description="Botella descartable")
+        is True
+    )
+
+
+def test_matches_venta_search_por_descripcion():
+    query = core.normalize_search_text("descartable")
+    assert (
+        core_producto.matches_venta_search(query, name="Coca-Cola 500ml", description="Botella descartable")
+        is True
+    )
+
+
+def test_matches_venta_search_insensible_a_tildes():
+    query = core.normalize_search_text("limon")
+    assert (
+        core_producto.matches_venta_search(query, name="Limón Cola", description=None)
+        is True
+    )
+
+
+def test_matches_venta_search_sin_descripcion_no_rompe():
+    query = core.normalize_search_text("gaseosa")
+    assert (
+        core_producto.matches_venta_search(query, name="Coca-Cola 500ml", description=None)
+        is False
+    )
+
+
+def test_matches_venta_search_sin_coincidencia():
+    query = core.normalize_search_text("gaseosa")
+    assert (
+        core_producto.matches_venta_search(query, name="Coca-Cola 500ml", description="Botella descartable")
+        is False
+    )

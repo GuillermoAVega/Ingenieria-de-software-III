@@ -1,18 +1,20 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { buscarCliente } from "../api/clientesApi.js";
-import { buscarProducto } from "../api/productosApi.js";
+import { buscarProductosParaVenta } from "../api/productosApi.js";
 import { registrarVenta } from "../api/ventasApi.js";
 import { POSITIVE_NUMBER_MESSAGE, addItem, computeTotal, validateQuantityFormat } from "../ventaDetalle.js";
 import "./VentaForm.css";
 
 const INACTIVE_CUSTOMER_MESSAGE = "No se pueden emitir ventas a clientes dados de baja";
-const INACTIVE_PRODUCT_MESSAGE = "El producto no está disponible para la venta";
+const NO_PRODUCTS_FOUND_MESSAGE = "No se encontraron productos";
+const PRODUCT_SEARCH_DEBOUNCE_MS = 300;
 
 /**
  * Formulario de registro de venta (HU-VEN-01): búsqueda de cliente por
- * DNI, armado del detalle buscando productos por SKU, y confirmación
- * explícita antes de registrar (descuenta stock).
+ * DNI, armado del detalle eligiendo el producto por nombre o
+ * descripción (HU-VEN-05), y confirmación explícita antes de
+ * registrar (descuenta stock).
  * @returns {import("react").JSX.Element}
  */
 export function VentaForm() {
@@ -23,27 +25,71 @@ export function VentaForm() {
   const [customerError, setCustomerError] = useState("");
   const [isSearchingCustomer, setIsSearchingCustomer] = useState(false);
 
-  const [skuInput, setSkuInput] = useState("");
+  const [productQuery, setProductQuery] = useState("");
+  const [selectedProduct, setSelectedProduct] = useState(
+    /** @type {import("../api/productosApi.js").ProductoVentaCandidato | null} */ (null)
+  );
+  const [productResults, setProductResults] = useState(
+    /** @type {import("../api/productosApi.js").ProductoVentaCandidato[]} */ ([])
+  );
+  const [hasSearchedProducts, setHasSearchedProducts] = useState(false);
   const [quantityInput, setQuantityInput] = useState("");
   const [items, setItems] = useState(
     /** @type {import("../ventaDetalle.js").VentaItem[]} */ ([])
   );
   const [itemError, setItemError] = useState("");
-  const [isSearchingProduct, setIsSearchingProduct] = useState(false);
 
   const [showConfirm, setShowConfirm] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
+  useEffect(() => {
+    if (selectedProduct || !productQuery.trim()) {
+      setProductResults([]);
+      setHasSearchedProducts(false);
+      return;
+    }
+    let cancelled = false;
+    const timeoutId = setTimeout(() => {
+      buscarProductosParaVenta(productQuery).then((result) => {
+        if (cancelled) {
+          return;
+        }
+        setProductResults(result.products);
+        setHasSearchedProducts(true);
+      });
+    }, PRODUCT_SEARCH_DEBOUNCE_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
+  }, [productQuery, selectedProduct]);
+
   function resetAll() {
     setDniInput("");
     setCustomer(null);
     setCustomerError("");
-    setSkuInput("");
+    setProductQuery("");
+    setSelectedProduct(null);
+    setProductResults([]);
+    setHasSearchedProducts(false);
     setQuantityInput("");
     setItems([]);
     setItemError("");
     setShowConfirm(false);
+  }
+
+  /** @param {string} value */
+  function handleProductQueryChange(value) {
+    setProductQuery(value);
+    setSelectedProduct(null);
+  }
+
+  /** @param {import("../api/productosApi.js").ProductoVentaCandidato} product */
+  function handleSelectProduct(product) {
+    setSelectedProduct(product);
+    setProductQuery(product.name);
+    setProductResults([]);
   }
 
   /** @param {import("react").FormEvent<HTMLFormElement>} event */
@@ -70,40 +116,31 @@ export function VentaForm() {
   }
 
   /** @param {import("react").FormEvent<HTMLFormElement>} event */
-  async function handleAddItem(event) {
+  function handleAddItem(event) {
     event.preventDefault();
     setItemError("");
-    setIsSearchingProduct(true);
-    try {
-      const result = await buscarProducto(skuInput);
-      if (!result.success) {
-        setItemError(result.errors[0].message);
-        return;
-      }
-      if (result.product.status === "Inactivo") {
-        setItemError(INACTIVE_PRODUCT_MESSAGE);
-        return;
-      }
 
-      const outcome = addItem(items, {
-        sku: result.product.sku,
-        name: result.product.name,
-        unitPrice: result.product.unit_price,
-        stock: result.product.stock,
-        quantity: quantityInput,
-      });
-
-      if (outcome.error) {
-        setItemError(outcome.error);
-        return;
-      }
-
-      setItems(outcome.items);
-      setSkuInput("");
-      setQuantityInput("");
-    } finally {
-      setIsSearchingProduct(false);
+    if (!selectedProduct) {
+      return;
     }
+
+    const outcome = addItem(items, {
+      sku: selectedProduct.sku,
+      name: selectedProduct.name,
+      unitPrice: selectedProduct.unit_price,
+      stock: selectedProduct.stock,
+      quantity: quantityInput,
+    });
+
+    if (outcome.error) {
+      setItemError(outcome.error);
+      return;
+    }
+
+    setItems(outcome.items);
+    setProductQuery("");
+    setSelectedProduct(null);
+    setQuantityInput("");
   }
 
   async function handleConfirm() {
@@ -181,16 +218,40 @@ export function VentaForm() {
           </p>
 
           <form className="venta-form__add-item" onSubmit={handleAddItem} noValidate>
-            <div className="venta-form__field">
-              <label htmlFor="venta-sku">SKU</label>
+            <div className="venta-form__field venta-form__field--product">
+              <label htmlFor="venta-producto">Producto</label>
               <input
-                id="venta-sku"
-                name="sku"
+                id="venta-producto"
+                name="producto"
                 type="text"
                 autoComplete="off"
-                value={skuInput}
-                onChange={(event) => setSkuInput(event.target.value)}
+                value={productQuery}
+                onChange={(event) => handleProductQueryChange(event.target.value)}
               />
+              {!selectedProduct && productQuery.trim() && (
+                <>
+                  {productResults.length > 0 ? (
+                    <ul className="venta-form__product-results">
+                      {productResults.map((product) => (
+                        <li key={product.sku}>
+                          <button
+                            type="button"
+                            onMouseDown={() => handleSelectProduct(product)}
+                          >
+                            {product.name} ({product.sku})
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    hasSearchedProducts && (
+                      <p className="venta-form__product-no-results">
+                        {NO_PRODUCTS_FOUND_MESSAGE}
+                      </p>
+                    )
+                  )}
+                </>
+              )}
             </div>
             <div className="venta-form__field">
               <label htmlFor="venta-cantidad">Cantidad</label>
@@ -218,7 +279,7 @@ export function VentaForm() {
                 }}
               />
             </div>
-            <button type="submit" disabled={isSearchingProduct || !skuInput || !quantityInput}>
+            <button type="submit" disabled={!selectedProduct || !quantityInput}>
               Agregar
             </button>
           </form>

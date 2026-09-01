@@ -92,6 +92,19 @@
  * @property {boolean} hasNext
  */
 
+/**
+ * @typedef {Object} ProductoVentaCandidato
+ * @property {string} sku
+ * @property {string} name
+ * @property {number} unit_price
+ * @property {number} stock
+ */
+
+/**
+ * @typedef {Object} ProductoVentaBusquedaResult
+ * @property {ProductoVentaCandidato[]} products
+ */
+
 const PRODUCTOS_ENDPOINT = "/productos";
 
 /**
@@ -193,4 +206,16 @@ export async function listarProductos(options = {}) {
   const body = await response.json();
 
   return { products: body.products, page: body.page, hasNext: body.has_next };
+}
+
+/**
+ * @param {string} q
+ * @returns {Promise<ProductoVentaBusquedaResult>}
+ */
+export async function buscarProductosParaVenta(q) {
+  const params = new URLSearchParams({ q });
+  const response = await fetch(`${PRODUCTOS_ENDPOINT}/buscar-venta?${params.toString()}`);
+  const body = await response.json();
+
+  return { products: body.products };
 }
