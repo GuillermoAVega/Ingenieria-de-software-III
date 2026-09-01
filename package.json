@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "backend": "uvicorn app.backend.main:app --reload --port 8000",
     "build": "vite build",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
