@@ -331,3 +331,62 @@ def test_editar_stock_invalido_advierte_numero_positivo(client, stock):
     assert response.json()["errors"] == [
         {"field": "stock", "message": "El valor debe ser un número positivo"}
     ]
+
+
+def test_listar_productos_sin_filtro_devuelve_todos(client):
+    client.post("/productos", json=VALID_PAYLOAD)
+    other_payload = dict(VALID_PAYLOAD, sku="XYZ999", name="Otro producto")
+    client.post("/productos", json=other_payload)
+    client.patch("/productos/XYZ999/baja")
+
+    response = client.get("/productos")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert {p["sku"] for p in body["products"]} == {"ABC123", "XYZ999"}
+    assert body["page"] == 1
+    assert body["has_next"] is False
+
+
+def test_listar_productos_con_filtro_insensible_a_mayusculas(client):
+    client.post("/productos", json=VALID_PAYLOAD)
+    other_payload = dict(VALID_PAYLOAD, sku="XYZ999", name="Otro producto")
+    client.post("/productos", json=other_payload)
+
+    response = client.get("/productos", params={"q": "COCA"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [p["sku"] for p in body["products"]] == ["ABC123"]
+
+
+def test_listar_productos_sin_coincidencias_devuelve_lista_vacia(client):
+    client.post("/productos", json=VALID_PAYLOAD)
+
+    response = client.get("/productos", params={"q": "gaseosa"})
+
+    assert response.status_code == 200
+    assert response.json()["products"] == []
+
+
+def test_listar_productos_pagina_2_devuelve_el_resto(client):
+    for i in range(25):
+        client.post(
+            "/productos",
+            json={
+                "sku": f"SKU{i:03d}",
+                "name": f"Producto {i:03d}",
+                "brand": "Marca",
+                "description": "",
+                "unit_price": "10",
+                "stock": "5",
+            },
+        )
+
+    response = client.get("/productos", params={"page": 2})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["products"]) == 5
+    assert body["page"] == 2
+    assert body["has_next"] is False

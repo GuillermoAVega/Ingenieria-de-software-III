@@ -1,3 +1,6 @@
+from app.backend import core
+
+
 def validate_positive_number(value: str) -> bool:
     try:
         return float(value) > 0
@@ -17,3 +20,9 @@ ACTIVE_STATUS = "Activo"
 
 def initial_status() -> str:
     return ACTIVE_STATUS
+
+
+def matches_search(normalized_query: str, *, sku: str, name: str) -> bool:
+    if normalized_query in core.normalize_search_text(name):
+        return True
+    return normalized_query in core.normalize_search_text(sku)

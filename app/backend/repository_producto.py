@@ -58,6 +58,33 @@ def update_product(
     return product
 
 
+def list_products(
+    session: Session, query: str | None, page: int, page_size: int = 20
+) -> tuple[list[Product], bool]:
+    all_products = session.query(Product).order_by(Product.name).all()
+
+    if query:
+        normalized_query = core.normalize_search_text(
+            core.trim_leading_trailing_space(query)
+        )
+        matching = [
+            product
+            for product in all_products
+            if core_producto.matches_search(
+                normalized_query, sku=product.sku, name=product.name
+            )
+        ]
+    else:
+        matching = all_products
+
+    start = (page - 1) * page_size
+    end = start + page_size
+    page_items = matching[start:end]
+    has_next = len(matching) > end
+
+    return page_items, has_next
+
+
 def create_product(
     session: Session,
     sku: str,

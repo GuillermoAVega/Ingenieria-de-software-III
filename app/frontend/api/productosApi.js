@@ -85,6 +85,13 @@
  * @property {FieldError[]} errors
  */
 
+/**
+ * @typedef {Object} ProductoListadoResult
+ * @property {Producto[]} products
+ * @property {number} page
+ * @property {boolean} hasNext
+ */
+
 const PRODUCTOS_ENDPOINT = "/productos";
 
 /**
@@ -164,4 +171,26 @@ export async function editarProducto(sku, input) {
   }
 
   return { success: false, errors: body.errors };
+}
+
+/**
+ * @param {{ q?: string, page?: number }} [options]
+ * @returns {Promise<ProductoListadoResult>}
+ */
+export async function listarProductos(options = {}) {
+  const { q, page } = options;
+  const params = new URLSearchParams();
+  if (q) {
+    params.set("q", q);
+  }
+  if (page) {
+    params.set("page", String(page));
+  }
+  const queryString = params.toString();
+  const url = queryString ? `${PRODUCTOS_ENDPOINT}?${queryString}` : PRODUCTOS_ENDPOINT;
+
+  const response = await fetch(url);
+  const body = await response.json();
+
+  return { products: body.products, page: body.page, hasNext: body.has_next };
 }

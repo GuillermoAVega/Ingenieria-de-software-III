@@ -203,3 +203,59 @@ def test_update_product_no_toca_estado_inactivo(session):
     )
 
     assert updated.status == ProductStatus.INACTIVE
+
+
+def test_list_products_sin_filtro_incluye_activos_e_inactivos(session):
+    _create_product(session, sku="ABC123")
+    _create_product(session, sku="XYZ999", name="Otro producto")
+    repository_producto.deactivate_by_sku(session, "XYZ999")
+
+    products, has_next = repository_producto.list_products(session, query=None, page=1)
+
+    assert {p.sku for p in products} == {"ABC123", "XYZ999"}
+    assert has_next is False
+
+
+def test_list_products_filtra_por_criterio_insensible_a_tildes(session):
+    _create_product(session, sku="ABC123", name="Limón Cola")
+    _create_product(session, sku="XYZ999", name="Naranja")
+
+    products, _ = repository_producto.list_products(session, query="limon", page=1)
+
+    assert [p.sku for p in products] == ["ABC123"]
+
+
+def test_list_products_filtra_por_sku_parcial(session):
+    _create_product(session, sku="ABC123")
+    _create_product(session, sku="XYZ999", name="Otro producto")
+
+    products, _ = repository_producto.list_products(session, query="abc", page=1)
+
+    assert [p.sku for p in products] == ["ABC123"]
+
+
+def test_list_products_sin_coincidencias_devuelve_lista_vacia(session):
+    _create_product(session, sku="ABC123")
+
+    products, has_next = repository_producto.list_products(session, query="gaseosa", page=1)
+
+    assert products == []
+    assert has_next is False
+
+
+def test_list_products_pagina_de_a_veinte(session):
+    for i in range(25):
+        _create_product(
+            session,
+            sku=f"SKU{i:03d}",
+            name=f"Producto {i:03d}",
+        )
+
+    page_1, has_next_1 = repository_producto.list_products(session, query=None, page=1)
+    page_2, has_next_2 = repository_producto.list_products(session, query=None, page=2)
+
+    assert len(page_1) == 20
+    assert has_next_1 is True
+    assert len(page_2) == 5
+    assert has_next_2 is False
+    assert {p.sku for p in page_1}.isdisjoint({p.sku for p in page_2})

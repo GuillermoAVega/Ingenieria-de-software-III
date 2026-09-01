@@ -5,6 +5,7 @@ import {
   buscarProducto,
   darDeBajaProducto,
   editarProducto,
+  listarProductos,
 } from "../../app/frontend/api/productosApi.js";
 
 const VALID_INPUT = {
@@ -178,5 +179,40 @@ describe("editarProducto", () => {
       success: false,
       errors: [{ field: "unit_price", message: "El valor debe ser un número positivo" }],
     });
+  });
+});
+
+describe("listarProductos", () => {
+  it("llama a /productos sin parámetros cuando no se pasa q ni page", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        products: [{ sku: "ABC123", status: "Activo" }],
+        page: 1,
+        has_next: false,
+      }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    const result = await listarProductos();
+
+    expect(result).toEqual({
+      products: [{ sku: "ABC123", status: "Activo" }],
+      page: 1,
+      hasNext: false,
+    });
+    expect(mockFetch).toHaveBeenCalledWith("/productos");
+  });
+
+  it("llama a /productos con q y page cuando se pasan", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ products: [], page: 2, has_next: false }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    await listarProductos({ q: "coca", page: 2 });
+
+    expect(mockFetch).toHaveBeenCalledWith("/productos?q=coca&page=2");
   });
 });

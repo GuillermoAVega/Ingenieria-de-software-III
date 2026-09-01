@@ -1,6 +1,6 @@
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
@@ -130,6 +130,24 @@ def alta_producto(
         content={
             "message": SUCCESS_MESSAGE,
             "product": _serialize_product(product),
+        },
+    )
+
+
+@router.get("/productos")
+def listar_productos(
+    q: str | None = None,
+    page: int = Query(1, ge=1),
+    session: Session = Depends(get_session),
+) -> JSONResponse:
+    products, has_next = repository_producto.list_products(session, query=q, page=page)
+
+    return JSONResponse(
+        status_code=200,
+        content={
+            "products": [_serialize_product(product) for product in products],
+            "page": page,
+            "has_next": has_next,
         },
     )
 
