@@ -77,6 +77,38 @@ def test_dni_no_registrado_no_es_duplicado(session):
     assert repository.dni_exists(session, "30111222") is False
 
 
+def test_active_customer_exists_with_dni_de_cliente_activo(session):
+    repository.create_customer(
+        session,
+        dni="30111222",
+        first_name="Juan",
+        last_name="Perez",
+        email="juan@dominio.com",
+        phone="11-4444-5555",
+    )
+
+    assert repository.active_customer_exists_with_dni(session, "30111222") is True
+
+
+def test_active_customer_exists_with_dni_de_cliente_inactivo_es_false(session):
+    customer = repository.create_customer(
+        session,
+        dni="30111222",
+        first_name="Juan",
+        last_name="Perez",
+        email="juan@dominio.com",
+        phone="11-4444-5555",
+    )
+    customer.status = ClientStatus.INACTIVE
+    session.commit()
+
+    assert repository.active_customer_exists_with_dni(session, "30111222") is False
+
+
+def test_active_customer_exists_with_dni_inexistente_es_false(session):
+    assert repository.active_customer_exists_with_dni(session, "30111222") is False
+
+
 def test_find_by_dni_encuentra_por_valor_exacto(session):
     repository.create_customer(
         session,

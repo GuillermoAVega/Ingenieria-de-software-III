@@ -115,6 +115,24 @@ def test_dni_duplicado_endpoint_bloquea_el_alta(client):
     ]
 
 
+def test_alta_con_dni_de_cliente_inactivo_se_permite(client):
+    client.post("/clientes", json=VALID_PAYLOAD)
+    client.patch(f"/clientes/{VALID_PAYLOAD['dni']}/baja")
+
+    nuevo_payload = dict(VALID_PAYLOAD, first_name="Ana", last_name="Diaz")
+    response = client.post("/clientes", json=nuevo_payload)
+
+    assert response.status_code == 201
+    assert response.json()["customer"]["status"] == "Activo"
+
+    listado = client.get("/clientes").json()["customers"]
+    con_ese_dni = [c for c in listado if c["dni"] == int(VALID_PAYLOAD["dni"])]
+    assert len(con_ese_dni) == 2
+    por_estado = {c["status"]: c for c in con_ese_dni}
+    assert por_estado["Activo"]["first_name"] == "Ana"
+    assert por_estado["Inactivo"]["first_name"] == VALID_PAYLOAD["first_name"]
+
+
 def test_buscar_cliente_activo_devuelve_sus_datos(client):
     client.post("/clientes", json=VALID_PAYLOAD)
 

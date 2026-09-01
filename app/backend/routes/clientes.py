@@ -76,7 +76,7 @@ def alta_cliente(
     if errors:
         return JSONResponse(status_code=422, content={"errors": errors})
 
-    if repository.dni_exists(session, values["dni"]):
+    if repository.active_customer_exists_with_dni(session, values["dni"]):
         return JSONResponse(
             status_code=422,
             content={"errors": [{"field": "dni", "message": DUPLICATE_DNI_MESSAGE}]},

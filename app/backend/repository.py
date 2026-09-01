@@ -24,6 +24,19 @@ def find_by_dni(session: Session, dni: str) -> Customer | None:
     )
 
 
+def active_customer_exists_with_dni(session: Session, dni: str) -> bool:
+    normalized_dni = core.normalize_dni(dni)
+    return (
+        session.query(Customer)
+        .filter(
+            Customer.dni == normalized_dni,
+            Customer.status == ClientStatus.ACTIVE,
+        )
+        .first()
+        is not None
+    )
+
+
 def dni_belongs_to_another_active_customer(
     session: Session, dni: str, exclude_id: int
 ) -> bool:

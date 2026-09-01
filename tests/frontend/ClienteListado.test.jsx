@@ -19,6 +19,16 @@ const CUSTOMERS = [
 ];
 
 describe("ClienteListado", () => {
+  it("muestra el texto de ayuda sobre los criterios de búsqueda", () => {
+    listarClientes.mockResolvedValue({ customers: [], page: 1, hasNext: false });
+
+    render(<ClienteListado />);
+
+    expect(
+      screen.getByText("Podés buscar por Nombre, Apellido o DNI.")
+    ).toBeInTheDocument();
+  });
+
   it("al montarse, pide la página 1 sin filtro y renderiza la tabla con los resultados", async () => {
     listarClientes.mockResolvedValue({ customers: CUSTOMERS, page: 1, hasNext: false });
 

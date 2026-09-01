@@ -56,6 +56,10 @@ export function ClienteListado() {
         </button>
       </form>
 
+      <p className="cliente-listado__hint">
+        Podés buscar por Nombre, Apellido o DNI.
+      </p>
+
       {!isLoading && customers.length === 0 ? (
         <p className="cliente-listado__banner" role="status">
           No se encontraron resultados
