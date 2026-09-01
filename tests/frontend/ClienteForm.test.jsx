@@ -84,6 +84,26 @@ describe("ClienteForm", () => {
     expect(altaCliente).toHaveBeenCalledTimes(1);
   });
 
+  it("un error del backend no desaparece al perder el foco sin haber escrito nada nuevo", async () => {
+    altaCliente.mockResolvedValue({
+      success: false,
+      errors: [{ field: "dni", message: "El cliente ya se encuentra registrado" }],
+    });
+    const user = userEvent.setup();
+    render(<ClienteForm />);
+
+    await fillForm(user);
+    await user.click(screen.getByRole("button", { name: "Registrar cliente" }));
+    await screen.findByText("El cliente ya se encuentra registrado");
+
+    await user.click(screen.getByLabelText("DNI"));
+    await user.click(screen.getByLabelText("Nombre"));
+
+    expect(
+      screen.getByText("El cliente ya se encuentra registrado")
+    ).toBeInTheDocument();
+  });
+
   it("conserva los valores ingresados tras un intento fallido en el backend", async () => {
     altaCliente.mockResolvedValue({
       success: false,

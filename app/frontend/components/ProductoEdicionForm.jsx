@@ -79,21 +79,22 @@ export function ProductoEdicionForm() {
     });
   }
 
-  /** @param {string} field */
+  /**
+   * Al perder el foco, solo agrega el error de formato si el campo es
+   * inválido; nunca lo limpia (un campo puede tener un error que vino
+   * del backend, que esta validación de formato no puede saber si
+   * sigue vigente). Limpiar un error solo ocurre al escribir de nuevo,
+   * vía `handleChange`.
+   * @param {string} field
+   */
   function handleBlur(field) {
     if (!formValues[field]?.trim()) {
       return;
     }
     const errors = validateProductoEdicionForm(formValues);
-    setFieldErrors((current) => {
-      const next = { ...current };
-      if (errors[field]) {
-        next[field] = errors[field];
-      } else {
-        delete next[field];
-      }
-      return next;
-    });
+    if (errors[field]) {
+      setFieldErrors((current) => ({ ...current, [field]: errors[field] }));
+    }
   }
 
   /** @param {import("react").FormEvent<HTMLFormElement>} event */

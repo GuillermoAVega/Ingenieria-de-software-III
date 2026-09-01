@@ -135,4 +135,24 @@ describe("ProductoForm", () => {
     expect(screen.getByLabelText("Código/SKU")).toHaveValue(VALID_INPUT.sku);
     expect(screen.getByLabelText("Nombre")).toHaveValue(VALID_INPUT.name);
   });
+
+  it("un error del backend no desaparece al perder el foco sin haber escrito nada nuevo", async () => {
+    altaProducto.mockResolvedValue({
+      success: false,
+      errors: [{ field: "sku", message: "El código de producto está duplicado" }],
+    });
+    const user = userEvent.setup();
+    render(<ProductoForm />);
+
+    await fillForm(user);
+    await user.click(screen.getByRole("button", { name: "Registrar producto" }));
+    await screen.findByText("El código de producto está duplicado");
+
+    await user.click(screen.getByLabelText("Código/SKU"));
+    await user.click(screen.getByLabelText("Nombre"));
+
+    expect(
+      screen.getByText("El código de producto está duplicado")
+    ).toBeInTheDocument();
+  });
 });

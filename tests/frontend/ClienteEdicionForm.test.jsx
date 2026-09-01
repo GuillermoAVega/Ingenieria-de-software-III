@@ -194,4 +194,24 @@ describe("ClienteEdicionForm", () => {
     expect(await screen.findByText("El DNI ya está en uso")).toBeInTheDocument();
     expect(screen.getByLabelText("Nombre")).toHaveValue("Juan");
   });
+
+  it("un error del backend no desaparece al perder el foco sin haber escrito nada nuevo", async () => {
+    buscarCliente.mockResolvedValue({ success: true, customer: EXISTING_CUSTOMER });
+    editarCliente.mockResolvedValue({
+      success: false,
+      errors: [{ field: "dni", message: "El DNI ya está en uso" }],
+    });
+    const user = userEvent.setup();
+    render(<ClienteEdicionForm />);
+
+    await buscar(user);
+    await user.click(await screen.findByRole("button", { name: "Guardar cambios" }));
+    await user.click(await screen.findByRole("button", { name: "Confirmar" }));
+    await screen.findByText("El DNI ya está en uso");
+
+    await user.click(screen.getByLabelText("DNI", { selector: "#edicion-dni" }));
+    await user.click(screen.getByLabelText("Nombre"));
+
+    expect(screen.getByText("El DNI ya está en uso")).toBeInTheDocument();
+  });
 });
