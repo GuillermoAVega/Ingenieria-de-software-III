@@ -75,6 +75,60 @@ describe("ClienteEdicionForm", () => {
     expect(editarCliente).not.toHaveBeenCalled();
   });
 
+  it("avisa el formato inválido de un campo apenas se pierde el foco, sin confirmar", async () => {
+    buscarCliente.mockResolvedValue({ success: true, customer: EXISTING_CUSTOMER });
+    const user = userEvent.setup();
+    render(<ClienteEdicionForm />);
+
+    await buscar(user);
+    const dniInput = await screen.findByLabelText("DNI", { selector: "#edicion-dni" });
+    await user.clear(dniInput);
+    await user.type(dniInput, "123");
+    await user.click(screen.getByLabelText("Nombre"));
+
+    expect(
+      await screen.findByText("El DNI debe contener solo números (7 u 8 dígitos)")
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Confirmar" })).not.toBeInTheDocument();
+    expect(editarCliente).not.toHaveBeenCalled();
+  });
+
+  it("no muestra error al perder el foco de un campo vacío", async () => {
+    buscarCliente.mockResolvedValue({ success: true, customer: EXISTING_CUSTOMER });
+    const user = userEvent.setup();
+    render(<ClienteEdicionForm />);
+
+    await buscar(user);
+    const dniInput = await screen.findByLabelText("DNI", { selector: "#edicion-dni" });
+    await user.clear(dniInput);
+    await user.click(screen.getByLabelText("Nombre"));
+
+    expect(
+      screen.queryByText("El DNI debe contener solo números (7 u 8 dígitos)")
+    ).not.toBeInTheDocument();
+  });
+
+  it("corregir el valor y volver a perder el foco limpia el error de blur", async () => {
+    buscarCliente.mockResolvedValue({ success: true, customer: EXISTING_CUSTOMER });
+    const user = userEvent.setup();
+    render(<ClienteEdicionForm />);
+
+    await buscar(user);
+    const dniInput = await screen.findByLabelText("DNI", { selector: "#edicion-dni" });
+    await user.clear(dniInput);
+    await user.type(dniInput, "123");
+    await user.click(screen.getByLabelText("Nombre"));
+    await screen.findByText("El DNI debe contener solo números (7 u 8 dígitos)");
+
+    await user.clear(dniInput);
+    await user.type(dniInput, "30111222");
+    await user.click(screen.getByLabelText("Nombre"));
+
+    expect(
+      screen.queryByText("El DNI debe contener solo números (7 u 8 dígitos)")
+    ).not.toBeInTheDocument();
+  });
+
   it("muestra el diálogo de confirmación cuando los datos son válidos, sin llamar a editarCliente todavía", async () => {
     buscarCliente.mockResolvedValue({ success: true, customer: EXISTING_CUSTOMER });
     const user = userEvent.setup();

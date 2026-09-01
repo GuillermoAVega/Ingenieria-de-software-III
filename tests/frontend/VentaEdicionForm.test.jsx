@@ -86,6 +86,46 @@ describe("VentaEdicionForm — búsqueda", () => {
 });
 
 describe("VentaEdicionForm — edición del detalle", () => {
+  it("avisa cantidad inválida al perder el foco, antes de presionar Agregar", async () => {
+    buscarVenta.mockResolvedValue({ success: true, sale: DRAFT_SALE });
+    const user = userEvent.setup();
+    render(<VentaEdicionForm />);
+
+    await buscar(user);
+    await screen.findByLabelText("SKU");
+    await user.type(screen.getByLabelText("Cantidad"), "0");
+    await user.click(screen.getByLabelText("SKU"));
+
+    expect(
+      await screen.findByText("El valor debe ser un número positivo")
+    ).toBeInTheDocument();
+    expect(buscarProducto).not.toHaveBeenCalled();
+  });
+
+  it("un error de SKU vigente no se borra al perder el foco de Cantidad con un valor válido", async () => {
+    buscarVenta.mockResolvedValue({ success: true, sale: DRAFT_SALE });
+    buscarProducto.mockResolvedValue({
+      success: false,
+      errors: [{ field: "sku", message: "Producto no encontrado" }],
+    });
+    const user = userEvent.setup();
+    render(<VentaEdicionForm />);
+
+    await buscar(user);
+    await screen.findByLabelText("SKU");
+    await user.type(screen.getByLabelText("SKU"), "NOEXISTE");
+    await user.type(screen.getByLabelText("Cantidad"), "1");
+    await user.click(screen.getByRole("button", { name: "Agregar" }));
+    await screen.findByText("Producto no encontrado");
+
+    const cantidadInput = screen.getByLabelText("Cantidad");
+    await user.clear(cantidadInput);
+    await user.type(cantidadInput, "3");
+    await user.click(screen.getByLabelText("SKU"));
+
+    expect(screen.getByText("Producto no encontrado")).toBeInTheDocument();
+  });
+
   it("agrega un producto nuevo y recalcula el total", async () => {
     buscarVenta.mockResolvedValue({ success: true, sale: DRAFT_SALE });
     buscarProducto.mockResolvedValue({ success: true, product: ACTIVE_PRODUCT });

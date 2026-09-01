@@ -45,6 +45,23 @@ export function ClienteForm() {
     });
   }
 
+  /** @param {string} field */
+  function handleBlur(field) {
+    if (!formValues[field]?.trim()) {
+      return;
+    }
+    const errors = validateClienteForm(formValues);
+    setFieldErrors((current) => {
+      const next = { ...current };
+      if (errors[field]) {
+        next[field] = errors[field];
+      } else {
+        delete next[field];
+      }
+      return next;
+    });
+  }
+
   /** @param {Record<string, string>} errorsByField */
   function showErrorsAndFocusFirstField(errorsByField) {
     setFieldErrors(errorsByField);
@@ -130,6 +147,7 @@ export function ClienteForm() {
               aria-required="true"
               value={formValues[field]}
               onChange={(event) => handleChange(field, event.target.value)}
+              onBlur={() => handleBlur(field)}
               aria-invalid={hasError}
               aria-describedby={hasError ? errorId : hintId}
               className={hasError ? "cliente-form__input--invalid" : undefined}

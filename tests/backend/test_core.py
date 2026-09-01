@@ -29,8 +29,8 @@ def test_email_valido_con_tld():
     assert core.validate_email("user@dominio.com") is True
 
 
-def test_email_invalido_sin_punto_en_dominio():
-    assert core.validate_email("user@dominio") is False
+def test_email_valido_sin_tld():
+    assert core.validate_email("user@dominio") is True
 
 
 def test_email_invalido_sin_arroba():
@@ -39,6 +39,18 @@ def test_email_invalido_sin_arroba():
 
 def test_email_invalido_con_espacios():
     assert core.validate_email("user @dominio.com") is False
+
+
+def test_email_invalido_con_dos_arrobas():
+    assert core.validate_email("user@dominio@com") is False
+
+
+def test_email_invalido_parte_local_vacia():
+    assert core.validate_email("@dominio.com") is False
+
+
+def test_email_invalido_dominio_vacio():
+    assert core.validate_email("user@") is False
 
 
 def test_telefono_valido_numeros_y_guiones():

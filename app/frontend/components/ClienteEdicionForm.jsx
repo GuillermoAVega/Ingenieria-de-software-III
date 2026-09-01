@@ -81,6 +81,23 @@ export function ClienteEdicionForm() {
     });
   }
 
+  /** @param {string} field */
+  function handleBlur(field) {
+    if (!formValues[field]?.trim()) {
+      return;
+    }
+    const errors = validateClienteForm(formValues);
+    setFieldErrors((current) => {
+      const next = { ...current };
+      if (errors[field]) {
+        next[field] = errors[field];
+      } else {
+        delete next[field];
+      }
+      return next;
+    });
+  }
+
   /** @param {import("react").FormEvent<HTMLFormElement>} event */
   function handleSubmit(event) {
     event.preventDefault();
@@ -206,6 +223,7 @@ export function ClienteEdicionForm() {
                   aria-required="true"
                   value={formValues[field]}
                   onChange={(event) => handleChange(field, event.target.value)}
+                  onBlur={() => handleBlur(field)}
                   aria-invalid={hasError}
                   aria-describedby={hasError ? errorId : hintId}
                   className={hasError ? "cliente-edicion__input--invalid" : undefined}

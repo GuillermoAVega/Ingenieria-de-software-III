@@ -62,7 +62,7 @@ describe("ClienteForm", () => {
       await screen.findByText("El campo solo debe contener letras")
     ).toBeInTheDocument();
     expect(
-      screen.getByText("El formato del teléfono es incorrecto")
+      screen.getByText("El teléfono debe contener solo números y guiones")
     ).toBeInTheDocument();
     expect(altaCliente).not.toHaveBeenCalled();
   });
@@ -101,6 +101,50 @@ describe("ClienteForm", () => {
     expect(screen.getByLabelText("Apellido")).toHaveValue(VALID_INPUT.last_name);
     expect(screen.getByLabelText("Email")).toHaveValue(VALID_INPUT.email);
     expect(screen.getByLabelText("Teléfono")).toHaveValue(VALID_INPUT.phone);
+  });
+
+  it("avisa el formato inválido de un campo apenas se pierde el foco, sin enviar el formulario", async () => {
+    const user = userEvent.setup();
+    render(<ClienteForm />);
+
+    await user.type(screen.getByLabelText("DNI"), "123");
+    await user.click(screen.getByLabelText("Nombre"));
+
+    expect(
+      await screen.findByText("El DNI debe contener solo números (7 u 8 dígitos)")
+    ).toBeInTheDocument();
+    expect(altaCliente).not.toHaveBeenCalled();
+  });
+
+  it("no muestra ningún error al perder el foco de un campo vacío", async () => {
+    const user = userEvent.setup();
+    render(<ClienteForm />);
+
+    await user.click(screen.getByLabelText("DNI"));
+    await user.click(screen.getByLabelText("Nombre"));
+
+    expect(
+      screen.queryByText("El DNI debe contener solo números (7 u 8 dígitos)")
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("El campo es obligatorio")).not.toBeInTheDocument();
+  });
+
+  it("corregir el valor y volver a perder el foco limpia el error de blur", async () => {
+    const user = userEvent.setup();
+    render(<ClienteForm />);
+
+    const dniInput = screen.getByLabelText("DNI");
+    await user.type(dniInput, "123");
+    await user.click(screen.getByLabelText("Nombre"));
+    await screen.findByText("El DNI debe contener solo números (7 u 8 dígitos)");
+
+    await user.clear(dniInput);
+    await user.type(dniInput, "30111222");
+    await user.click(screen.getByLabelText("Nombre"));
+
+    expect(
+      screen.queryByText("El DNI debe contener solo números (7 u 8 dígitos)")
+    ).not.toBeInTheDocument();
   });
 
   it("muestra el mensaje de éxito y limpia el formulario", async () => {

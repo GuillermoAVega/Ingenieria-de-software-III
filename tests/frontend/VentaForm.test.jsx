@@ -138,6 +138,56 @@ describe("VentaForm — agregar ítems al detalle", () => {
     ).toBeInTheDocument();
   });
 
+  it("avisa cantidad inválida al perder el foco, antes de presionar Agregar", async () => {
+    buscarCliente.mockResolvedValue({ success: true, customer: ACTIVE_CUSTOMER });
+    const user = userEvent.setup();
+    render(<VentaForm />);
+
+    await buscarClienteActivo(user);
+    await user.type(screen.getByLabelText("Cantidad"), "0");
+    await user.click(screen.getByLabelText("SKU"));
+
+    expect(
+      await screen.findByText("El valor debe ser un número positivo")
+    ).toBeInTheDocument();
+    expect(buscarProducto).not.toHaveBeenCalled();
+  });
+
+  it("no muestra error al perder el foco de Cantidad vacía", async () => {
+    buscarCliente.mockResolvedValue({ success: true, customer: ACTIVE_CUSTOMER });
+    const user = userEvent.setup();
+    render(<VentaForm />);
+
+    await buscarClienteActivo(user);
+    await user.click(screen.getByLabelText("Cantidad"));
+    await user.click(screen.getByLabelText("SKU"));
+
+    expect(
+      screen.queryByText("El valor debe ser un número positivo")
+    ).not.toBeInTheDocument();
+  });
+
+  it("un error de SKU vigente no se borra al perder el foco de Cantidad con un valor válido", async () => {
+    buscarCliente.mockResolvedValue({ success: true, customer: ACTIVE_CUSTOMER });
+    buscarProducto.mockResolvedValue({
+      success: false,
+      errors: [{ field: "sku", message: "Producto no encontrado" }],
+    });
+    const user = userEvent.setup();
+    render(<VentaForm />);
+
+    await buscarClienteActivo(user);
+    await agregarItem(user);
+    await screen.findByText("Producto no encontrado");
+
+    const cantidadInput = screen.getByLabelText("Cantidad");
+    await user.clear(cantidadInput);
+    await user.type(cantidadInput, "3");
+    await user.click(screen.getByLabelText("SKU"));
+
+    expect(screen.getByText("Producto no encontrado")).toBeInTheDocument();
+  });
+
   it("muestra advertencia de stock insuficiente", async () => {
     buscarCliente.mockResolvedValue({ success: true, customer: ACTIVE_CUSTOMER });
     buscarProducto.mockResolvedValue({ success: true, product: ACTIVE_PRODUCT });

@@ -3,7 +3,7 @@ import { useState } from "react";
 import { buscarCliente } from "../api/clientesApi.js";
 import { buscarProducto } from "../api/productosApi.js";
 import { registrarVenta } from "../api/ventasApi.js";
-import { addItem, computeTotal } from "../ventaDetalle.js";
+import { POSITIVE_NUMBER_MESSAGE, addItem, computeTotal, validateQuantityFormat } from "../ventaDetalle.js";
 import "./VentaForm.css";
 
 const INACTIVE_CUSTOMER_MESSAGE = "No se pueden emitir ventas a clientes dados de baja";
@@ -201,7 +201,21 @@ export function VentaForm() {
                 inputMode="numeric"
                 autoComplete="off"
                 value={quantityInput}
-                onChange={(event) => setQuantityInput(event.target.value)}
+                onChange={(event) => {
+                  setQuantityInput(event.target.value);
+                  if (itemError === POSITIVE_NUMBER_MESSAGE) {
+                    setItemError("");
+                  }
+                }}
+                onBlur={() => {
+                  if (!quantityInput.trim()) {
+                    return;
+                  }
+                  const error = validateQuantityFormat(quantityInput);
+                  if (error) {
+                    setItemError(error);
+                  }
+                }}
               />
             </div>
             <button type="submit" disabled={isSearchingProduct || !skuInput || !quantityInput}>

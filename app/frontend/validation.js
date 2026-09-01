@@ -6,15 +6,15 @@
  */
 
 const NAME_PATTERN = /^[A-Za-zÁÉÍÓÚáéíóúÑñ ]+$/;
-const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+$/;
 const PHONE_PATTERN = /^[0-9-]+$/;
 const DNI_FORMAT_PATTERN = /^\d{7,8}$/;
 
 const REQUIRED_FIELD_MESSAGE = "El campo es obligatorio";
 const INVALID_NAME_MESSAGE = "El campo solo debe contener letras";
-const INVALID_EMAIL_MESSAGE = "El email es inválido";
-const INVALID_PHONE_MESSAGE = "El formato del teléfono es incorrecto";
-const INVALID_DNI_MESSAGE = "El formato del DNI es inválido";
+const INVALID_EMAIL_MESSAGE = "El email debe tener el formato usuario@dominio";
+const INVALID_PHONE_MESSAGE = "El teléfono debe contener solo números y guiones";
+const INVALID_DNI_MESSAGE = "El DNI debe contener solo números (7 u 8 dígitos)";
 
 const REQUIRED_FIELDS = ["dni", "first_name", "last_name", "email", "phone"];
 

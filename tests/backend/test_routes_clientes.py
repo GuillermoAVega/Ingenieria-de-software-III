@@ -74,6 +74,36 @@ def test_multiples_errores_de_formato_combinados_en_un_intento(client):
     assert campos == {"first_name", "phone"}
 
 
+def test_dni_con_formato_invalido_devuelve_mensaje_especifico(client):
+    payload = dict(VALID_PAYLOAD, dni="123")
+
+    response = client.post("/clientes", json=payload)
+
+    assert response.status_code == 422
+    assert response.json()["errors"] == [
+        {"field": "dni", "message": "El DNI debe contener solo números (7 u 8 dígitos)"}
+    ]
+
+
+def test_telefono_con_formato_invalido_devuelve_mensaje_especifico(client):
+    payload = dict(VALID_PAYLOAD, phone="11-abcd")
+
+    response = client.post("/clientes", json=payload)
+
+    assert response.status_code == 422
+    assert response.json()["errors"] == [
+        {"field": "phone", "message": "El teléfono debe contener solo números y guiones"}
+    ]
+
+
+def test_alta_cliente_con_email_sin_tld_es_valido(client):
+    payload = dict(VALID_PAYLOAD, email="juan@localhost")
+
+    response = client.post("/clientes", json=payload)
+
+    assert response.status_code == 201
+
+
 def test_dni_duplicado_endpoint_bloquea_el_alta(client):
     client.post("/clientes", json=VALID_PAYLOAD)
 
@@ -228,6 +258,27 @@ def test_editar_cliente_con_campos_invalidos_no_guarda_nada(client):
     posterior = client.get("/clientes/30111222")
     assert posterior.json()["customer"]["first_name"] == VALID_PAYLOAD["first_name"]
     assert posterior.json()["customer"]["phone"] == VALID_PAYLOAD["phone"]
+
+
+def test_editar_cliente_con_dni_invalido_devuelve_mensaje_especifico(client):
+    client.post("/clientes", json=VALID_PAYLOAD)
+    edicion = dict(VALID_PAYLOAD, dni="123")
+
+    response = client.put("/clientes/30111222/editar", json=edicion)
+
+    assert response.status_code == 422
+    assert response.json()["errors"] == [
+        {"field": "dni", "message": "El DNI debe contener solo números (7 u 8 dígitos)"}
+    ]
+
+
+def test_editar_cliente_con_email_sin_tld_es_valido(client):
+    client.post("/clientes", json=VALID_PAYLOAD)
+    edicion = dict(VALID_PAYLOAD, email="juan@localhost")
+
+    response = client.put("/clientes/30111222/editar", json=edicion)
+
+    assert response.status_code == 200
 
 
 def test_editar_dni_que_pertenece_a_otro_activo_bloquea_el_intento(client):

@@ -75,6 +75,59 @@ describe("ProductoEdicionForm", () => {
     expect(editarProducto).not.toHaveBeenCalled();
   });
 
+  it("avisa el formato inválido de un campo apenas se pierde el foco, sin guardar", async () => {
+    buscarProducto.mockResolvedValue({ success: true, product: EXISTING_PRODUCT });
+    const user = userEvent.setup();
+    render(<ProductoEdicionForm />);
+
+    await buscar(user);
+    const precioInput = await screen.findByLabelText("Precio unitario");
+    await user.clear(precioInput);
+    await user.type(precioInput, "-5");
+    await user.click(screen.getByLabelText("Stock inicial"));
+
+    expect(
+      await screen.findByText("El valor debe ser un número positivo")
+    ).toBeInTheDocument();
+    expect(editarProducto).not.toHaveBeenCalled();
+  });
+
+  it("no muestra error al perder el foco de un campo vacío", async () => {
+    buscarProducto.mockResolvedValue({ success: true, product: EXISTING_PRODUCT });
+    const user = userEvent.setup();
+    render(<ProductoEdicionForm />);
+
+    await buscar(user);
+    const precioInput = await screen.findByLabelText("Precio unitario");
+    await user.clear(precioInput);
+    await user.click(screen.getByLabelText("Stock inicial"));
+
+    expect(
+      screen.queryByText("El valor debe ser un número positivo")
+    ).not.toBeInTheDocument();
+  });
+
+  it("corregir el valor y volver a perder el foco limpia el error de blur", async () => {
+    buscarProducto.mockResolvedValue({ success: true, product: EXISTING_PRODUCT });
+    const user = userEvent.setup();
+    render(<ProductoEdicionForm />);
+
+    await buscar(user);
+    const precioInput = await screen.findByLabelText("Precio unitario");
+    await user.clear(precioInput);
+    await user.type(precioInput, "-5");
+    await user.click(screen.getByLabelText("Stock inicial"));
+    await screen.findByText("El valor debe ser un número positivo");
+
+    await user.clear(precioInput);
+    await user.type(precioInput, "400");
+    await user.click(screen.getByLabelText("Stock inicial"));
+
+    expect(
+      screen.queryByText("El valor debe ser un número positivo")
+    ).not.toBeInTheDocument();
+  });
+
   it("al enviar datos válidos, guarda directo, muestra éxito y vuelve al estado de búsqueda", async () => {
     buscarProducto.mockResolvedValue({ success: true, product: EXISTING_PRODUCT });
     editarProducto.mockResolvedValue({

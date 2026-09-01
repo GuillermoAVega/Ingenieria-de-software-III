@@ -79,6 +79,23 @@ export function ProductoEdicionForm() {
     });
   }
 
+  /** @param {string} field */
+  function handleBlur(field) {
+    if (!formValues[field]?.trim()) {
+      return;
+    }
+    const errors = validateProductoEdicionForm(formValues);
+    setFieldErrors((current) => {
+      const next = { ...current };
+      if (errors[field]) {
+        next[field] = errors[field];
+      } else {
+        delete next[field];
+      }
+      return next;
+    });
+  }
+
   /** @param {import("react").FormEvent<HTMLFormElement>} event */
   async function handleSubmit(event) {
     event.preventDefault();
@@ -195,6 +212,7 @@ export function ProductoEdicionForm() {
                   autoComplete="off"
                   value={formValues[field]}
                   onChange={(event) => handleChange(field, event.target.value)}
+                  onBlur={() => handleBlur(field)}
                   aria-invalid={hasError}
                   aria-describedby={hasError ? errorId : hintId}
                   className={hasError ? "producto-edicion__input--invalid" : undefined}

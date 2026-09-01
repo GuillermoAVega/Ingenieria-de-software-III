@@ -2,7 +2,7 @@ import re
 import unicodedata
 
 _NAME_PATTERN = re.compile(r"[A-Za-zÁÉÍÓÚáéíóúÑñ ]+")
-_EMAIL_PATTERN = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
+_EMAIL_PATTERN = re.compile(r"[^@\s]+@[^@\s]+")
 _PHONE_PATTERN = re.compile(r"[0-9-]+")
 _DNI_FORMAT_PATTERN = re.compile(r"\d{7,8}")
 

@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { addItem, computeTotal, removeItem } from "../../app/frontend/ventaDetalle.js";
+import {
+  addItem,
+  computeTotal,
+  removeItem,
+  validateQuantityFormat,
+} from "../../app/frontend/ventaDetalle.js";
 
 const PRODUCT = { sku: "ABC123", name: "Coca-Cola 500ml", unitPrice: 350.5, stock: 10 };
 
@@ -93,5 +98,27 @@ describe("removeItem", () => {
     const result = removeItem(items, "NOEXISTE");
 
     expect(result).toEqual(items);
+  });
+});
+
+describe("validateQuantityFormat", () => {
+  it("devuelve el mensaje para un valor no numérico", () => {
+    expect(validateQuantityFormat("abc")).toBe("El valor debe ser un número positivo");
+  });
+
+  it("devuelve el mensaje para cero", () => {
+    expect(validateQuantityFormat("0")).toBe("El valor debe ser un número positivo");
+  });
+
+  it("devuelve el mensaje para un valor negativo", () => {
+    expect(validateQuantityFormat("-1")).toBe("El valor debe ser un número positivo");
+  });
+
+  it("devuelve el mensaje para un valor decimal", () => {
+    expect(validateQuantityFormat("5.5")).toBe("El valor debe ser un número positivo");
+  });
+
+  it("devuelve null para un entero positivo válido", () => {
+    expect(validateQuantityFormat("3")).toBeNull();
   });
 });

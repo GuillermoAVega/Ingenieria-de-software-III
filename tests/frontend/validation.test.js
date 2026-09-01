@@ -42,10 +42,10 @@ describe("validateClienteForm", () => {
     expect(errors.first_name).toBe("El campo solo debe contener letras");
   });
 
-  it("valida el formato de email exigiendo un TLD", () => {
+  it("acepta un email sin TLD como válido (estructura usuario@dominio)", () => {
     const errors = validateClienteForm({ ...VALID_VALUES, email: "juan@dominio" });
 
-    expect(errors.email).toBe("El email es inválido");
+    expect(errors.email).toBeUndefined();
   });
 
   it("acepta un email con TLD como válido", () => {
@@ -54,16 +54,22 @@ describe("validateClienteForm", () => {
     expect(errors.email).toBeUndefined();
   });
 
+  it("valida el formato de email cuando no tiene arroba", () => {
+    const errors = validateClienteForm({ ...VALID_VALUES, email: "juandominio.com" });
+
+    expect(errors.email).toBe("El email debe tener el formato usuario@dominio");
+  });
+
   it("valida el formato de teléfono", () => {
     const errors = validateClienteForm({ ...VALID_VALUES, phone: "11-abcd" });
 
-    expect(errors.phone).toBe("El formato del teléfono es incorrecto");
+    expect(errors.phone).toBe("El teléfono debe contener solo números y guiones");
   });
 
   it("valida el formato de DNI", () => {
     const errors = validateClienteForm({ ...VALID_VALUES, dni: "301112" });
 
-    expect(errors.dni).toBe("El formato del DNI es inválido");
+    expect(errors.dni).toBe("El DNI debe contener solo números (7 u 8 dígitos)");
   });
 
   it("reporta múltiples errores de formato en un mismo intento", () => {

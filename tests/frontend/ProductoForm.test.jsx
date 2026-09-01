@@ -75,6 +75,49 @@ describe("ProductoForm", () => {
     expect(screen.getByLabelText("Nombre")).toHaveValue("");
   });
 
+  it("avisa el formato inválido de un campo apenas se pierde el foco, sin enviar el formulario", async () => {
+    const user = userEvent.setup();
+    render(<ProductoForm />);
+
+    await user.type(screen.getByLabelText("Precio unitario"), "abc");
+    await user.click(screen.getByLabelText("Stock inicial"));
+
+    expect(
+      await screen.findByText("El valor debe ser un número positivo")
+    ).toBeInTheDocument();
+    expect(altaProducto).not.toHaveBeenCalled();
+  });
+
+  it("no muestra error al perder el foco de un campo vacío", async () => {
+    const user = userEvent.setup();
+    render(<ProductoForm />);
+
+    await user.click(screen.getByLabelText("Precio unitario"));
+    await user.click(screen.getByLabelText("Stock inicial"));
+
+    expect(
+      screen.queryByText("El valor debe ser un número positivo")
+    ).not.toBeInTheDocument();
+  });
+
+  it("corregir el valor y volver a perder el foco limpia el error de blur", async () => {
+    const user = userEvent.setup();
+    render(<ProductoForm />);
+
+    const precioInput = screen.getByLabelText("Precio unitario");
+    await user.type(precioInput, "abc");
+    await user.click(screen.getByLabelText("Stock inicial"));
+    await screen.findByText("El valor debe ser un número positivo");
+
+    await user.clear(precioInput);
+    await user.type(precioInput, "350.50");
+    await user.click(screen.getByLabelText("Stock inicial"));
+
+    expect(
+      screen.queryByText("El valor debe ser un número positivo")
+    ).not.toBeInTheDocument();
+  });
+
   it("muestra la advertencia del backend (SKU duplicado) y conserva los valores ingresados", async () => {
     altaProducto.mockResolvedValue({
       success: false,

@@ -5,7 +5,7 @@
  * cálculo del total (RF-13).
  */
 
-const POSITIVE_NUMBER_MESSAGE = "El valor debe ser un número positivo";
+export const POSITIVE_NUMBER_MESSAGE = "El valor debe ser un número positivo";
 const INSUFFICIENT_STOCK_MESSAGE = "No hay stock suficiente para completar la operación";
 
 /**
@@ -23,6 +23,20 @@ const INSUFFICIENT_STOCK_MESSAGE = "No hay stock suficiente para completar la op
 function isPositiveInteger(value) {
   const parsed = Number(value);
   return value.trim() !== "" && Number.isInteger(parsed) && parsed > 0;
+}
+
+/**
+ * Valida únicamente el formato de la cantidad (entero positivo), sin
+ * depender del producto ni de su stock — se puede invocar apenas se
+ * pierde el foco del campo, antes de haber buscado el SKU.
+ * @param {string} quantity
+ * @returns {string | null}
+ */
+export function validateQuantityFormat(quantity) {
+  if (!isPositiveInteger(quantity)) {
+    return POSITIVE_NUMBER_MESSAGE;
+  }
+  return null;
 }
 
 /**

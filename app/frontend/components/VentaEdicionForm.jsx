@@ -2,7 +2,13 @@ import { useState } from "react";
 
 import { buscarProducto } from "../api/productosApi.js";
 import { buscarVenta, cerrarVenta, reemplazarDetalleVenta } from "../api/ventasApi.js";
-import { addItem, computeTotal, removeItem } from "../ventaDetalle.js";
+import {
+  POSITIVE_NUMBER_MESSAGE,
+  addItem,
+  computeTotal,
+  removeItem,
+  validateQuantityFormat,
+} from "../ventaDetalle.js";
 import { EDICION_STATE, evaluateEdicionResult } from "../ventaEdicion.js";
 import "./VentaEdicionForm.css";
 
@@ -244,7 +250,21 @@ export function VentaEdicionForm() {
                 inputMode="numeric"
                 autoComplete="off"
                 value={quantityInput}
-                onChange={(event) => setQuantityInput(event.target.value)}
+                onChange={(event) => {
+                  setQuantityInput(event.target.value);
+                  if (itemError === POSITIVE_NUMBER_MESSAGE) {
+                    setItemError("");
+                  }
+                }}
+                onBlur={() => {
+                  if (!quantityInput.trim()) {
+                    return;
+                  }
+                  const error = validateQuantityFormat(quantityInput);
+                  if (error) {
+                    setItemError(error);
+                  }
+                }}
               />
             </div>
             <button type="submit" disabled={isSearchingProduct || !skuInput || !quantityInput}>
