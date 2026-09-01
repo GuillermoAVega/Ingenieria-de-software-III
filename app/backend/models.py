@@ -1,6 +1,6 @@
 import enum
 
-from sqlalchemy import Column, Enum as SqlEnum, Float, Integer, String
+from sqlalchemy import Column, DateTime, Enum as SqlEnum, Float, ForeignKey, Integer, String
 
 from app.backend.database import Base
 
@@ -38,3 +38,27 @@ class Product(Base):
     unit_price = Column(Float, nullable=False)
     stock = Column(Integer, nullable=False)
     status = Column(SqlEnum(ProductStatus), nullable=False)
+
+
+class SaleStatus(str, enum.Enum):
+    CONFIRMED = "Confirmada"
+
+
+class Sale(Base):
+    __tablename__ = "sales"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    customer_id = Column(Integer, ForeignKey("customers.id"), nullable=False)
+    sale_date = Column(DateTime, nullable=False)
+    total = Column(Float, nullable=False)
+    status = Column(SqlEnum(SaleStatus), nullable=False)
+
+
+class SaleItem(Base):
+    __tablename__ = "sale_items"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    sale_id = Column(Integer, ForeignKey("sales.id"), nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    quantity = Column(Integer, nullable=False)
+    unit_price = Column(Float, nullable=False)

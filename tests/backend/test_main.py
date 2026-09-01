@@ -13,3 +13,9 @@ def test_app_expone_las_rutas_de_productos():
     paths = set(app.openapi()["paths"].keys())
 
     assert "/productos" in paths
+
+
+def test_app_expone_las_rutas_de_ventas():
+    paths = set(app.openapi()["paths"].keys())
+
+    assert "/ventas" in paths

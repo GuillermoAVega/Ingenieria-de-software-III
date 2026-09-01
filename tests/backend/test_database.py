@@ -1,10 +1,69 @@
+from datetime import datetime
+
 from app.backend.database import Base, create_db_engine, create_session_factory
-from app.backend.models import ClientStatus, Customer, Product, ProductStatus
+from app.backend.models import (
+    ClientStatus,
+    Customer,
+    Product,
+    ProductStatus,
+    Sale,
+    SaleItem,
+    SaleStatus,
+)
 
 
 def test_crear_tablas_sin_errores():
     engine = create_db_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
+
+
+def test_crear_venta_y_sus_items_sin_errores():
+    engine = create_db_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    session = create_session_factory(engine)()
+
+    customer = Customer(
+        dni=30111222,
+        first_name="Juan",
+        last_name="Perez",
+        email="juan@dominio.com",
+        phone="11-4444-5555",
+        status=ClientStatus.ACTIVE,
+    )
+    session.add(customer)
+    session.flush()
+
+    product = Product(
+        sku="ABC123",
+        name="Coca-Cola 500ml",
+        brand="Coca-Cola",
+        description="",
+        unit_price=350.5,
+        stock=100,
+        status=ProductStatus.ACTIVE,
+    )
+    session.add(product)
+    session.flush()
+
+    sale = Sale(
+        customer_id=customer.id,
+        sale_date=datetime(2026, 9, 1, 12, 0, 0),
+        total=701.0,
+        status=SaleStatus.CONFIRMED,
+    )
+    session.add(sale)
+    session.flush()
+
+    session.add(
+        SaleItem(sale_id=sale.id, product_id=product.id, quantity=2, unit_price=350.5)
+    )
+    session.commit()
+
+    stored_sale = session.query(Sale).filter_by(id=sale.id).one()
+    stored_items = session.query(SaleItem).filter_by(sale_id=sale.id).all()
+    assert stored_sale.status == SaleStatus.CONFIRMED
+    assert len(stored_items) == 1
+    assert stored_items[0].quantity == 2
 
 
 def test_sku_no_es_unico_a_nivel_de_base():
