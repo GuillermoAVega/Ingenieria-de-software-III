@@ -16,9 +16,13 @@ POSITIVE_NUMBER_MESSAGE = "El valor debe ser un número positivo"
 DUPLICATE_SKU_MESSAGE = "El código de producto está duplicado"
 PRODUCT_NOT_FOUND_MESSAGE = "Producto no encontrado"
 BAJA_SUCCESS_MESSAGE = "Producto dado de baja exitosamente"
+EDICION_SUCCESS_MESSAGE = "Producto modificado exitosamente"
 
 _REQUIRED_FIELDS = ("sku", "name", "brand", "unit_price", "stock")
 _TEXT_FIELDS = ("sku", "name", "brand", "description")
+
+_EDICION_REQUIRED_FIELDS = ("name", "brand", "unit_price", "stock")
+_EDICION_TEXT_FIELDS = ("name", "brand", "description")
 
 
 def _serialize_product(product: Product) -> dict[str, Any]:
@@ -49,6 +53,37 @@ def _validate_fields(values: dict[str, str]) -> list[dict[str, str]]:
     errors: list[dict[str, str]] = []
 
     for field in _REQUIRED_FIELDS:
+        if not values[field]:
+            errors.append({"field": field, "message": REQUIRED_FIELD_MESSAGE})
+
+    if values["unit_price"] and not core_producto.validate_positive_number(
+        values["unit_price"]
+    ):
+        errors.append({"field": "unit_price", "message": POSITIVE_NUMBER_MESSAGE})
+    if values["stock"] and not core_producto.validate_positive_integer(
+        values["stock"]
+    ):
+        errors.append({"field": "stock", "message": POSITIVE_NUMBER_MESSAGE})
+
+    return errors
+
+
+def _normalize_edit_payload(payload: dict[str, Any]) -> dict[str, str]:
+    normalized: dict[str, str] = {}
+    for field in _EDICION_TEXT_FIELDS:
+        raw_value = payload.get(field)
+        value = raw_value if isinstance(raw_value, str) else ""
+        normalized[field] = core.trim_leading_trailing_space(value)
+    for field in ("unit_price", "stock"):
+        raw_value = payload.get(field)
+        normalized[field] = raw_value if isinstance(raw_value, str) else ""
+    return normalized
+
+
+def _validate_edit_fields(values: dict[str, str]) -> list[dict[str, str]]:
+    errors: list[dict[str, str]] = []
+
+    for field in _EDICION_REQUIRED_FIELDS:
         if not values[field]:
             errors.append({"field": field, "message": REQUIRED_FIELD_MESSAGE})
 
@@ -138,5 +173,44 @@ def baja_producto(
         content={
             "message": BAJA_SUCCESS_MESSAGE,
             "product": _serialize_product(product),
+        },
+    )
+
+
+@router.put("/productos/{sku}/editar")
+def editar_producto(
+    sku: str, payload: dict[str, Any], session: Session = Depends(get_session)
+) -> JSONResponse:
+    product = repository_producto.find_by_sku(session, sku)
+
+    if product is None:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "errors": [{"field": "sku", "message": PRODUCT_NOT_FOUND_MESSAGE}]
+            },
+        )
+
+    values = _normalize_edit_payload(payload)
+    errors = _validate_edit_fields(values)
+
+    if errors:
+        return JSONResponse(status_code=422, content={"errors": errors})
+
+    updated = repository_producto.update_product(
+        session,
+        product,
+        name=values["name"],
+        brand=values["brand"],
+        description=values["description"],
+        unit_price=values["unit_price"],
+        stock=values["stock"],
+    )
+
+    return JSONResponse(
+        status_code=200,
+        content={
+            "message": EDICION_SUCCESS_MESSAGE,
+            "product": _serialize_product(updated),
         },
     )

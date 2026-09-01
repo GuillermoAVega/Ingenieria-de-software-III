@@ -165,3 +165,41 @@ def test_create_product_permite_descripcion_vacia(session):
     )
 
     assert product.description == ""
+
+
+def test_update_product_actualiza_campos_y_no_toca_sku_ni_estado_activo(session):
+    product = _create_product(session)
+
+    updated = repository_producto.update_product(
+        session,
+        product,
+        name="Coca-Cola 1L",
+        brand="Coca-Cola",
+        description="Botella retornable",
+        unit_price="399.90",
+        stock="80",
+    )
+
+    assert updated.name == "Coca-Cola 1L"
+    assert updated.unit_price == 399.9
+    assert updated.stock == 80
+    assert updated.sku == "ABC123"
+    assert updated.status == ProductStatus.ACTIVE
+
+
+def test_update_product_no_toca_estado_inactivo(session):
+    product = _create_product(session)
+    repository_producto.deactivate_by_sku(session, "ABC123")
+    session.refresh(product)
+
+    updated = repository_producto.update_product(
+        session,
+        product,
+        name="Coca-Cola 1L",
+        brand="Coca-Cola",
+        description="",
+        unit_price="399.90",
+        stock="80",
+    )
+
+    assert updated.status == ProductStatus.INACTIVE

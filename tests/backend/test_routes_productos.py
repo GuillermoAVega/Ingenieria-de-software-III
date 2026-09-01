@@ -98,6 +98,27 @@ def test_stock_invalido_advierte_numero_positivo(client, stock):
     ]
 
 
+def test_editar_ignora_sku_incluido_en_el_body(client):
+    client.post("/productos", json=VALID_PAYLOAD)
+    payload = dict(EDICION_PAYLOAD, sku="OTRO999")
+
+    response = client.put("/productos/ABC123/editar", json=payload)
+
+    assert response.status_code == 200
+    assert response.json()["product"]["sku"] == "ABC123"
+
+
+def test_editar_multiples_errores_combinados_en_un_intento(client):
+    client.post("/productos", json=VALID_PAYLOAD)
+    payload = dict(EDICION_PAYLOAD, unit_price="-5", stock="abc")
+
+    response = client.put("/productos/ABC123/editar", json=payload)
+
+    assert response.status_code == 422
+    campos = {error["field"] for error in response.json()["errors"]}
+    assert campos == {"unit_price", "stock"}
+
+
 def test_sku_duplicado_exacto_bloquea_el_alta(client):
     client.post("/productos", json=VALID_PAYLOAD)
 
@@ -228,4 +249,85 @@ def test_alta_nueva_sigue_bloqueada_contra_sku_de_producto_activo(client):
     assert response.status_code == 422
     assert response.json()["errors"] == [
         {"field": "sku", "message": "El código de producto está duplicado"}
+    ]
+
+
+EDICION_PAYLOAD = {
+    "name": "Coca-Cola 1L",
+    "brand": "Coca-Cola",
+    "description": "Botella retornable",
+    "unit_price": "399.90",
+    "stock": "80",
+}
+
+
+def test_editar_producto_activo_guarda_los_cambios(client):
+    client.post("/productos", json=VALID_PAYLOAD)
+
+    response = client.put("/productos/ABC123/editar", json=EDICION_PAYLOAD)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["message"] == "Producto modificado exitosamente"
+    assert body["product"]["name"] == "Coca-Cola 1L"
+    assert body["product"]["unit_price"] == 399.9
+    assert body["product"]["stock"] == 80
+    assert body["product"]["sku"] == "ABC123"
+    assert body["product"]["status"] == "Activo"
+
+
+def test_editar_producto_inactivo_guarda_los_cambios_sin_reactivarlo(client):
+    client.post("/productos", json=VALID_PAYLOAD)
+    client.patch("/productos/ABC123/baja")
+
+    response = client.put("/productos/ABC123/editar", json=EDICION_PAYLOAD)
+
+    assert response.status_code == 200
+    assert response.json()["product"]["status"] == "Inactivo"
+    assert response.json()["product"]["name"] == "Coca-Cola 1L"
+
+
+def test_editar_producto_inexistente_devuelve_404(client):
+    response = client.put("/productos/ABC123/editar", json=EDICION_PAYLOAD)
+
+    assert response.status_code == 404
+    assert response.json()["errors"] == [
+        {"field": "sku", "message": "Producto no encontrado"}
+    ]
+
+
+def test_editar_con_campos_obligatorios_vacios_devuelve_cuatro_advertencias(client):
+    client.post("/productos", json=VALID_PAYLOAD)
+    payload = {"name": "", "brand": "", "description": "", "unit_price": "", "stock": ""}
+
+    response = client.put("/productos/ABC123/editar", json=payload)
+
+    assert response.status_code == 422
+    campos = {error["field"] for error in response.json()["errors"]}
+    assert campos == {"name", "brand", "unit_price", "stock"}
+
+
+@pytest.mark.parametrize("unit_price", ["0", "-5", "abc"])
+def test_editar_unit_price_invalido_advierte_numero_positivo(client, unit_price):
+    client.post("/productos", json=VALID_PAYLOAD)
+    payload = dict(EDICION_PAYLOAD, unit_price=unit_price)
+
+    response = client.put("/productos/ABC123/editar", json=payload)
+
+    assert response.status_code == 422
+    assert response.json()["errors"] == [
+        {"field": "unit_price", "message": "El valor debe ser un número positivo"}
+    ]
+
+
+@pytest.mark.parametrize("stock", ["0", "-1", "5.5", "abc"])
+def test_editar_stock_invalido_advierte_numero_positivo(client, stock):
+    client.post("/productos", json=VALID_PAYLOAD)
+    payload = dict(EDICION_PAYLOAD, stock=stock)
+
+    response = client.put("/productos/ABC123/editar", json=payload)
+
+    assert response.status_code == 422
+    assert response.json()["errors"] == [
+        {"field": "stock", "message": "El valor debe ser un número positivo"}
     ]

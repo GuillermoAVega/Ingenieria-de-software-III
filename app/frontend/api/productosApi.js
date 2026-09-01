@@ -63,6 +63,28 @@
  * @property {FieldError[]} errors
  */
 
+/**
+ * @typedef {Object} ProductoEdicionInput
+ * @property {string} name
+ * @property {string} brand
+ * @property {string} description
+ * @property {string} unit_price
+ * @property {string} stock
+ */
+
+/**
+ * @typedef {Object} ProductoEdicionSuccess
+ * @property {true} success
+ * @property {string} message
+ * @property {Producto} product
+ */
+
+/**
+ * @typedef {Object} ProductoEdicionFailure
+ * @property {false} success
+ * @property {FieldError[]} errors
+ */
+
 const PRODUCTOS_ENDPOINT = "/productos";
 
 /**
@@ -109,6 +131,30 @@ export async function darDeBajaProducto(sku) {
   const response = await fetch(
     `${PRODUCTOS_ENDPOINT}/${encodeURIComponent(sku)}/baja`,
     { method: "PATCH" }
+  );
+
+  const body = await response.json();
+
+  if (response.ok) {
+    return { success: true, message: body.message, product: body.product };
+  }
+
+  return { success: false, errors: body.errors };
+}
+
+/**
+ * @param {string} sku
+ * @param {ProductoEdicionInput} input
+ * @returns {Promise<ProductoEdicionSuccess | ProductoEdicionFailure>}
+ */
+export async function editarProducto(sku, input) {
+  const response = await fetch(
+    `${PRODUCTOS_ENDPOINT}/${encodeURIComponent(sku)}/editar`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    }
   );
 
   const body = await response.json();

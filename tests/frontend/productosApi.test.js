@@ -4,6 +4,7 @@ import {
   altaProducto,
   buscarProducto,
   darDeBajaProducto,
+  editarProducto,
 } from "../../app/frontend/api/productosApi.js";
 
 const VALID_INPUT = {
@@ -125,6 +126,57 @@ describe("darDeBajaProducto", () => {
     expect(result).toEqual({
       success: false,
       errors: [{ field: "sku", message: "Producto no encontrado" }],
+    });
+  });
+});
+
+describe("editarProducto", () => {
+  const EDICION_INPUT = {
+    name: "Coca-Cola 1L",
+    brand: "Coca-Cola",
+    description: "Botella retornable",
+    unit_price: "399.90",
+    stock: "80",
+  };
+
+  it("devuelve success y el producto actualizado ante una respuesta 200", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        message: "Producto modificado exitosamente",
+        product: { sku: "ABC123", status: "Activo" },
+      }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    const result = await editarProducto("ABC123", EDICION_INPUT);
+
+    expect(result).toEqual({
+      success: true,
+      message: "Producto modificado exitosamente",
+      product: { sku: "ABC123", status: "Activo" },
+    });
+    expect(mockFetch).toHaveBeenCalledWith(
+      "/productos/ABC123/editar",
+      expect.objectContaining({ method: "PUT" })
+    );
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body)).toEqual(EDICION_INPUT);
+  });
+
+  it("devuelve success:false y la advertencia ante una respuesta 422", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({
+        errors: [{ field: "unit_price", message: "El valor debe ser un número positivo" }],
+      }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    const result = await editarProducto("ABC123", EDICION_INPUT);
+
+    expect(result).toEqual({
+      success: false,
+      errors: [{ field: "unit_price", message: "El valor debe ser un número positivo" }],
     });
   });
 });

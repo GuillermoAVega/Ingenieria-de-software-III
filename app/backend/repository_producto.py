@@ -38,6 +38,26 @@ def deactivate_by_sku(session: Session, sku: str) -> Product | None:
     return product
 
 
+def update_product(
+    session: Session,
+    product: Product,
+    *,
+    name: str,
+    brand: str,
+    description: str,
+    unit_price: str,
+    stock: str,
+) -> Product:
+    product.name = name
+    product.brand = brand
+    product.description = description
+    product.unit_price = float(unit_price)
+    product.stock = int(stock)
+    session.commit()
+    session.refresh(product)
+    return product
+
+
 def create_product(
     session: Session,
     sku: str,

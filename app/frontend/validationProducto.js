@@ -64,3 +64,41 @@ export function validateProductoForm(values) {
 
   return errors;
 }
+
+const EDICION_REQUIRED_FIELDS = ["name", "brand", "unit_price", "stock"];
+const EDICION_TEXT_FIELDS = ["name", "brand", "description"];
+
+/**
+ * Valida los 5 campos editables de la modificación de producto (sin
+ * `sku`, que no es editable — HU-PROD-03 RF-7), función separada de
+ * `validateProductoForm` (ver plan.md, decisión técnica 1).
+ * @param {Record<string, string>} values
+ * @returns {Record<string, string>}
+ */
+export function validateProductoEdicionForm(values) {
+  /** @type {Record<string, string>} */
+  const errors = {};
+  /** @type {Record<string, string>} */
+  const trimmed = {};
+
+  for (const field of EDICION_TEXT_FIELDS) {
+    trimmed[field] = trimLeadingTrailingSpace(values[field] ?? "");
+  }
+  trimmed.unit_price = values.unit_price ?? "";
+  trimmed.stock = values.stock ?? "";
+
+  for (const field of EDICION_REQUIRED_FIELDS) {
+    if (!trimmed[field]) {
+      errors[field] = REQUIRED_FIELD_MESSAGE;
+    }
+  }
+
+  if (!errors.unit_price && !isPositiveNumber(trimmed.unit_price)) {
+    errors.unit_price = POSITIVE_NUMBER_MESSAGE;
+  }
+  if (!errors.stock && !isPositiveInteger(trimmed.stock)) {
+    errors.stock = POSITIVE_NUMBER_MESSAGE;
+  }
+
+  return errors;
+}
