@@ -100,6 +100,28 @@
  * @property {FieldError[]} errors
  */
 
+/**
+ * @typedef {Object} VentaResumen
+ * @property {number} id
+ * @property {string} sale_date
+ * @property {{ dni: number, first_name: string, last_name: string }} customer
+ * @property {number} total
+ */
+
+/**
+ * @typedef {Object} VentaListadoSuccess
+ * @property {true} success
+ * @property {VentaResumen[]} sales
+ * @property {number} page
+ * @property {boolean} hasNext
+ */
+
+/**
+ * @typedef {Object} VentaListadoFailure
+ * @property {false} success
+ * @property {FieldError[]} errors
+ */
+
 const VENTAS_ENDPOINT = "/ventas";
 
 /**
@@ -152,6 +174,38 @@ export async function anularVenta(id) {
 
   if (response.ok) {
     return { success: true, message: body.message, sale: body.sale };
+  }
+
+  return { success: false, errors: body.errors };
+}
+
+/**
+ * @param {{ dni?: string, dateFrom?: string, dateTo?: string, page?: number }} [options]
+ * @returns {Promise<VentaListadoSuccess | VentaListadoFailure>}
+ */
+export async function listarVentas(options = {}) {
+  const { dni, dateFrom, dateTo, page } = options;
+  const params = new URLSearchParams();
+  if (dni) {
+    params.set("dni", dni);
+  }
+  if (dateFrom) {
+    params.set("date_from", dateFrom);
+  }
+  if (dateTo) {
+    params.set("date_to", dateTo);
+  }
+  if (page) {
+    params.set("page", String(page));
+  }
+  const queryString = params.toString();
+  const url = queryString ? `${VENTAS_ENDPOINT}?${queryString}` : VENTAS_ENDPOINT;
+
+  const response = await fetch(url);
+  const body = await response.json();
+
+  if (response.ok) {
+    return { success: true, sales: body.sales, page: body.page, hasNext: body.has_next };
   }
 
   return { success: false, errors: body.errors };

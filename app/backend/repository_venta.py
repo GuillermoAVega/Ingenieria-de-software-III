@@ -1,12 +1,46 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from sqlalchemy.orm import Session
 
+from app.backend import core_venta
 from app.backend.models import Customer, Product, Sale, SaleItem, SaleStatus
 
 
 def find_by_id(session: Session, sale_id: int) -> Sale | None:
     return session.query(Sale).filter_by(id=sale_id).first()
+
+
+def list_sales(
+    session: Session,
+    dni: str | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    page: int = 1,
+    page_size: int = 20,
+) -> tuple[list[tuple[Sale, Customer]], bool]:
+    rows = (
+        session.query(Sale, Customer)
+        .join(Customer, Sale.customer_id == Customer.id)
+        .filter(Sale.status == SaleStatus.CONFIRMED)
+        .all()
+    )
+
+    matching = [
+        (sale, customer)
+        for sale, customer in rows
+        if (date_from is None or sale.sale_date.date() >= date_from)
+        and (date_to is None or sale.sale_date.date() <= date_to)
+        and core_venta.matches_dni(customer.dni, dni)
+    ]
+
+    matching.sort(key=lambda row: row[0].sale_date, reverse=True)
+
+    start = (page - 1) * page_size
+    end = start + page_size
+    page_items = matching[start:end]
+    has_next = len(matching) > end
+
+    return page_items, has_next
 
 
 def create_sale(

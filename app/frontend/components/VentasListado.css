@@ -1,0 +1,127 @@
+.ventas-listado {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+  max-width: 44rem;
+  margin: 0 auto;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  color: #1f2430;
+}
+
+.ventas-listado__search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  box-sizing: border-box;
+  background: #ffffff;
+  border: 1px solid #e2e5ea;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+
+.ventas-listado__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.ventas-listado__field label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333a47;
+}
+
+.ventas-listado__field input {
+  box-sizing: border-box;
+  padding: 0.6rem 0.75rem;
+  font-size: 1rem;
+  border: 1px solid #cbd2dc;
+  border-radius: 0.5rem;
+  background: #fbfbfd;
+}
+
+.ventas-listado__search button {
+  padding: 0.6rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #ffffff;
+  background: #2f6fed;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.ventas-listado__search button:disabled {
+  background: #9db4e8;
+  cursor: not-allowed;
+}
+
+.ventas-listado__banner {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  background: #f4f6fa;
+  color: #566072;
+  border: 1px solid #e2e5ea;
+}
+
+.ventas-listado__banner--error {
+  background: #fdecec;
+  color: #b3261e;
+  border: 1px solid #f6c6c3;
+}
+
+.ventas-listado__table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #ffffff;
+  border: 1px solid #e2e5ea;
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.ventas-listado__table th,
+.ventas-listado__table td {
+  text-align: left;
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid #e2e5ea;
+  font-size: 0.9rem;
+}
+
+.ventas-listado__table th {
+  background: #f4f6fa;
+  font-weight: 600;
+  color: #333a47;
+}
+
+.ventas-listado__pagination {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.ventas-listado__pagination button {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333a47;
+  background: #eceff3;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.ventas-listado__pagination button:disabled {
+  color: #9aa2af;
+  cursor: not-allowed;
+}

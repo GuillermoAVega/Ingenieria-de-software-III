@@ -1,10 +1,11 @@
+from datetime import date
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from app.backend import core_producto, repository, repository_producto, repository_venta
+from app.backend import core_producto, core_venta, repository, repository_producto, repository_venta
 from app.backend.database import get_session
 from app.backend.models import Customer, Product, ProductStatus, Sale, SaleItem, SaleStatus
 
@@ -25,6 +26,7 @@ NOT_DRAFT_MESSAGE = "La venta ya no admite modificaciones"
 NOT_DRAFT_TO_CLOSE_MESSAGE = "La venta ya no se encuentra en Borrador"
 DETAIL_UPDATED_MESSAGE = "Detalle actualizado exitosamente"
 CLOSE_SUCCESS_MESSAGE = "Venta cerrada exitosamente"
+INVALID_DATE_RANGE_MESSAGE = "El rango de fechas es inválido"
 
 
 def _serialize_sale(session: Session, sale: Sale) -> dict[str, Any]:
@@ -55,6 +57,19 @@ def _serialize_sale(session: Session, sale: Sale) -> dict[str, Any]:
         "items": serialized_items,
         "total": sale.total,
         "status": sale.status.value,
+    }
+
+
+def _serialize_sale_summary(sale: Sale, customer: Customer) -> dict[str, Any]:
+    return {
+        "id": sale.id,
+        "sale_date": sale.sale_date.isoformat(),
+        "customer": {
+            "dni": customer.dni,
+            "first_name": customer.first_name,
+            "last_name": customer.last_name,
+        },
+        "total": sale.total,
     }
 
 
@@ -149,6 +164,36 @@ def registrar_venta(
         content={
             "message": SUCCESS_MESSAGE,
             "sale": _serialize_sale(session, sale),
+        },
+    )
+
+
+@router.get("/ventas")
+def listar_ventas(
+    dni: str | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    page: int = Query(1, ge=1),
+    session: Session = Depends(get_session),
+) -> JSONResponse:
+    if not core_venta.is_valid_date_range(date_from, date_to):
+        return JSONResponse(
+            status_code=422,
+            content={
+                "errors": [{"field": "date_range", "message": INVALID_DATE_RANGE_MESSAGE}]
+            },
+        )
+
+    rows, has_next = repository_venta.list_sales(
+        session, dni=dni, date_from=date_from, date_to=date_to, page=page
+    )
+
+    return JSONResponse(
+        status_code=200,
+        content={
+            "sales": [_serialize_sale_summary(sale, customer) for sale, customer in rows],
+            "page": page,
+            "has_next": has_next,
         },
     )
 

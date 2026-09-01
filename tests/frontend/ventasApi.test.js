@@ -4,6 +4,7 @@ import {
   anularVenta,
   buscarVenta,
   cerrarVenta,
+  listarVentas,
   registrarVenta,
   reemplazarDetalleVenta,
 } from "../../app/frontend/api/ventasApi.js";
@@ -249,6 +250,61 @@ describe("cerrarVenta", () => {
     expect(result).toEqual({
       success: false,
       errors: [{ field: "id", message: "Venta no encontrada" }],
+    });
+  });
+});
+
+describe("listarVentas", () => {
+  it("llama a /ventas sin parámetros cuando no se pasa ningún filtro", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        sales: [{ id: 1, total: 701, customer: { dni: 30111222 } }],
+        page: 1,
+        has_next: false,
+      }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    const result = await listarVentas();
+
+    expect(result).toEqual({
+      success: true,
+      sales: [{ id: 1, total: 701, customer: { dni: 30111222 } }],
+      page: 1,
+      hasNext: false,
+    });
+    expect(mockFetch).toHaveBeenCalledWith("/ventas");
+  });
+
+  it("llama a /ventas con dni, dateFrom, dateTo y page cuando se pasan", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ sales: [], page: 2, has_next: false }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    await listarVentas({ dni: "3011", dateFrom: "2026-01-01", dateTo: "2026-01-31", page: 2 });
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      "/ventas?dni=3011&date_from=2026-01-01&date_to=2026-01-31&page=2"
+    );
+  });
+
+  it("devuelve success:false y la advertencia ante una respuesta 422 de rango inválido", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({
+        errors: [{ field: "date_range", message: "El rango de fechas es inválido" }],
+      }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    const result = await listarVentas({ dateFrom: "2026-02-01", dateTo: "2026-01-01" });
+
+    expect(result).toEqual({
+      success: false,
+      errors: [{ field: "date_range", message: "El rango de fechas es inválido" }],
     });
   });
 });

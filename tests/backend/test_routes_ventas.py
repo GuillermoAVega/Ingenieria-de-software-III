@@ -1,3 +1,5 @@
+from datetime import date, timedelta
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -460,3 +462,125 @@ def test_cerrar_venta_con_stock_insuficiente_devuelve_422_sin_descontar(client):
 
     sin_cambios = client.get(f"/ventas/{sale_id}").json()["sale"]
     assert sin_cambios["status"] == "Borrador"
+
+
+def _registrar_cliente(client, dni):
+    client.post(
+        "/clientes",
+        json=dict(VALID_CLIENT_PAYLOAD, dni=dni),
+    )
+
+
+def _registrar_y_confirmar_venta(client, dni="30111222", sku="ABC123"):
+    _registrar_cliente(client, dni)
+    if client.get(f"/productos/{sku}").status_code != 200:
+        client.post("/productos", json=dict(VALID_PRODUCT_PAYLOAD, sku=sku, stock="10000"))
+    payload = {"dni": dni, "items": [{"sku": sku, "quantity": "1", "unit_price": "350.50"}]}
+    sale_id = client.post("/ventas", json=payload).json()["sale"]["id"]
+    client.patch(f"/ventas/{sale_id}/cerrar")
+    return sale_id
+
+
+def test_listar_ventas_endpoint_devuelve_resumen_sin_items_ni_estado(client):
+    sale_id = _registrar_y_confirmar_venta(client)
+
+    response = client.get("/ventas")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["page"] == 1
+    assert body["has_next"] is False
+    sale = next(s for s in body["sales"] if s["id"] == sale_id)
+    assert sale["customer"]["dni"] == 30111222
+    assert sale["total"] == 350.5
+    assert "items" not in sale
+    assert "status" not in sale
+
+
+def test_listar_ventas_excluye_borrador_y_anulada(client):
+    _registrar_cliente(client, "30111222")
+    client.post("/productos", json=VALID_PRODUCT_PAYLOAD)
+    draft_id = client.post(
+        "/ventas",
+        json={"dni": "30111222", "items": [{"sku": "ABC123", "quantity": "1", "unit_price": "350.50"}]},
+    ).json()["sale"]["id"]
+
+    cancelled_id = _registrar_y_confirmar_venta(client, dni="30111222", sku="ABC123")
+    client.patch(f"/ventas/{cancelled_id}/anular")
+
+    response = client.get("/ventas")
+
+    ids = {s["id"] for s in response.json()["sales"]}
+    assert draft_id not in ids
+    assert cancelled_id not in ids
+
+
+def test_listar_ventas_filtro_fechas(client):
+    sale_id = _registrar_y_confirmar_venta(client)
+    today = date.today().isoformat()
+    tomorrow = (date.today() + timedelta(days=1)).isoformat()
+
+    incluye = client.get("/ventas", params={"date_from": today, "date_to": today})
+    excluye = client.get("/ventas", params={"date_from": tomorrow})
+
+    assert sale_id in {s["id"] for s in incluye.json()["sales"]}
+    assert sale_id not in {s["id"] for s in excluye.json()["sales"]}
+
+
+def test_listar_ventas_rango_de_fechas_invalido_devuelve_422(client):
+    today = date.today().isoformat()
+    tomorrow = (date.today() + timedelta(days=1)).isoformat()
+
+    response = client.get("/ventas", params={"date_from": tomorrow, "date_to": today})
+
+    assert response.status_code == 422
+    assert response.json()["errors"] == [
+        {"field": "date_range", "message": "El rango de fechas es inválido"}
+    ]
+
+
+def test_listar_ventas_filtro_por_dni_parcial(client):
+    sale_a = _registrar_y_confirmar_venta(client, dni="30111222", sku="AAA111")
+    _registrar_y_confirmar_venta(client, dni="40222333", sku="BBB222")
+
+    response = client.get("/ventas", params={"dni": "3011"})
+
+    ids = {s["id"] for s in response.json()["sales"]}
+    assert ids == {sale_a}
+
+
+def test_listar_ventas_combina_dni_y_fecha(client):
+    sale_a = _registrar_y_confirmar_venta(client, dni="30111222", sku="CCC333")
+    today = date.today().isoformat()
+
+    response = client.get("/ventas", params={"dni": "3011", "date_from": today, "date_to": today})
+
+    ids = {s["id"] for s in response.json()["sales"]}
+    assert ids == {sale_a}
+
+
+def test_listar_ventas_sin_coincidencias_devuelve_lista_vacia(client):
+    _registrar_y_confirmar_venta(client)
+
+    response = client.get("/ventas", params={"dni": "99999999"})
+
+    assert response.status_code == 200
+    assert response.json()["sales"] == []
+
+
+def test_listar_ventas_pagina_2_devuelve_el_resto(client):
+    _registrar_cliente(client, "30111222")
+    client.post("/productos", json=dict(VALID_PRODUCT_PAYLOAD, stock="10000"))
+    for _ in range(25):
+        payload = {
+            "dni": "30111222",
+            "items": [{"sku": "ABC123", "quantity": "1", "unit_price": "350.50"}],
+        }
+        sale_id = client.post("/ventas", json=payload).json()["sale"]["id"]
+        client.patch(f"/ventas/{sale_id}/cerrar")
+
+    response = client.get("/ventas", params={"page": 2})
+
+    body = response.json()
+    assert len(body["sales"]) == 5
+    assert body["has_next"] is False
