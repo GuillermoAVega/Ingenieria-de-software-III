@@ -13,6 +13,14 @@ VALID_PAYLOAD = {
     "phone": "11-4444-5555",
 }
 
+OTHER_PAYLOAD = {
+    "dni": "41234567",
+    "first_name": "Ana",
+    "last_name": "Lopez",
+    "email": "ana@dominio.com",
+    "phone": "11-2222-3333",
+}
+
 
 @pytest.fixture
 def client():
@@ -75,3 +83,191 @@ def test_dni_duplicado_endpoint_bloquea_el_alta(client):
     assert response.json()["errors"] == [
         {"field": "dni", "message": "El cliente ya se encuentra registrado"}
     ]
+
+
+def test_buscar_cliente_activo_devuelve_sus_datos(client):
+    client.post("/clientes", json=VALID_PAYLOAD)
+
+    response = client.get("/clientes/30111222")
+
+    assert response.status_code == 200
+    assert response.json()["customer"]["status"] == "Activo"
+
+
+def test_buscar_cliente_por_dni_con_ceros_a_la_izquierda_lo_encuentra(client):
+    client.post("/clientes", json=VALID_PAYLOAD)
+
+    response = client.get("/clientes/030111222")
+
+    assert response.status_code == 200
+    assert response.json()["customer"]["dni"] == 30111222
+
+
+def test_buscar_cliente_inactivo_informa_su_estado(client):
+    client.post("/clientes", json=VALID_PAYLOAD)
+    client.patch("/clientes/30111222/baja")
+
+    response = client.get("/clientes/30111222")
+
+    assert response.status_code == 200
+    assert response.json()["customer"]["status"] == "Inactivo"
+
+
+def test_buscar_cliente_inexistente_devuelve_404(client):
+    response = client.get("/clientes/30111222")
+
+    assert response.status_code == 404
+    assert response.json()["errors"] == [
+        {"field": "dni", "message": "Cliente no encontrado"}
+    ]
+
+
+def test_buscar_cliente_con_formato_invalido_devuelve_404(client):
+    response = client.get("/clientes/30.111.222")
+
+    assert response.status_code == 404
+    assert response.json()["errors"] == [
+        {"field": "dni", "message": "Cliente no encontrado"}
+    ]
+
+
+def test_baja_cliente_activo_devuelve_mensaje_de_exito(client):
+    client.post("/clientes", json=VALID_PAYLOAD)
+
+    response = client.patch("/clientes/30111222/baja")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["message"] == "Cliente dado de baja exitosamente"
+    assert body["customer"]["status"] == "Inactivo"
+
+    assert body["customer"]["first_name"] == VALID_PAYLOAD["first_name"]
+    assert body["customer"]["last_name"] == VALID_PAYLOAD["last_name"]
+    assert body["customer"]["email"] == VALID_PAYLOAD["email"]
+    assert body["customer"]["phone"] == VALID_PAYLOAD["phone"]
+
+    posterior = client.get("/clientes/30111222")
+    assert posterior.json()["customer"] == body["customer"]
+
+
+def test_baja_cliente_inexistente_devuelve_404(client):
+    response = client.patch("/clientes/30111222/baja")
+
+    assert response.status_code == 404
+    assert response.json()["errors"] == [
+        {"field": "dni", "message": "Cliente no encontrado"}
+    ]
+
+
+def test_baja_directa_sobre_cliente_ya_inactivo_no_falla(client):
+    client.post("/clientes", json=VALID_PAYLOAD)
+    client.patch("/clientes/30111222/baja")
+
+    response = client.patch("/clientes/30111222/baja")
+
+    assert response.status_code == 200
+    assert response.json()["message"] == "Cliente dado de baja exitosamente"
+    assert response.json()["customer"]["status"] == "Inactivo"
+
+
+def test_editar_cliente_activo_guarda_los_cambios(client):
+    client.post("/clientes", json=VALID_PAYLOAD)
+    edicion = dict(VALID_PAYLOAD, first_name="Juan Ignacio", phone="11-9999-8888")
+
+    response = client.put("/clientes/30111222/editar", json=edicion)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["message"] == "Cliente modificado exitosamente"
+    assert body["customer"]["first_name"] == "Juan Ignacio"
+    assert body["customer"]["phone"] == "11-9999-8888"
+    assert body["customer"]["status"] == "Activo"
+
+
+def test_editar_cliente_inactivo_guarda_los_cambios_sin_reactivarlo(client):
+    client.post("/clientes", json=VALID_PAYLOAD)
+    client.patch("/clientes/30111222/baja")
+    edicion = dict(VALID_PAYLOAD, first_name="Juan Ignacio")
+
+    response = client.put("/clientes/30111222/editar", json=edicion)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["customer"]["first_name"] == "Juan Ignacio"
+    assert body["customer"]["status"] == "Inactivo"
+
+
+def test_editar_cliente_sin_cambiar_dni_no_dispara_duplicado(client):
+    client.post("/clientes", json=VALID_PAYLOAD)
+    edicion = dict(VALID_PAYLOAD, first_name="Juan Ignacio")
+
+    response = client.put("/clientes/30111222/editar", json=edicion)
+
+    assert response.status_code == 200
+
+
+def test_editar_cliente_inexistente_devuelve_404(client):
+    response = client.put("/clientes/30111222/editar", json=VALID_PAYLOAD)
+
+    assert response.status_code == 404
+    assert response.json()["errors"] == [
+        {"field": "dni", "message": "Cliente no encontrado"}
+    ]
+
+
+def test_editar_cliente_con_campos_invalidos_no_guarda_nada(client):
+    client.post("/clientes", json=VALID_PAYLOAD)
+    edicion = dict(VALID_PAYLOAD, first_name="Juan123", phone="11-abcd")
+
+    response = client.put("/clientes/30111222/editar", json=edicion)
+
+    assert response.status_code == 422
+    campos = {error["field"] for error in response.json()["errors"]}
+    assert campos == {"first_name", "phone"}
+
+    posterior = client.get("/clientes/30111222")
+    assert posterior.json()["customer"]["first_name"] == VALID_PAYLOAD["first_name"]
+    assert posterior.json()["customer"]["phone"] == VALID_PAYLOAD["phone"]
+
+
+def test_editar_dni_que_pertenece_a_otro_activo_bloquea_el_intento(client):
+    client.post("/clientes", json=VALID_PAYLOAD)
+    client.post("/clientes", json=OTHER_PAYLOAD)
+    edicion = dict(VALID_PAYLOAD, dni=OTHER_PAYLOAD["dni"], first_name="Juan Ignacio")
+
+    response = client.put("/clientes/30111222/editar", json=edicion)
+
+    assert response.status_code == 422
+    assert response.json()["errors"] == [
+        {"field": "dni", "message": "El DNI ya está en uso"}
+    ]
+
+    posterior = client.get("/clientes/30111222")
+    assert posterior.json()["customer"]["first_name"] == VALID_PAYLOAD["first_name"]
+
+
+def test_editar_dni_que_pertenece_a_otro_inactivo_se_permite(client):
+    client.post("/clientes", json=VALID_PAYLOAD)
+    client.post("/clientes", json=OTHER_PAYLOAD)
+    client.patch(f"/clientes/{OTHER_PAYLOAD['dni']}/baja")
+    edicion = dict(VALID_PAYLOAD, dni=OTHER_PAYLOAD["dni"])
+
+    response = client.put("/clientes/30111222/editar", json=edicion)
+
+    assert response.status_code == 200
+    assert response.json()["customer"]["dni"] == int(OTHER_PAYLOAD["dni"])
+    assert response.json()["customer"]["status"] == "Activo"
+
+
+def test_buscar_cliente_con_dni_compartido_devuelve_el_activo(client):
+    client.post("/clientes", json=VALID_PAYLOAD)
+    client.post("/clientes", json=OTHER_PAYLOAD)
+    client.patch(f"/clientes/{OTHER_PAYLOAD['dni']}/baja")
+    edicion = dict(VALID_PAYLOAD, dni=OTHER_PAYLOAD["dni"])
+    client.put("/clientes/30111222/editar", json=edicion)
+
+    response = client.get(f"/clientes/{OTHER_PAYLOAD['dni']}")
+
+    assert response.status_code == 200
+    assert response.json()["customer"]["status"] == "Activo"
+    assert response.json()["customer"]["first_name"] == VALID_PAYLOAD["first_name"]

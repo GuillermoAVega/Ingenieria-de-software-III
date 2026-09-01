@@ -30,3 +30,24 @@ body {
   color: #1f2430;
   text-align: center;
 }
+
+.app-page__tabs {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.app-page__tabs button {
+  padding: 0.6rem 1.1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #566072;
+  background: #eceff3;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.app-page__tabs button.app-page__tab--active {
+  color: #ffffff;
+  background: #2f6fed;
+}

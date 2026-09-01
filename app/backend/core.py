@@ -32,5 +32,12 @@ def normalize_dni(value: str) -> int:
     return int(value)
 
 
+def try_normalize_dni(value: str) -> int | None:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def initial_status() -> str:
     return ACTIVE_STATUS

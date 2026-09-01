@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { altaCliente } from "../api/clientesApi.js";
+import { CLIENTE_FIELDS } from "../clienteFields.js";
 import { validateClienteForm } from "../validation.js";
 import "./ClienteForm.css";
 
@@ -12,14 +13,7 @@ const EMPTY_FORM = {
   phone: "",
 };
 
-/** @type {{ field: string, label: string, hint: string, inputMode: "numeric" | "tel" | "text" }[]} */
-const FIELDS = [
-  { field: "dni", label: "DNI", hint: "Solo números, 7 u 8 dígitos", inputMode: "numeric" },
-  { field: "first_name", label: "Nombre", hint: "Solo letras y espacios", inputMode: "text" },
-  { field: "last_name", label: "Apellido", hint: "Solo letras y espacios", inputMode: "text" },
-  { field: "email", label: "Email", hint: "usuario@dominio.com", inputMode: "text" },
-  { field: "phone", label: "Teléfono", hint: "Solo números y guiones", inputMode: "tel" },
-];
+const FIELDS = CLIENTE_FIELDS;
 
 /**
  * Formulario de alta de cliente (HU-CLI-01).

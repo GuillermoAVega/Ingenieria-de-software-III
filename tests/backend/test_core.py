@@ -79,3 +79,15 @@ def test_dni_normaliza_ceros_a_la_izquierda():
 
 def test_estado_inicial_es_activo():
     assert core.initial_status() == "Activo"
+
+
+def test_try_normalize_dni_normaliza_ceros_a_la_izquierda():
+    assert core.try_normalize_dni("0123456") == core.try_normalize_dni("123456")
+
+
+def test_try_normalize_dni_devuelve_none_ante_letras():
+    assert core.try_normalize_dni("abc") is None
+
+
+def test_try_normalize_dni_devuelve_none_ante_puntos():
+    assert core.try_normalize_dni("30.111.222") is None

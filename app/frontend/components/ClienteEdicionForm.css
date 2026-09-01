@@ -1,0 +1,146 @@
+.cliente-edicion {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+  max-width: 28rem;
+  margin: 0 auto;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  color: #1f2430;
+}
+
+.cliente-edicion__search,
+.cliente-edicion__form,
+.cliente-edicion__confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  box-sizing: border-box;
+  background: #ffffff;
+  border: 1px solid #e2e5ea;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+
+.cliente-edicion__intro {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #566072;
+}
+
+.cliente-edicion__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.cliente-edicion__field label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333a47;
+}
+
+.cliente-edicion__field input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.6rem 0.75rem;
+  font-size: 1rem;
+  border: 1px solid #cbd2dc;
+  border-radius: 0.5rem;
+  background: #fbfbfd;
+}
+
+.cliente-edicion__field input:focus {
+  outline: none;
+  border-color: #2f6fed;
+  box-shadow: 0 0 0 3px rgba(47, 111, 237, 0.18);
+  background: #ffffff;
+}
+
+.cliente-edicion__input--invalid {
+  border-color: #d92d20 !important;
+}
+
+.cliente-edicion__hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #7c8595;
+}
+
+.cliente-edicion__error {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #d92d20;
+  font-weight: 500;
+}
+
+.cliente-edicion button[type="submit"] {
+  padding: 0.7rem 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ffffff;
+  background: #2f6fed;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.cliente-edicion button[type="submit"]:disabled {
+  background: #9db4e8;
+  cursor: not-allowed;
+}
+
+.cliente-edicion__banner {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.cliente-edicion__banner--success {
+  background: #e7f7ee;
+  color: #12805c;
+  border: 1px solid #b7ecd3;
+}
+
+.cliente-edicion__banner--error {
+  background: #fdecec;
+  color: #b3261e;
+  border: 1px solid #f6c6c3;
+}
+
+.cliente-edicion__confirm-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.cliente-edicion__confirm-actions button {
+  padding: 0.6rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  border: none;
+  color: #ffffff;
+  background: #2f6fed;
+}
+
+.cliente-edicion__cancel {
+  color: #333a47 !important;
+  background: #eceff3 !important;
+}
+
+@media (min-width: 640px) {
+  .cliente-edicion__search,
+  .cliente-edicion__form,
+  .cliente-edicion__confirm {
+    padding: 2rem;
+  }
+}
