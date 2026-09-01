@@ -6,6 +6,8 @@ export default defineConfig({
   server: {
     proxy: {
       "/clientes": "http://localhost:8000",
+      "/productos": "http://localhost:8000",
+      "/ventas": "http://localhost:8000",
     },
   },
   test: {

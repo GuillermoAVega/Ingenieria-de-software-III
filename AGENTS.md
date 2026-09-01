@@ -12,7 +12,7 @@ Persistencia en base de datos SQLite local (`app/backend/database.db`).
 - Verificar tipado frontend: `npm run typecheck` (JSDoc + `tsc --checkJs`)
 - Instalar dependencias frontend: `npm install`
 - Levantar el backend (con el entorno virtual activado, `source .venv/bin/activate`): `npm run backend`, sirve la API en `http://localhost:8000` y crea `app/backend/database.db` si no existe.
-- Levantar el frontend en desarrollo: `npm run dev` (Vite en `http://localhost:5173`, con `/clientes` proxeado al backend).
+- Levantar el frontend en desarrollo: `npm run dev` (Vite en `http://localhost:5173`, con `/clientes`, `/productos` y `/ventas` proxeados al backend).
 
 ## Estilo
 - Python 3.12+, type hints en todas las funciones públicas.
