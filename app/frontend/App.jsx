@@ -9,6 +9,7 @@ import { ProductoEdicionForm } from "./components/ProductoEdicionForm.jsx";
 import { ProductoForm } from "./components/ProductoForm.jsx";
 import { ProductoListado } from "./components/ProductoListado.jsx";
 import { VentaAnulacionForm } from "./components/VentaAnulacionForm.jsx";
+import { VentaEdicionForm } from "./components/VentaEdicionForm.jsx";
 import { VentaForm } from "./components/VentaForm.jsx";
 import "./App.css";
 
@@ -23,6 +24,7 @@ const TABS = /** @type {const} */ ({
   LISTADO_PRODUCTO: "LISTADO_PRODUCTO",
   ALTA_VENTA: "ALTA_VENTA",
   ANULAR_VENTA: "ANULAR_VENTA",
+  MODIFICAR_VENTA: "MODIFICAR_VENTA",
 });
 
 /** @returns {import("react").JSX.Element} */
@@ -102,6 +104,13 @@ export function App() {
         >
           Anular Venta
         </button>
+        <button
+          type="button"
+          className={activeTab === TABS.MODIFICAR_VENTA ? "app-page__tab--active" : undefined}
+          onClick={() => setActiveTab(TABS.MODIFICAR_VENTA)}
+        >
+          Modificar Venta
+        </button>
       </nav>
 
       {activeTab === TABS.ALTA && <ClienteForm />}
@@ -114,6 +123,7 @@ export function App() {
       {activeTab === TABS.LISTADO_PRODUCTO && <ProductoListado />}
       {activeTab === TABS.ALTA_VENTA && <VentaForm />}
       {activeTab === TABS.ANULAR_VENTA && <VentaAnulacionForm />}
+      {activeTab === TABS.MODIFICAR_VENTA && <VentaEdicionForm />}
     </main>
   );
 }

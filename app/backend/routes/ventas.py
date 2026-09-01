@@ -6,18 +6,25 @@ from sqlalchemy.orm import Session
 
 from app.backend import core_producto, repository, repository_producto, repository_venta
 from app.backend.database import get_session
-from app.backend.models import Customer, Product, Sale, SaleItem
+from app.backend.models import Customer, Product, ProductStatus, Sale, SaleItem, SaleStatus
 
 router = APIRouter()
 
 SUCCESS_MESSAGE = "Venta registrada exitosamente"
 CUSTOMER_NOT_FOUND_MESSAGE = "Cliente no encontrado"
 PRODUCT_NOT_FOUND_MESSAGE = "Producto no encontrado"
+INACTIVE_PRODUCT_MESSAGE = "El producto no está disponible para la venta"
+INSUFFICIENT_STOCK_MESSAGE = "No hay stock suficiente para completar la operación"
 POSITIVE_NUMBER_MESSAGE = "El valor debe ser un número positivo"
 EMPTY_ITEMS_MESSAGE = "La venta debe tener al menos un ítem"
 SALE_NOT_FOUND_MESSAGE = "Venta no encontrada"
 CANCEL_SUCCESS_MESSAGE = "Venta anulada exitosamente"
 ALREADY_CANCELLED_MESSAGE = "La venta ya se encuentra anulada"
+CANNOT_CANCEL_DRAFT_MESSAGE = "No se puede anular una venta en Borrador"
+NOT_DRAFT_MESSAGE = "La venta ya no admite modificaciones"
+NOT_DRAFT_TO_CLOSE_MESSAGE = "La venta ya no se encuentra en Borrador"
+DETAIL_UPDATED_MESSAGE = "Detalle actualizado exitosamente"
+CLOSE_SUCCESS_MESSAGE = "Venta cerrada exitosamente"
 
 
 def _serialize_sale(session: Session, sale: Sale) -> dict[str, Any]:
@@ -51,19 +58,17 @@ def _serialize_sale(session: Session, sale: Sale) -> dict[str, Any]:
     }
 
 
-@router.post("/ventas")
-def registrar_venta(
-    payload: dict[str, Any], session: Session = Depends(get_session)
-) -> JSONResponse:
+def _resolve_items(
+    session: Session,
+    items_payload: Any,
+    *,
+    require_non_empty: bool,
+    check_product_active: bool,
+    check_stock: bool,
+) -> tuple[list[tuple[Product, int, float]], list[dict[str, str]]]:
     errors: list[dict[str, str]] = []
 
-    dni = payload.get("dni")
-    customer = repository.find_by_dni(session, dni) if isinstance(dni, str) and dni else None
-    if customer is None:
-        errors.append({"field": "dni", "message": CUSTOMER_NOT_FOUND_MESSAGE})
-
-    items_payload = payload.get("items")
-    if not isinstance(items_payload, list) or not items_payload:
+    if not isinstance(items_payload, list) or (require_non_empty and not items_payload):
         errors.append({"field": "items", "message": EMPTY_ITEMS_MESSAGE})
         items_payload = []
 
@@ -84,6 +89,12 @@ def registrar_venta(
             )
             continue
 
+        if check_product_active and product.status != ProductStatus.ACTIVE:
+            errors.append(
+                {"field": f"items[{index}].sku", "message": INACTIVE_PRODUCT_MESSAGE}
+            )
+            continue
+
         if not isinstance(quantity_raw, str) or not core_producto.validate_positive_integer(
             quantity_raw
         ):
@@ -95,7 +106,38 @@ def registrar_venta(
             )
             continue
 
-        resolved_items.append((product, int(quantity_raw), float(unit_price_raw)))
+        quantity = int(quantity_raw)
+
+        if check_stock and quantity > product.stock:
+            errors.append(
+                {"field": f"items[{index}].quantity", "message": INSUFFICIENT_STOCK_MESSAGE}
+            )
+            continue
+
+        resolved_items.append((product, quantity, float(unit_price_raw)))
+
+    return resolved_items, errors
+
+
+@router.post("/ventas")
+def registrar_venta(
+    payload: dict[str, Any], session: Session = Depends(get_session)
+) -> JSONResponse:
+    errors: list[dict[str, str]] = []
+
+    dni = payload.get("dni")
+    customer = repository.find_by_dni(session, dni) if isinstance(dni, str) and dni else None
+    if customer is None:
+        errors.append({"field": "dni", "message": CUSTOMER_NOT_FOUND_MESSAGE})
+
+    resolved_items, item_errors = _resolve_items(
+        session,
+        payload.get("items"),
+        require_non_empty=True,
+        check_product_active=False,
+        check_stock=False,
+    )
+    errors.extend(item_errors)
 
     if errors:
         return JSONResponse(status_code=422, content={"errors": errors})
@@ -129,7 +171,7 @@ def buscar_venta(sale_id: int, session: Session = Depends(get_session)) -> JSONR
 
 @router.patch("/ventas/{sale_id}/anular")
 def anular_venta(sale_id: int, session: Session = Depends(get_session)) -> JSONResponse:
-    sale, already_cancelled = repository_venta.cancel_sale(session, sale_id)
+    sale, error = repository_venta.cancel_sale(session, sale_id)
 
     if sale is None:
         return JSONResponse(
@@ -137,16 +179,98 @@ def anular_venta(sale_id: int, session: Session = Depends(get_session)) -> JSONR
             content={"errors": [{"field": "id", "message": SALE_NOT_FOUND_MESSAGE}]},
         )
 
-    if already_cancelled:
+    if error == "ALREADY_CANCELLED":
         return JSONResponse(
             status_code=422,
             content={"errors": [{"field": "id", "message": ALREADY_CANCELLED_MESSAGE}]},
+        )
+
+    if error == "DRAFT":
+        return JSONResponse(
+            status_code=422,
+            content={"errors": [{"field": "id", "message": CANNOT_CANCEL_DRAFT_MESSAGE}]},
         )
 
     return JSONResponse(
         status_code=200,
         content={
             "message": CANCEL_SUCCESS_MESSAGE,
+            "sale": _serialize_sale(session, sale),
+        },
+    )
+
+
+@router.put("/ventas/{sale_id}/detalle")
+def reemplazar_detalle_venta(
+    sale_id: int, payload: dict[str, Any], session: Session = Depends(get_session)
+) -> JSONResponse:
+    sale = repository_venta.find_by_id(session, sale_id)
+    if sale is None:
+        return JSONResponse(
+            status_code=404,
+            content={"errors": [{"field": "id", "message": SALE_NOT_FOUND_MESSAGE}]},
+        )
+
+    if sale.status != SaleStatus.DRAFT:
+        return JSONResponse(
+            status_code=422,
+            content={"errors": [{"field": "id", "message": NOT_DRAFT_MESSAGE}]},
+        )
+
+    resolved_items, errors = _resolve_items(
+        session,
+        payload.get("items"),
+        require_non_empty=False,
+        check_product_active=True,
+        check_stock=True,
+    )
+
+    if errors:
+        return JSONResponse(status_code=422, content={"errors": errors})
+
+    updated_sale, _ = repository_venta.replace_sale_items(session, sale_id, resolved_items)
+
+    return JSONResponse(
+        status_code=200,
+        content={
+            "message": DETAIL_UPDATED_MESSAGE,
+            "sale": _serialize_sale(session, updated_sale),
+        },
+    )
+
+
+@router.patch("/ventas/{sale_id}/cerrar")
+def cerrar_venta(sale_id: int, session: Session = Depends(get_session)) -> JSONResponse:
+    sale, error = repository_venta.close_sale(session, sale_id)
+
+    if sale is None:
+        return JSONResponse(
+            status_code=404,
+            content={"errors": [{"field": "id", "message": SALE_NOT_FOUND_MESSAGE}]},
+        )
+
+    if error == "NOT_DRAFT":
+        return JSONResponse(
+            status_code=422,
+            content={"errors": [{"field": "id", "message": NOT_DRAFT_TO_CLOSE_MESSAGE}]},
+        )
+
+    if error == "EMPTY_ITEMS":
+        return JSONResponse(
+            status_code=422,
+            content={"errors": [{"field": "items", "message": EMPTY_ITEMS_MESSAGE}]},
+        )
+
+    if error == "INSUFFICIENT_STOCK":
+        return JSONResponse(
+            status_code=422,
+            content={"errors": [{"field": "items", "message": INSUFFICIENT_STOCK_MESSAGE}]},
+        )
+
+    return JSONResponse(
+        status_code=200,
+        content={
+            "message": CLOSE_SUCCESS_MESSAGE,
             "sale": _serialize_sale(session, sale),
         },
     )

@@ -33,7 +33,7 @@
  * @property {string} sale_date
  * @property {VentaItem[]} items
  * @property {number} total
- * @property {"Confirmada" | "Anulada"} status
+ * @property {"Borrador" | "Confirmada" | "Anulada"} status
  */
 
 /**
@@ -70,6 +70,32 @@
 
 /**
  * @typedef {Object} VentaAnulacionFailure
+ * @property {false} success
+ * @property {FieldError[]} errors
+ */
+
+/**
+ * @typedef {Object} VentaDetalleSuccess
+ * @property {true} success
+ * @property {string} message
+ * @property {Venta} sale
+ */
+
+/**
+ * @typedef {Object} VentaDetalleFailure
+ * @property {false} success
+ * @property {FieldError[]} errors
+ */
+
+/**
+ * @typedef {Object} VentaCierreSuccess
+ * @property {true} success
+ * @property {string} message
+ * @property {Venta} sale
+ */
+
+/**
+ * @typedef {Object} VentaCierreFailure
  * @property {false} success
  * @property {FieldError[]} errors
  */
@@ -121,6 +147,45 @@ export async function anularVenta(id) {
     `${VENTAS_ENDPOINT}/${encodeURIComponent(id)}/anular`,
     { method: "PATCH" }
   );
+
+  const body = await response.json();
+
+  if (response.ok) {
+    return { success: true, message: body.message, sale: body.sale };
+  }
+
+  return { success: false, errors: body.errors };
+}
+
+/**
+ * @param {number | string} id
+ * @param {VentaItemInput[]} items
+ * @returns {Promise<VentaDetalleSuccess | VentaDetalleFailure>}
+ */
+export async function reemplazarDetalleVenta(id, items) {
+  const response = await fetch(`${VENTAS_ENDPOINT}/${encodeURIComponent(id)}/detalle`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ items }),
+  });
+
+  const body = await response.json();
+
+  if (response.ok) {
+    return { success: true, message: body.message, sale: body.sale };
+  }
+
+  return { success: false, errors: body.errors };
+}
+
+/**
+ * @param {number | string} id
+ * @returns {Promise<VentaCierreSuccess | VentaCierreFailure>}
+ */
+export async function cerrarVenta(id) {
+  const response = await fetch(`${VENTAS_ENDPOINT}/${encodeURIComponent(id)}/cerrar`, {
+    method: "PATCH",
+  });
 
   const body = await response.json();
 

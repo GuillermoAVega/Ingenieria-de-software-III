@@ -1,0 +1,167 @@
+.venta-edicion {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+  max-width: 40rem;
+  margin: 0 auto;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  color: #1f2430;
+}
+
+.venta-edicion__search,
+.venta-edicion__add-item,
+.venta-edicion__confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem;
+  padding: 1.25rem;
+  box-sizing: border-box;
+  background: #ffffff;
+  border: 1px solid #e2e5ea;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+
+.venta-edicion__search {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.venta-edicion__confirm {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.venta-edicion__intro {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #566072;
+}
+
+.venta-edicion__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.venta-edicion__field label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333a47;
+}
+
+.venta-edicion__field input {
+  box-sizing: border-box;
+  padding: 0.6rem 0.75rem;
+  font-size: 1rem;
+  border: 1px solid #cbd2dc;
+  border-radius: 0.5rem;
+  background: #fbfbfd;
+}
+
+.venta-edicion__field input:focus {
+  outline: none;
+  border-color: #2f6fed;
+  box-shadow: 0 0 0 3px rgba(47, 111, 237, 0.18);
+  background: #ffffff;
+}
+
+.venta-edicion button {
+  padding: 0.6rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #ffffff;
+  background: #2f6fed;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.venta-edicion button:disabled {
+  background: #9db4e8;
+  cursor: not-allowed;
+}
+
+.venta-edicion__banner {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.venta-edicion__banner--success {
+  background: #e7f7ee;
+  color: #12805c;
+  border: 1px solid #b7ecd3;
+}
+
+.venta-edicion__banner--error {
+  background: #fdecec;
+  color: #b3261e;
+  border: 1px solid #f6c6c3;
+}
+
+.venta-edicion__banner--warning {
+  background: #fff6e5;
+  color: #8a5a00;
+  border: 1px solid #f5dfa3;
+}
+
+.venta-edicion__table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #ffffff;
+  border: 1px solid #e2e5ea;
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.venta-edicion__table th,
+.venta-edicion__table td {
+  text-align: left;
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid #e2e5ea;
+  font-size: 0.9rem;
+}
+
+.venta-edicion__table th {
+  background: #f4f6fa;
+  font-weight: 600;
+  color: #333a47;
+}
+
+.venta-edicion__table td button {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.85rem;
+  background: #b3261e;
+}
+
+.venta-edicion__total {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-align: right;
+}
+
+.venta-edicion__actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.venta-edicion__confirm-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.venta-edicion__cancel {
+  color: #333a47 !important;
+  background: #eceff3 !important;
+}

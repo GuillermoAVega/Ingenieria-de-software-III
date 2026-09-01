@@ -60,7 +60,7 @@ def test_registrar_venta_exitosa_con_un_item(client):
 
     assert response.status_code == 201
     body = response.json()["sale"]
-    assert body["status"] == "Confirmada"
+    assert body["status"] == "Borrador"
     assert body["total"] == 701.0
     assert body["customer"]["dni"] == 30111222
     assert len(body["items"]) == 1
@@ -69,7 +69,7 @@ def test_registrar_venta_exitosa_con_un_item(client):
     assert body["items"][0]["subtotal"] == 701.0
 
     producto = client.get("/productos/ABC123").json()["product"]
-    assert producto["stock"] == 98
+    assert producto["stock"] == 100
 
 
 def test_registrar_venta_exitosa_con_varios_items(client):
@@ -207,7 +207,7 @@ def test_registrar_venta_con_cantidad_mayor_al_stock_se_registra_igual(client):
 
     assert response.status_code == 201
     producto = client.get("/productos/ABC123").json()["product"]
-    assert producto["stock"] == -4
+    assert producto["stock"] == 1
 
 
 def _registrar_venta(client, quantity="2"):
@@ -221,8 +221,23 @@ def _registrar_venta(client, quantity="2"):
     return response.json()["sale"]["id"]
 
 
-def test_buscar_venta_confirmada_devuelve_sus_datos(client):
+def _registrar_y_cerrar_venta(client, quantity="2"):
+    sale_id = _registrar_venta(client, quantity=quantity)
+    client.patch(f"/ventas/{sale_id}/cerrar")
+    return sale_id
+
+
+def test_buscar_venta_en_borrador_devuelve_sus_datos(client):
     sale_id = _registrar_venta(client)
+
+    response = client.get(f"/ventas/{sale_id}")
+
+    assert response.status_code == 200
+    assert response.json()["sale"]["status"] == "Borrador"
+
+
+def test_buscar_venta_confirmada_devuelve_sus_datos(client):
+    sale_id = _registrar_y_cerrar_venta(client)
 
     response = client.get(f"/ventas/{sale_id}")
 
@@ -231,7 +246,7 @@ def test_buscar_venta_confirmada_devuelve_sus_datos(client):
 
 
 def test_buscar_venta_anulada_informa_su_estado(client):
-    sale_id = _registrar_venta(client)
+    sale_id = _registrar_y_cerrar_venta(client)
     client.patch(f"/ventas/{sale_id}/anular")
 
     response = client.get(f"/ventas/{sale_id}")
@@ -250,7 +265,7 @@ def test_buscar_venta_inexistente_devuelve_404(client):
 
 
 def test_anular_venta_exitosa_repone_stock(client):
-    sale_id = _registrar_venta(client, quantity="2")
+    sale_id = _registrar_y_cerrar_venta(client, quantity="2")
     producto_antes = client.get("/productos/ABC123").json()["product"]
     assert producto_antes["stock"] == 98
 
@@ -275,7 +290,7 @@ def test_anular_venta_inexistente_devuelve_404(client):
 
 
 def test_anular_venta_ya_anulada_devuelve_422_sin_duplicar_stock(client):
-    sale_id = _registrar_venta(client, quantity="2")
+    sale_id = _registrar_y_cerrar_venta(client, quantity="2")
     client.patch(f"/ventas/{sale_id}/anular")
     producto_tras_primera = client.get("/productos/ABC123").json()["product"]
     assert producto_tras_primera["stock"] == 100
@@ -289,3 +304,159 @@ def test_anular_venta_ya_anulada_devuelve_422_sin_duplicar_stock(client):
 
     producto_tras_segunda = client.get("/productos/ABC123").json()["product"]
     assert producto_tras_segunda["stock"] == 100
+
+
+def test_anular_venta_en_borrador_devuelve_422_sin_tocar_stock(client):
+    sale_id = _registrar_venta(client, quantity="2")
+    producto_antes = client.get("/productos/ABC123").json()["product"]
+    assert producto_antes["stock"] == 100
+
+    response = client.patch(f"/ventas/{sale_id}/anular")
+
+    assert response.status_code == 422
+    assert response.json()["errors"] == [
+        {"field": "id", "message": "No se puede anular una venta en Borrador"}
+    ]
+
+    producto_despues = client.get("/productos/ABC123").json()["product"]
+    assert producto_despues["stock"] == 100
+
+
+def test_reemplazar_detalle_venta_exitoso(client):
+    sale_id = _registrar_venta(client, quantity="2")
+    other_product = dict(VALID_PRODUCT_PAYLOAD, sku="XYZ999", unit_price="200", stock="50")
+    client.post("/productos", json=other_product)
+
+    payload = {"items": [{"sku": "XYZ999", "quantity": "3", "unit_price": "200"}]}
+    response = client.put(f"/ventas/{sale_id}/detalle", json=payload)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["message"] == "Detalle actualizado exitosamente"
+    assert body["sale"]["total"] == 600.0
+    assert len(body["sale"]["items"]) == 1
+    assert body["sale"]["items"][0]["sku"] == "XYZ999"
+
+
+def test_reemplazar_detalle_venta_inexistente_devuelve_404(client):
+    response = client.put("/ventas/999/detalle", json={"items": []})
+
+    assert response.status_code == 404
+    assert response.json()["errors"] == [
+        {"field": "id", "message": "Venta no encontrada"}
+    ]
+
+
+def test_reemplazar_detalle_venta_no_editable_devuelve_422(client):
+    sale_id = _registrar_y_cerrar_venta(client, quantity="2")
+
+    response = client.put(f"/ventas/{sale_id}/detalle", json={"items": []})
+
+    assert response.status_code == 422
+    assert response.json()["errors"] == [
+        {"field": "id", "message": "La venta ya no admite modificaciones"}
+    ]
+
+
+def test_reemplazar_detalle_venta_admite_lista_vacia(client):
+    sale_id = _registrar_venta(client, quantity="2")
+
+    response = client.put(f"/ventas/{sale_id}/detalle", json={"items": []})
+
+    assert response.status_code == 200
+    body = response.json()["sale"]
+    assert body["items"] == []
+    assert body["total"] == 0
+
+
+def test_reemplazar_detalle_venta_reporta_todos_los_errores_combinados(client):
+    sale_id = _registrar_venta(client, quantity="2")
+    inactive_product = dict(VALID_PRODUCT_PAYLOAD, sku="INACT1", unit_price="50", stock="10")
+    client.post("/productos", json=inactive_product)
+    client.patch("/productos/INACT1/baja")
+    poco_stock = dict(VALID_PRODUCT_PAYLOAD, sku="POCO1", unit_price="10", stock="1")
+    client.post("/productos", json=poco_stock)
+
+    payload = {
+        "items": [
+            {"sku": "INACT1", "quantity": "1", "unit_price": "50"},
+            {"sku": "POCO1", "quantity": "5", "unit_price": "10"},
+            {"sku": "ABC123", "quantity": "0", "unit_price": "350.50"},
+        ]
+    }
+    response = client.put(f"/ventas/{sale_id}/detalle", json=payload)
+
+    assert response.status_code == 422
+    campos = {error["field"] for error in response.json()["errors"]}
+    assert campos == {"items[0].sku", "items[1].quantity", "items[2].quantity"}
+
+    sin_cambios = client.get(f"/ventas/{sale_id}").json()["sale"]
+    assert len(sin_cambios["items"]) == 1
+    assert sin_cambios["items"][0]["sku"] == "ABC123"
+
+
+def test_cerrar_venta_exitoso(client):
+    sale_id = _registrar_venta(client, quantity="2")
+
+    response = client.patch(f"/ventas/{sale_id}/cerrar")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["message"] == "Venta cerrada exitosamente"
+    assert body["sale"]["status"] == "Confirmada"
+
+    producto = client.get("/productos/ABC123").json()["product"]
+    assert producto["stock"] == 98
+
+
+def test_cerrar_venta_inexistente_devuelve_404(client):
+    response = client.patch("/ventas/999/cerrar")
+
+    assert response.status_code == 404
+    assert response.json()["errors"] == [
+        {"field": "id", "message": "Venta no encontrada"}
+    ]
+
+
+def test_cerrar_venta_ya_no_esta_en_borrador_devuelve_422(client):
+    sale_id = _registrar_y_cerrar_venta(client, quantity="2")
+
+    response = client.patch(f"/ventas/{sale_id}/cerrar")
+
+    assert response.status_code == 422
+    assert response.json()["errors"] == [
+        {"field": "id", "message": "La venta ya no se encuentra en Borrador"}
+    ]
+
+
+def test_cerrar_venta_con_detalle_vacio_devuelve_422(client):
+    sale_id = _registrar_venta(client, quantity="2")
+    client.put(f"/ventas/{sale_id}/detalle", json={"items": []})
+
+    response = client.patch(f"/ventas/{sale_id}/cerrar")
+
+    assert response.status_code == 422
+    assert response.json()["errors"] == [
+        {"field": "items", "message": "La venta debe tener al menos un ítem"}
+    ]
+
+
+def test_cerrar_venta_con_stock_insuficiente_devuelve_422_sin_descontar(client):
+    sale_id = _registrar_venta(client, quantity="2")
+
+    other_payload = {
+        "dni": "30111222",
+        "items": [{"sku": "ABC123", "quantity": "99", "unit_price": "350.50"}],
+    }
+    otra_venta_id = client.post("/ventas", json=other_payload).json()["sale"]["id"]
+    client.patch(f"/ventas/{otra_venta_id}/cerrar")
+
+    response = client.patch(f"/ventas/{sale_id}/cerrar")
+
+    assert response.status_code == 422
+    assert response.json()["errors"] == [
+        {"field": "items", "message": "No hay stock suficiente para completar la operación"}
+    ]
+
+    sin_cambios = client.get(f"/ventas/{sale_id}").json()["sale"]
+    assert sin_cambios["status"] == "Borrador"

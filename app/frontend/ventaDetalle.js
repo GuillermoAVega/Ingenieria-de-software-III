@@ -66,3 +66,12 @@ export function addItem(items, candidate) {
 export function computeTotal(items) {
   return items.reduce((total, item) => total + item.quantity * item.unitPrice, 0);
 }
+
+/**
+ * @param {VentaItem[]} items
+ * @param {string} sku
+ * @returns {VentaItem[]}
+ */
+export function removeItem(items, sku) {
+  return items.filter((item) => item.sku !== sku);
+}

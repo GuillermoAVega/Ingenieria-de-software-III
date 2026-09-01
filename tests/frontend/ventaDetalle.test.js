@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { addItem, computeTotal } from "../../app/frontend/ventaDetalle.js";
+import { addItem, computeTotal, removeItem } from "../../app/frontend/ventaDetalle.js";
 
 const PRODUCT = { sku: "ABC123", name: "Coca-Cola 500ml", unitPrice: 350.5, stock: 10 };
 
@@ -70,5 +70,28 @@ describe("computeTotal", () => {
 
   it("devuelve 0 para un detalle vacío", () => {
     expect(computeTotal([])).toBe(0);
+  });
+});
+
+describe("removeItem", () => {
+  it("quita el ítem con el SKU indicado", () => {
+    const items = [
+      { sku: "ABC123", name: "Coca-Cola 500ml", unitPrice: 350.5, quantity: 2 },
+      { sku: "XYZ999", name: "Otro producto", unitPrice: 200, quantity: 3 },
+    ];
+
+    const result = removeItem(items, "ABC123");
+
+    expect(result).toEqual([
+      { sku: "XYZ999", name: "Otro producto", unitPrice: 200, quantity: 3 },
+    ]);
+  });
+
+  it("no falla si el SKU no está en la lista", () => {
+    const items = [{ sku: "ABC123", name: "Coca-Cola 500ml", unitPrice: 350.5, quantity: 2 }];
+
+    const result = removeItem(items, "NOEXISTE");
+
+    expect(result).toEqual(items);
   });
 });
