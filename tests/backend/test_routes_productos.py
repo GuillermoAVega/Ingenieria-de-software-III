@@ -152,3 +152,80 @@ def test_sku_y_nombre_con_espacios_se_recortan_antes_de_persistir(client):
     body = response.json()
     assert body["product"]["sku"] == "ABC123"
     assert body["product"]["name"] == "Coca-Cola 500ml"
+
+
+def test_alta_producto_asigna_estado_activo_por_defecto(client):
+    response = client.post("/productos", json=VALID_PAYLOAD)
+
+    assert response.json()["product"]["status"] == "Activo"
+
+
+def test_buscar_producto_activo_devuelve_sus_datos(client):
+    client.post("/productos", json=VALID_PAYLOAD)
+
+    response = client.get("/productos/ABC123")
+
+    assert response.status_code == 200
+    assert response.json()["product"]["status"] == "Activo"
+
+
+def test_buscar_producto_inexistente_devuelve_404(client):
+    response = client.get("/productos/ABC123")
+
+    assert response.status_code == 404
+    assert response.json()["errors"] == [
+        {"field": "sku", "message": "Producto no encontrado"}
+    ]
+
+
+def test_baja_producto_activo_con_stock_alto_no_modifica_el_stock(client):
+    payload = dict(VALID_PAYLOAD, stock="500")
+    client.post("/productos", json=payload)
+
+    response = client.patch("/productos/ABC123/baja")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["message"] == "Producto dado de baja exitosamente"
+    assert body["product"]["status"] == "Inactivo"
+    assert body["product"]["stock"] == 500
+
+
+def test_baja_producto_inexistente_devuelve_404(client):
+    response = client.patch("/productos/ABC123/baja")
+
+    assert response.status_code == 404
+    assert response.json()["errors"] == [
+        {"field": "sku", "message": "Producto no encontrado"}
+    ]
+
+
+def test_baja_directa_sobre_producto_ya_inactivo_no_falla(client):
+    client.post("/productos", json=VALID_PAYLOAD)
+    client.patch("/productos/ABC123/baja")
+
+    response = client.patch("/productos/ABC123/baja")
+
+    assert response.status_code == 200
+    assert response.json()["product"]["status"] == "Inactivo"
+
+
+def test_alta_nueva_reutiliza_sku_de_producto_inactivo(client):
+    client.post("/productos", json=VALID_PAYLOAD)
+    client.patch("/productos/ABC123/baja")
+
+    response = client.post("/productos", json=dict(VALID_PAYLOAD, name="Producto nuevo"))
+
+    assert response.status_code == 201
+    assert response.json()["product"]["name"] == "Producto nuevo"
+
+
+def test_alta_nueva_sigue_bloqueada_contra_sku_de_producto_activo(client):
+    client.post("/productos", json=VALID_PAYLOAD)
+
+    response = client.post("/productos", json=dict(VALID_PAYLOAD, name="Otro"))
+
+    assert response.status_code == 422
+    assert response.json()["errors"] == [
+        {"field": "sku", "message": "El código de producto está duplicado"}
+    ]

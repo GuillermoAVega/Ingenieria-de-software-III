@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { altaProducto } from "../../app/frontend/api/productosApi.js";
+import {
+  altaProducto,
+  buscarProducto,
+  darDeBajaProducto,
+} from "../../app/frontend/api/productosApi.js";
 
 const VALID_INPUT = {
   sku: "ABC123",
@@ -50,6 +54,77 @@ describe("altaProducto", () => {
     expect(result).toEqual({
       success: false,
       errors: [{ field: "sku", message: "El código de producto está duplicado" }],
+    });
+  });
+});
+
+describe("buscarProducto", () => {
+  it("devuelve success y el producto encontrado ante una respuesta 200", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ product: { sku: "ABC123", status: "Activo" } }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    const result = await buscarProducto("ABC123");
+
+    expect(result).toEqual({ success: true, product: { sku: "ABC123", status: "Activo" } });
+    expect(mockFetch).toHaveBeenCalledWith("/productos/ABC123");
+  });
+
+  it("devuelve success:false y la advertencia ante una respuesta 404", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({
+        errors: [{ field: "sku", message: "Producto no encontrado" }],
+      }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    const result = await buscarProducto("ABC123");
+
+    expect(result).toEqual({
+      success: false,
+      errors: [{ field: "sku", message: "Producto no encontrado" }],
+    });
+  });
+});
+
+describe("darDeBajaProducto", () => {
+  it("devuelve success y el mensaje ante una respuesta 200", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        message: "Producto dado de baja exitosamente",
+        product: { sku: "ABC123", status: "Inactivo" },
+      }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    const result = await darDeBajaProducto("ABC123");
+
+    expect(result).toEqual({
+      success: true,
+      message: "Producto dado de baja exitosamente",
+      product: { sku: "ABC123", status: "Inactivo" },
+    });
+    expect(mockFetch).toHaveBeenCalledWith("/productos/ABC123/baja", { method: "PATCH" });
+  });
+
+  it("devuelve success:false y la advertencia ante una respuesta 404", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({
+        errors: [{ field: "sku", message: "Producto no encontrado" }],
+      }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    const result = await darDeBajaProducto("ABC123");
+
+    expect(result).toEqual({
+      success: false,
+      errors: [{ field: "sku", message: "Producto no encontrado" }],
     });
   });
 });

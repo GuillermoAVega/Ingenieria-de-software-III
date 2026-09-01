@@ -14,6 +14,8 @@ SUCCESS_MESSAGE = "Producto registrado exitosamente"
 REQUIRED_FIELD_MESSAGE = "El campo es obligatorio"
 POSITIVE_NUMBER_MESSAGE = "El valor debe ser un número positivo"
 DUPLICATE_SKU_MESSAGE = "El código de producto está duplicado"
+PRODUCT_NOT_FOUND_MESSAGE = "Producto no encontrado"
+BAJA_SUCCESS_MESSAGE = "Producto dado de baja exitosamente"
 
 _REQUIRED_FIELDS = ("sku", "name", "brand", "unit_price", "stock")
 _TEXT_FIELDS = ("sku", "name", "brand", "description")
@@ -27,6 +29,7 @@ def _serialize_product(product: Product) -> dict[str, Any]:
         "description": product.description,
         "unit_price": product.unit_price,
         "stock": product.stock,
+        "status": product.status.value,
     }
 
 
@@ -91,6 +94,49 @@ def alta_producto(
         status_code=201,
         content={
             "message": SUCCESS_MESSAGE,
+            "product": _serialize_product(product),
+        },
+    )
+
+
+@router.get("/productos/{sku}")
+def buscar_producto(
+    sku: str, session: Session = Depends(get_session)
+) -> JSONResponse:
+    product = repository_producto.find_by_sku(session, sku)
+
+    if product is None:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "errors": [{"field": "sku", "message": PRODUCT_NOT_FOUND_MESSAGE}]
+            },
+        )
+
+    return JSONResponse(
+        status_code=200,
+        content={"product": _serialize_product(product)},
+    )
+
+
+@router.patch("/productos/{sku}/baja")
+def baja_producto(
+    sku: str, session: Session = Depends(get_session)
+) -> JSONResponse:
+    product = repository_producto.deactivate_by_sku(session, sku)
+
+    if product is None:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "errors": [{"field": "sku", "message": PRODUCT_NOT_FOUND_MESSAGE}]
+            },
+        )
+
+    return JSONResponse(
+        status_code=200,
+        content={
+            "message": BAJA_SUCCESS_MESSAGE,
             "product": _serialize_product(product),
         },
     )

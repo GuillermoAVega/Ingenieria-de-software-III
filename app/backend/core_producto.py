@@ -10,3 +10,10 @@ def validate_positive_integer(value: str) -> bool:
         return int(value) > 0
     except (TypeError, ValueError):
         return False
+
+
+ACTIVE_STATUS = "Activo"
+
+
+def initial_status() -> str:
+    return ACTIVE_STATUS

@@ -35,3 +35,7 @@ def test_validate_positive_integer_invalido_decimal():
 
 def test_validate_positive_integer_invalido_no_numerico():
     assert core_producto.validate_positive_integer("abc") is False
+
+
+def test_initial_status_es_activo():
+    assert core_producto.initial_status() == "Activo"

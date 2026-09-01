@@ -1,8 +1,5 @@
-import pytest
-from sqlalchemy.exc import IntegrityError
-
 from app.backend.database import Base, create_db_engine, create_session_factory
-from app.backend.models import ClientStatus, Customer, Product
+from app.backend.models import ClientStatus, Customer, Product, ProductStatus
 
 
 def test_crear_tablas_sin_errores():
@@ -10,7 +7,7 @@ def test_crear_tablas_sin_errores():
     Base.metadata.create_all(engine)
 
 
-def test_sku_unico_rechaza_duplicado_exacto():
+def test_sku_no_es_unico_a_nivel_de_base():
     engine = create_db_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
     session = create_session_factory(engine)()
@@ -23,6 +20,7 @@ def test_sku_unico_rechaza_duplicado_exacto():
             description="Botella descartable",
             unit_price=350.5,
             stock=100,
+            status=ProductStatus.INACTIVE,
         )
     )
     session.commit()
@@ -35,10 +33,13 @@ def test_sku_unico_rechaza_duplicado_exacto():
             description=None,
             unit_price=10.0,
             stock=5,
+            status=ProductStatus.ACTIVE,
         )
     )
-    with pytest.raises(IntegrityError):
-        session.commit()
+    session.commit()
+
+    stored = session.query(Product).filter_by(sku="ABC123").all()
+    assert len(stored) == 2
 
 
 def test_dni_no_es_unico_a_nivel_de_base():

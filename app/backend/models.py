@@ -22,13 +22,19 @@ class Customer(Base):
     status = Column(SqlEnum(ClientStatus), nullable=False, default=ClientStatus.ACTIVE)
 
 
+class ProductStatus(str, enum.Enum):
+    ACTIVE = "Activo"
+    INACTIVE = "Inactivo"
+
+
 class Product(Base):
     __tablename__ = "products"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    sku = Column(String, unique=True, nullable=False, index=True)
+    sku = Column(String, nullable=False, index=True)
     name = Column(String, nullable=False)
     brand = Column(String, nullable=False)
     description = Column(String, nullable=True)
     unit_price = Column(Float, nullable=False)
     stock = Column(Integer, nullable=False)
+    status = Column(SqlEnum(ProductStatus), nullable=False)
