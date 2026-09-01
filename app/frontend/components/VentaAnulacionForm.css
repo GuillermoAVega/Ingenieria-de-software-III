@@ -1,0 +1,151 @@
+.venta-anulacion {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+  max-width: 28rem;
+  margin: 0 auto;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  color: #1f2430;
+}
+
+.venta-anulacion__search {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  box-sizing: border-box;
+  background: #ffffff;
+  border: 1px solid #e2e5ea;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+
+.venta-anulacion__intro {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #566072;
+}
+
+.venta-anulacion__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.venta-anulacion__field label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333a47;
+}
+
+.venta-anulacion__field input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.6rem 0.75rem;
+  font-size: 1rem;
+  border: 1px solid #cbd2dc;
+  border-radius: 0.5rem;
+  background: #fbfbfd;
+}
+
+.venta-anulacion__field input:focus {
+  outline: none;
+  border-color: #2f6fed;
+  box-shadow: 0 0 0 3px rgba(47, 111, 237, 0.18);
+  background: #ffffff;
+}
+
+.venta-anulacion__search button[type="submit"] {
+  padding: 0.7rem 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ffffff;
+  background: #2f6fed;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.venta-anulacion__search button[type="submit"]:disabled {
+  background: #9db4e8;
+  cursor: not-allowed;
+}
+
+.venta-anulacion__banner {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.venta-anulacion__banner--success {
+  background: #e7f7ee;
+  color: #12805c;
+  border: 1px solid #b7ecd3;
+}
+
+.venta-anulacion__banner--error {
+  background: #fdecec;
+  color: #b3261e;
+  border: 1px solid #f6c6c3;
+}
+
+.venta-anulacion__banner--warning {
+  background: #fff6e5;
+  color: #8a5a00;
+  border: 1px solid #f5dfa3;
+}
+
+.venta-anulacion__confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  box-sizing: border-box;
+  background: #ffffff;
+  border: 1px solid #e2e5ea;
+  border-radius: 0.75rem;
+}
+
+.venta-anulacion__confirm-summary {
+  margin: 0;
+  font-weight: 600;
+}
+
+.venta-anulacion__confirm-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.venta-anulacion__confirm-actions button {
+  padding: 0.6rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  border: none;
+}
+
+.venta-anulacion__confirm-actions button[type="button"]:first-child {
+  color: #ffffff;
+  background: #b3261e;
+}
+
+.venta-anulacion__cancel {
+  color: #333a47;
+  background: #eceff3;
+}
+
+@media (min-width: 640px) {
+  .venta-anulacion__search,
+  .venta-anulacion__confirm {
+    padding: 2rem;
+  }
+}

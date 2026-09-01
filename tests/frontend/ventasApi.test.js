@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { registrarVenta } from "../../app/frontend/api/ventasApi.js";
+import {
+  anularVenta,
+  buscarVenta,
+  registrarVenta,
+} from "../../app/frontend/api/ventasApi.js";
 
 const VALID_INPUT = {
   dni: "30111222",
@@ -50,6 +54,77 @@ describe("registrarVenta", () => {
     expect(result).toEqual({
       success: false,
       errors: [{ field: "dni", message: "Cliente no encontrado" }],
+    });
+  });
+});
+
+describe("buscarVenta", () => {
+  it("devuelve success y la venta encontrada ante una respuesta 200", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ sale: { id: 1, status: "Confirmada" } }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    const result = await buscarVenta(1);
+
+    expect(result).toEqual({ success: true, sale: { id: 1, status: "Confirmada" } });
+    expect(mockFetch).toHaveBeenCalledWith("/ventas/1");
+  });
+
+  it("devuelve success:false y la advertencia ante una respuesta 404", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({
+        errors: [{ field: "id", message: "Venta no encontrada" }],
+      }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    const result = await buscarVenta(999);
+
+    expect(result).toEqual({
+      success: false,
+      errors: [{ field: "id", message: "Venta no encontrada" }],
+    });
+  });
+});
+
+describe("anularVenta", () => {
+  it("devuelve success y el mensaje ante una respuesta 200", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        message: "Venta anulada exitosamente",
+        sale: { id: 1, status: "Anulada" },
+      }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    const result = await anularVenta(1);
+
+    expect(result).toEqual({
+      success: true,
+      message: "Venta anulada exitosamente",
+      sale: { id: 1, status: "Anulada" },
+    });
+    expect(mockFetch).toHaveBeenCalledWith("/ventas/1/anular", { method: "PATCH" });
+  });
+
+  it("devuelve success:false y la advertencia ante una respuesta 422", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({
+        errors: [{ field: "id", message: "La venta ya se encuentra anulada" }],
+      }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    const result = await anularVenta(1);
+
+    expect(result).toEqual({
+      success: false,
+      errors: [{ field: "id", message: "La venta ya se encuentra anulada" }],
     });
   });
 });

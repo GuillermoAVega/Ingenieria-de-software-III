@@ -15,6 +15,9 @@ CUSTOMER_NOT_FOUND_MESSAGE = "Cliente no encontrado"
 PRODUCT_NOT_FOUND_MESSAGE = "Producto no encontrado"
 POSITIVE_NUMBER_MESSAGE = "El valor debe ser un número positivo"
 EMPTY_ITEMS_MESSAGE = "La venta debe tener al menos un ítem"
+SALE_NOT_FOUND_MESSAGE = "Venta no encontrada"
+CANCEL_SUCCESS_MESSAGE = "Venta anulada exitosamente"
+ALREADY_CANCELLED_MESSAGE = "La venta ya se encuentra anulada"
 
 
 def _serialize_sale(session: Session, sale: Sale) -> dict[str, Any]:
@@ -103,6 +106,47 @@ def registrar_venta(
         status_code=201,
         content={
             "message": SUCCESS_MESSAGE,
+            "sale": _serialize_sale(session, sale),
+        },
+    )
+
+
+@router.get("/ventas/{sale_id}")
+def buscar_venta(sale_id: int, session: Session = Depends(get_session)) -> JSONResponse:
+    sale = repository_venta.find_by_id(session, sale_id)
+
+    if sale is None:
+        return JSONResponse(
+            status_code=404,
+            content={"errors": [{"field": "id", "message": SALE_NOT_FOUND_MESSAGE}]},
+        )
+
+    return JSONResponse(
+        status_code=200,
+        content={"sale": _serialize_sale(session, sale)},
+    )
+
+
+@router.patch("/ventas/{sale_id}/anular")
+def anular_venta(sale_id: int, session: Session = Depends(get_session)) -> JSONResponse:
+    sale, already_cancelled = repository_venta.cancel_sale(session, sale_id)
+
+    if sale is None:
+        return JSONResponse(
+            status_code=404,
+            content={"errors": [{"field": "id", "message": SALE_NOT_FOUND_MESSAGE}]},
+        )
+
+    if already_cancelled:
+        return JSONResponse(
+            status_code=422,
+            content={"errors": [{"field": "id", "message": ALREADY_CANCELLED_MESSAGE}]},
+        )
+
+    return JSONResponse(
+        status_code=200,
+        content={
+            "message": CANCEL_SUCCESS_MESSAGE,
             "sale": _serialize_sale(session, sale),
         },
     )

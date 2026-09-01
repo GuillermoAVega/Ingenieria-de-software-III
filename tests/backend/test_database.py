@@ -132,3 +132,32 @@ def test_dni_no_es_unico_a_nivel_de_base():
 
     stored = session.query(Customer).filter_by(dni=30111222).all()
     assert len(stored) == 2
+
+
+def test_venta_puede_persistirse_anulada():
+    engine = create_db_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    session = create_session_factory(engine)()
+
+    customer = Customer(
+        dni=30111222,
+        first_name="Juan",
+        last_name="Perez",
+        email="juan@dominio.com",
+        phone="11-4444-5555",
+        status=ClientStatus.ACTIVE,
+    )
+    session.add(customer)
+    session.flush()
+
+    sale = Sale(
+        customer_id=customer.id,
+        sale_date=datetime(2026, 9, 1, 12, 0, 0),
+        total=701.0,
+        status=SaleStatus.CANCELLED,
+    )
+    session.add(sale)
+    session.commit()
+
+    stored = session.query(Sale).filter_by(id=sale.id).one()
+    assert stored.status == SaleStatus.CANCELLED

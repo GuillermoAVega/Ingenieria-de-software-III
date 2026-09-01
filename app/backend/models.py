@@ -42,6 +42,7 @@ class Product(Base):
 
 class SaleStatus(str, enum.Enum):
     CONFIRMED = "Confirmada"
+    CANCELLED = "Anulada"
 
 
 class Sale(Base):

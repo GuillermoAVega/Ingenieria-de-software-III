@@ -208,3 +208,84 @@ def test_registrar_venta_con_cantidad_mayor_al_stock_se_registra_igual(client):
     assert response.status_code == 201
     producto = client.get("/productos/ABC123").json()["product"]
     assert producto["stock"] == -4
+
+
+def _registrar_venta(client, quantity="2"):
+    client.post("/clientes", json=VALID_CLIENT_PAYLOAD)
+    client.post("/productos", json=VALID_PRODUCT_PAYLOAD)
+    payload = {
+        "dni": "30111222",
+        "items": [{"sku": "ABC123", "quantity": quantity, "unit_price": "350.50"}],
+    }
+    response = client.post("/ventas", json=payload)
+    return response.json()["sale"]["id"]
+
+
+def test_buscar_venta_confirmada_devuelve_sus_datos(client):
+    sale_id = _registrar_venta(client)
+
+    response = client.get(f"/ventas/{sale_id}")
+
+    assert response.status_code == 200
+    assert response.json()["sale"]["status"] == "Confirmada"
+
+
+def test_buscar_venta_anulada_informa_su_estado(client):
+    sale_id = _registrar_venta(client)
+    client.patch(f"/ventas/{sale_id}/anular")
+
+    response = client.get(f"/ventas/{sale_id}")
+
+    assert response.status_code == 200
+    assert response.json()["sale"]["status"] == "Anulada"
+
+
+def test_buscar_venta_inexistente_devuelve_404(client):
+    response = client.get("/ventas/999")
+
+    assert response.status_code == 404
+    assert response.json()["errors"] == [
+        {"field": "id", "message": "Venta no encontrada"}
+    ]
+
+
+def test_anular_venta_exitosa_repone_stock(client):
+    sale_id = _registrar_venta(client, quantity="2")
+    producto_antes = client.get("/productos/ABC123").json()["product"]
+    assert producto_antes["stock"] == 98
+
+    response = client.patch(f"/ventas/{sale_id}/anular")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["message"] == "Venta anulada exitosamente"
+    assert body["sale"]["status"] == "Anulada"
+
+    producto_despues = client.get("/productos/ABC123").json()["product"]
+    assert producto_despues["stock"] == 100
+
+
+def test_anular_venta_inexistente_devuelve_404(client):
+    response = client.patch("/ventas/999/anular")
+
+    assert response.status_code == 404
+    assert response.json()["errors"] == [
+        {"field": "id", "message": "Venta no encontrada"}
+    ]
+
+
+def test_anular_venta_ya_anulada_devuelve_422_sin_duplicar_stock(client):
+    sale_id = _registrar_venta(client, quantity="2")
+    client.patch(f"/ventas/{sale_id}/anular")
+    producto_tras_primera = client.get("/productos/ABC123").json()["product"]
+    assert producto_tras_primera["stock"] == 100
+
+    response = client.patch(f"/ventas/{sale_id}/anular")
+
+    assert response.status_code == 422
+    assert response.json()["errors"] == [
+        {"field": "id", "message": "La venta ya se encuentra anulada"}
+    ]
+
+    producto_tras_segunda = client.get("/productos/ABC123").json()["product"]
+    assert producto_tras_segunda["stock"] == 100
