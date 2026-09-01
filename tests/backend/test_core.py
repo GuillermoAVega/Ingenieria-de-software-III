@@ -91,3 +91,32 @@ def test_try_normalize_dni_devuelve_none_ante_letras():
 
 def test_try_normalize_dni_devuelve_none_ante_puntos():
     assert core.try_normalize_dni("30.111.222") is None
+
+
+def test_normalize_search_text_ignora_mayusculas():
+    assert core.normalize_search_text("Perez") == core.normalize_search_text("perez")
+
+
+def test_normalize_search_text_ignora_tildes():
+    assert core.normalize_search_text("ÑOÑO") == core.normalize_search_text("ñoño")
+    assert core.normalize_search_text("Pérez") == core.normalize_search_text("Perez")
+
+
+def test_matches_search_por_nombre():
+    query = core.normalize_search_text("jua")
+    assert core.matches_search(query, dni=30111222, first_name="Juan", last_name="Perez") is True
+
+
+def test_matches_search_por_apellido():
+    query = core.normalize_search_text("pere")
+    assert core.matches_search(query, dni=30111222, first_name="Juan", last_name="Perez") is True
+
+
+def test_matches_search_por_dni_parcial():
+    query = core.normalize_search_text("301112")
+    assert core.matches_search(query, dni=30111222, first_name="Juan", last_name="Perez") is True
+
+
+def test_matches_search_sin_coincidencia():
+    query = core.normalize_search_text("gomez")
+    assert core.matches_search(query, dni=30111222, first_name="Juan", last_name="Perez") is False

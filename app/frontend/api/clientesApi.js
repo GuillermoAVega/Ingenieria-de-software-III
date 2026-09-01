@@ -74,6 +74,13 @@
  * @property {FieldError[]} errors
  */
 
+/**
+ * @typedef {Object} ClienteListadoResult
+ * @property {Cliente[]} customers
+ * @property {number} page
+ * @property {boolean} hasNext
+ */
+
 const CLIENTES_ENDPOINT = "/clientes";
 
 /**
@@ -118,6 +125,28 @@ export async function editarCliente(dni, input) {
   }
 
   return { success: false, errors: body.errors };
+}
+
+/**
+ * @param {{ q?: string, page?: number }} [options]
+ * @returns {Promise<ClienteListadoResult>}
+ */
+export async function listarClientes(options = {}) {
+  const { q, page } = options;
+  const params = new URLSearchParams();
+  if (q) {
+    params.set("q", q);
+  }
+  if (page) {
+    params.set("page", String(page));
+  }
+  const queryString = params.toString();
+  const url = queryString ? `${CLIENTES_ENDPOINT}?${queryString}` : CLIENTES_ENDPOINT;
+
+  const response = await fetch(url);
+  const body = await response.json();
+
+  return { customers: body.customers, page: body.page, hasNext: body.has_next };
 }
 
 /**

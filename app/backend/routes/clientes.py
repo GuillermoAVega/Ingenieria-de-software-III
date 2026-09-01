@@ -1,6 +1,6 @@
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
@@ -96,6 +96,24 @@ def alta_cliente(
         content={
             "message": SUCCESS_MESSAGE,
             "customer": _serialize_customer(customer),
+        },
+    )
+
+
+@router.get("/clientes")
+def listar_clientes(
+    q: str | None = None,
+    page: int = Query(1, ge=1),
+    session: Session = Depends(get_session),
+) -> JSONResponse:
+    customers, has_next = repository.list_customers(session, query=q, page=page)
+
+    return JSONResponse(
+        status_code=200,
+        content={
+            "customers": [_serialize_customer(customer) for customer in customers],
+            "page": page,
+            "has_next": has_next,
         },
     )
 

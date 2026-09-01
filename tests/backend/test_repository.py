@@ -321,3 +321,111 @@ def test_deactivate_by_dni_sobre_cliente_ya_inactivo_no_lanza_error(session):
 
     assert deactivated_again is not None
     assert deactivated_again.status == ClientStatus.INACTIVE
+
+
+def test_list_customers_sin_filtro_incluye_activos_e_inactivos(session):
+    repository.create_customer(
+        session,
+        dni="30111222",
+        first_name="Juan",
+        last_name="Perez",
+        email="juan@dominio.com",
+        phone="11-4444-5555",
+    )
+    repository.create_customer(
+        session,
+        dni="41234567",
+        first_name="Ana",
+        last_name="Lopez",
+        email="ana@dominio.com",
+        phone="11-2222-3333",
+    )
+    repository.deactivate_by_dni(session, "41234567")
+
+    customers, has_next = repository.list_customers(session, query=None, page=1)
+
+    assert {c.dni for c in customers} == {30111222, 41234567}
+    assert has_next is False
+
+
+def test_list_customers_filtra_por_criterio_insensible_a_tildes(session):
+    repository.create_customer(
+        session,
+        dni="30111222",
+        first_name="Juan",
+        last_name="Pérez",
+        email="juan@dominio.com",
+        phone="11-4444-5555",
+    )
+    repository.create_customer(
+        session,
+        dni="41234567",
+        first_name="Ana",
+        last_name="Lopez",
+        email="ana@dominio.com",
+        phone="11-2222-3333",
+    )
+
+    customers, _ = repository.list_customers(session, query="perez", page=1)
+
+    assert [c.dni for c in customers] == [30111222]
+
+
+def test_list_customers_filtra_por_dni_parcial(session):
+    repository.create_customer(
+        session,
+        dni="30111222",
+        first_name="Juan",
+        last_name="Perez",
+        email="juan@dominio.com",
+        phone="11-4444-5555",
+    )
+    repository.create_customer(
+        session,
+        dni="41234567",
+        first_name="Ana",
+        last_name="Lopez",
+        email="ana@dominio.com",
+        phone="11-2222-3333",
+    )
+
+    customers, _ = repository.list_customers(session, query="301112", page=1)
+
+    assert [c.dni for c in customers] == [30111222]
+
+
+def test_list_customers_sin_coincidencias_devuelve_lista_vacia(session):
+    repository.create_customer(
+        session,
+        dni="30111222",
+        first_name="Juan",
+        last_name="Perez",
+        email="juan@dominio.com",
+        phone="11-4444-5555",
+    )
+
+    customers, has_next = repository.list_customers(session, query="gomez", page=1)
+
+    assert customers == []
+    assert has_next is False
+
+
+def test_list_customers_pagina_de_a_veinte(session):
+    for i in range(25):
+        repository.create_customer(
+            session,
+            dni=str(30000000 + i),
+            first_name="Cliente",
+            last_name=f"Apellido{i:02d}",
+            email=f"cliente{i}@dominio.com",
+            phone="11-4444-5555",
+        )
+
+    page_1, has_next_1 = repository.list_customers(session, query=None, page=1)
+    page_2, has_next_2 = repository.list_customers(session, query=None, page=2)
+
+    assert len(page_1) == 20
+    assert has_next_1 is True
+    assert len(page_2) == 5
+    assert has_next_2 is False
+    assert {c.dni for c in page_1}.isdisjoint({c.dni for c in page_2})

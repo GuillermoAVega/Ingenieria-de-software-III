@@ -1,4 +1,5 @@
 import re
+import unicodedata
 
 _NAME_PATTERN = re.compile(r"[A-Za-zÁÉÍÓÚáéíóúÑñ ]+")
 _EMAIL_PATTERN = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
@@ -41,3 +42,21 @@ def try_normalize_dni(value: str) -> int | None:
 
 def initial_status() -> str:
     return ACTIVE_STATUS
+
+
+def normalize_search_text(value: str) -> str:
+    decomposed = unicodedata.normalize("NFKD", value)
+    without_accents = "".join(
+        char for char in decomposed if not unicodedata.combining(char)
+    )
+    return without_accents.lower()
+
+
+def matches_search(
+    normalized_query: str, *, dni: int, first_name: str, last_name: str
+) -> bool:
+    if normalized_query in normalize_search_text(first_name):
+        return True
+    if normalized_query in normalize_search_text(last_name):
+        return True
+    return normalized_query in str(dni)

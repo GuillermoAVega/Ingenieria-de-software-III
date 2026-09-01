@@ -271,3 +271,63 @@ def test_buscar_cliente_con_dni_compartido_devuelve_el_activo(client):
     assert response.status_code == 200
     assert response.json()["customer"]["status"] == "Activo"
     assert response.json()["customer"]["first_name"] == VALID_PAYLOAD["first_name"]
+
+
+def test_listar_clientes_sin_filtro_devuelve_todos(client):
+    client.post("/clientes", json=VALID_PAYLOAD)
+    client.post("/clientes", json=OTHER_PAYLOAD)
+    client.patch(f"/clientes/{OTHER_PAYLOAD['dni']}/baja")
+
+    response = client.get("/clientes")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert {c["dni"] for c in body["customers"]} == {
+        int(VALID_PAYLOAD["dni"]),
+        int(OTHER_PAYLOAD["dni"]),
+    }
+    assert body["page"] == 1
+    assert body["has_next"] is False
+
+
+def test_listar_clientes_con_filtro_insensible_a_tildes(client):
+    client.post("/clientes", json=VALID_PAYLOAD)
+    client.post("/clientes", json=OTHER_PAYLOAD)
+
+    response = client.get("/clientes", params={"q": "PEREZ"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [c["dni"] for c in body["customers"]] == [int(VALID_PAYLOAD["dni"])]
+
+
+def test_listar_clientes_sin_coincidencias_devuelve_lista_vacia(client):
+    client.post("/clientes", json=VALID_PAYLOAD)
+
+    response = client.get("/clientes", params={"q": "gomez"})
+
+    assert response.status_code == 200
+    assert response.json()["customers"] == []
+
+
+def test_listar_clientes_pagina_2_devuelve_el_resto(client):
+    for i in range(25):
+        response = client.post(
+            "/clientes",
+            json={
+                "dni": str(30000000 + i),
+                "first_name": "Cliente",
+                "last_name": "Apellido",
+                "email": f"cliente{i}@dominio.com",
+                "phone": "11-4444-5555",
+            },
+        )
+        assert response.status_code == 201
+
+    response = client.get("/clientes", params={"page": 2})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["customers"]) == 5
+    assert body["page"] == 2
+    assert body["has_next"] is False

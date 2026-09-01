@@ -5,6 +5,7 @@ import {
   buscarCliente,
   darDeBajaCliente,
   editarCliente,
+  listarClientes,
 } from "../../app/frontend/api/clientesApi.js";
 
 const VALID_INPUT = {
@@ -174,5 +175,40 @@ describe("editarCliente", () => {
       success: false,
       errors: [{ field: "dni", message: "El DNI ya está en uso" }],
     });
+  });
+});
+
+describe("listarClientes", () => {
+  it("llama a /clientes sin parámetros cuando no se pasa q ni page", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        customers: [{ dni: 30111222, status: "Activo" }],
+        page: 1,
+        has_next: false,
+      }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    const result = await listarClientes();
+
+    expect(result).toEqual({
+      customers: [{ dni: 30111222, status: "Activo" }],
+      page: 1,
+      hasNext: false,
+    });
+    expect(mockFetch).toHaveBeenCalledWith("/clientes");
+  });
+
+  it("llama a /clientes con q y page cuando se pasan", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ customers: [], page: 2, has_next: false }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    await listarClientes({ q: "perez", page: 2 });
+
+    expect(mockFetch).toHaveBeenCalledWith("/clientes?q=perez&page=2");
   });
 });

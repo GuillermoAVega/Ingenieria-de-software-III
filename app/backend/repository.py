@@ -72,6 +72,40 @@ def deactivate_by_dni(session: Session, dni: str) -> Customer | None:
     return customer
 
 
+def list_customers(
+    session: Session, query: str | None, page: int, page_size: int = 20
+) -> tuple[list[Customer], bool]:
+    all_customers = (
+        session.query(Customer)
+        .order_by(Customer.last_name, Customer.first_name)
+        .all()
+    )
+
+    if query:
+        normalized_query = core.normalize_search_text(
+            core.trim_leading_trailing_space(query)
+        )
+        matching = [
+            customer
+            for customer in all_customers
+            if core.matches_search(
+                normalized_query,
+                dni=customer.dni,
+                first_name=customer.first_name,
+                last_name=customer.last_name,
+            )
+        ]
+    else:
+        matching = all_customers
+
+    start = (page - 1) * page_size
+    end = start + page_size
+    page_items = matching[start:end]
+    has_next = len(matching) > end
+
+    return page_items, has_next
+
+
 def create_customer(
     session: Session,
     dni: str,
