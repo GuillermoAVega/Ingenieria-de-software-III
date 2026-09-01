@@ -69,6 +69,23 @@ La base de datos es un único archivo SQLite. Para empezar de cero,
 detené el backend y borrá `app/backend/database.db`; se vuelve a crear
 vacía en el próximo arranque.
 
+### Cargar datos ficticios
+
+Para tener algo con qué probar la app sin cargar todo a mano, hay un
+script que inserta 25 clientes, 25 productos y 25 ventas (confirmadas,
+con clientes que tienen varias compras) en `app/backend/database.db`:
+
+```bash
+source .venv/bin/activate
+python -m app.backend.scripts.seed_datos_ficticios
+```
+
+Es idempotente: correrlo de nuevo no duplica clientes ni productos, y
+solo agrega ventas hasta completar 25 en total. También se puede
+cargar cada entidad por separado con
+`app.backend.scripts.seed_clientes_ficticios`,
+`seed_productos_ficticios` o `seed_ventas_ficticias`.
+
 ## Correr las pruebas
 
 ```bash
