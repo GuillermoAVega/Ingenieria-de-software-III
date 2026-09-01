@@ -2,11 +2,11 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { anularVenta, buscarVenta } from "../../app/frontend/api/ventasApi.js";
+import { anularVenta, buscarVentasDeCliente } from "../../app/frontend/api/ventasApi.js";
 import { VentaAnulacionForm } from "../../app/frontend/components/VentaAnulacionForm.jsx";
 
 vi.mock("../../app/frontend/api/ventasApi.js", () => ({
-  buscarVenta: vi.fn(),
+  buscarVentasDeCliente: vi.fn(),
   anularVenta: vi.fn(),
 }));
 
@@ -14,30 +14,30 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-async function buscar(user, id = "1") {
-  await user.type(screen.getByLabelText("ID de la venta"), id);
-  await user.click(screen.getByRole("button", { name: "Buscar venta" }));
+async function buscar(user, dni = "30111222") {
+  await user.type(screen.getByLabelText("DNI del cliente"), dni);
+  await user.click(screen.getByRole("button", { name: "Buscar ventas" }));
 }
 
 describe("VentaAnulacionForm", () => {
-  it("muestra 'venta no encontrada' y no renderiza botones de confirmación", async () => {
-    buscarVenta.mockResolvedValue({
+  it("muestra 'Cliente no encontrado' y no renderiza la lista", async () => {
+    buscarVentasDeCliente.mockResolvedValue({
       success: false,
-      errors: [{ field: "id", message: "Venta no encontrada" }],
+      errors: [{ field: "dni", message: "Cliente no encontrado" }],
     });
     const user = userEvent.setup();
     render(<VentaAnulacionForm />);
 
     await buscar(user);
 
-    expect(await screen.findByText("Venta no encontrada")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Confirmar" })).not.toBeInTheDocument();
+    expect(await screen.findByText("Cliente no encontrado")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Anular" })).not.toBeInTheDocument();
   });
 
-  it("muestra 'ya se encuentra anulada' y no llama a anularVenta para una venta Anulada", async () => {
-    buscarVenta.mockResolvedValue({
+  it("muestra el mensaje de sin ventas confirmadas cuando el cliente no tiene ninguna", async () => {
+    buscarVentasDeCliente.mockResolvedValue({
       success: true,
-      sale: { id: 1, total: 701, status: "Anulada" },
+      sales: [{ id: 1, sale_date: "2026-01-01", status: "Borrador", total: 100 }],
     });
     const user = userEvent.setup();
     render(<VentaAnulacionForm />);
@@ -45,68 +45,116 @@ describe("VentaAnulacionForm", () => {
     await buscar(user);
 
     expect(
-      await screen.findByText("La venta ya se encuentra anulada")
+      await screen.findByText("El cliente no tiene ventas confirmadas para anular")
     ).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Confirmar" })).not.toBeInTheDocument();
-    expect(anularVenta).not.toHaveBeenCalled();
   });
 
-  it("muestra el detalle de la venta y los botones Confirmar/Cancelar para una venta Confirmada", async () => {
-    buscarVenta.mockResolvedValue({
+  it("lista todas las ventas Confirmada del cliente", async () => {
+    buscarVentasDeCliente.mockResolvedValue({
       success: true,
-      sale: { id: 1, total: 701, status: "Confirmada" },
+      sales: [
+        { id: 1, sale_date: "2026-01-15", status: "Confirmada", total: 701 },
+        { id: 2, sale_date: "2026-01-10", status: "Confirmada", total: 200 },
+        { id: 3, sale_date: "2026-01-05", status: "Borrador", total: 50 },
+      ],
     });
     const user = userEvent.setup();
     render(<VentaAnulacionForm />);
 
     await buscar(user);
 
-    expect(await screen.findByText("Venta #1 — Total 701")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Confirmar" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Cancelar" })).toBeInTheDocument();
+    expect(await screen.findByText("701")).toBeInTheDocument();
+    expect(screen.getByText("200")).toBeInTheDocument();
+    expect(screen.queryByText("50")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Anular" })).toHaveLength(2);
+  });
+
+  it("presionar 'Anular' en una fila abre la confirmación con los datos de esa venta", async () => {
+    buscarVentasDeCliente.mockResolvedValue({
+      success: true,
+      sales: [
+        { id: 1, sale_date: "2026-01-15", status: "Confirmada", total: 701 },
+        { id: 2, sale_date: "2026-01-10", status: "Confirmada", total: 200 },
+      ],
+    });
+    const user = userEvent.setup();
+    render(<VentaAnulacionForm />);
+
+    await buscar(user);
+    await screen.findByText("701");
+    const filas = screen.getAllByRole("button", { name: "Anular" });
+    await user.click(filas[1]);
+
+    expect(await screen.findByText("Venta #2 — Total 200")).toBeInTheDocument();
   });
 
   it("al confirmar, llama a anularVenta y muestra el mensaje de éxito", async () => {
-    buscarVenta.mockResolvedValue({
+    buscarVentasDeCliente.mockResolvedValue({
       success: true,
-      sale: { id: 1, total: 701, status: "Confirmada" },
+      sales: [{ id: 1, sale_date: "2026-01-15", status: "Confirmada", total: 701 }],
     });
     anularVenta.mockResolvedValue({
       success: true,
       message: "Venta anulada exitosamente",
-      sale: { id: 1, total: 701, status: "Anulada" },
+      sale: { id: 1, status: "Anulada" },
     });
     const user = userEvent.setup();
     render(<VentaAnulacionForm />);
 
     await buscar(user);
+    await user.click(await screen.findByRole("button", { name: "Anular" }));
     await user.click(await screen.findByRole("button", { name: "Confirmar" }));
 
-    expect(anularVenta).toHaveBeenCalledWith("1");
+    expect(anularVenta).toHaveBeenCalledWith(1);
     expect(
       await screen.findByText("Venta anulada exitosamente")
     ).toBeInTheDocument();
   });
 
-  it("al cancelar, no llama a anularVenta y oculta la confirmación", async () => {
-    buscarVenta.mockResolvedValue({
+  it("tras anular con éxito, vuelve a pedir la lista del mismo DNI", async () => {
+    buscarVentasDeCliente
+      .mockResolvedValueOnce({
+        success: true,
+        sales: [{ id: 1, sale_date: "2026-01-15", status: "Confirmada", total: 701 }],
+      })
+      .mockResolvedValueOnce({ success: true, sales: [] });
+    anularVenta.mockResolvedValue({
       success: true,
-      sale: { id: 1, total: 701, status: "Confirmada" },
+      message: "Venta anulada exitosamente",
+      sale: { id: 1, status: "Anulada" },
     });
     const user = userEvent.setup();
     render(<VentaAnulacionForm />);
 
     await buscar(user);
+    await user.click(await screen.findByRole("button", { name: "Anular" }));
+    await user.click(await screen.findByRole("button", { name: "Confirmar" }));
+
+    await screen.findByText("Venta anulada exitosamente");
+    expect(buscarVentasDeCliente).toHaveBeenCalledTimes(2);
+    expect(buscarVentasDeCliente).toHaveBeenLastCalledWith("30111222");
+  });
+
+  it("al cancelar, no llama a anularVenta y conserva la lista", async () => {
+    buscarVentasDeCliente.mockResolvedValue({
+      success: true,
+      sales: [{ id: 1, sale_date: "2026-01-15", status: "Confirmada", total: 701 }],
+    });
+    const user = userEvent.setup();
+    render(<VentaAnulacionForm />);
+
+    await buscar(user);
+    await user.click(await screen.findByRole("button", { name: "Anular" }));
     await user.click(await screen.findByRole("button", { name: "Cancelar" }));
 
     expect(anularVenta).not.toHaveBeenCalled();
-    expect(screen.queryByRole("button", { name: "Confirmar" })).not.toBeInTheDocument();
+    expect(screen.getByText("701")).toBeInTheDocument();
   });
 
-  it("si el backend rechaza al confirmar (ya anulada por otra vía), muestra ese mensaje en vez de éxito", async () => {
-    buscarVenta.mockResolvedValue({
+  it("si el backend rechaza al confirmar (condición de carrera), muestra ese mensaje en vez de éxito", async () => {
+    buscarVentasDeCliente.mockResolvedValue({
       success: true,
-      sale: { id: 1, total: 701, status: "Confirmada" },
+      sales: [{ id: 1, sale_date: "2026-01-15", status: "Confirmada", total: 701 }],
     });
     anularVenta.mockResolvedValue({
       success: false,
@@ -116,6 +164,7 @@ describe("VentaAnulacionForm", () => {
     render(<VentaAnulacionForm />);
 
     await buscar(user);
+    await user.click(await screen.findByRole("button", { name: "Anular" }));
     await user.click(await screen.findByRole("button", { name: "Confirmar" }));
 
     expect(

@@ -451,3 +451,63 @@ def test_list_sales_pagina_de_a_veinte(session):
     ids_1 = {sale.id for sale, _ in page_1}
     ids_2 = {sale.id for sale, _ in page_2}
     assert ids_1.isdisjoint(ids_2)
+
+
+def test_find_sales_by_customer_dni_trae_ventas_en_todos_los_estados(session):
+    customer = _create_customer(session)
+    product = _create_product(session, stock="1000")
+
+    draft = repository_venta.create_sale(session, customer, [(product, 1, product.unit_price)])
+    draft.sale_date = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    session.commit()
+    confirmed = _create_confirmed_sale(
+        session, customer, product, sale_date=datetime(2026, 1, 10, tzinfo=timezone.utc)
+    )
+    cancelled = _create_confirmed_sale(
+        session, customer, product, sale_date=datetime(2026, 1, 20, tzinfo=timezone.utc)
+    )
+    repository_venta.cancel_sale(session, cancelled.id)
+
+    found, sales = repository_venta.find_sales_by_customer_dni(session, "30111222")
+
+    assert found is True
+    assert [sale.id for sale in sales] == [cancelled.id, confirmed.id, draft.id]
+
+
+def test_find_sales_by_customer_dni_inexistente(session):
+    found, sales = repository_venta.find_sales_by_customer_dni(session, "30111222")
+
+    assert found is False
+    assert sales == []
+
+
+def test_find_sales_by_customer_dni_sin_ventas(session):
+    _create_customer(session)
+
+    found, sales = repository_venta.find_sales_by_customer_dni(session, "30111222")
+
+    assert found is True
+    assert sales == []
+
+
+def test_find_sales_by_customer_dni_incluye_clientes_activo_e_inactivo(session):
+    product = _create_product(session, stock="1000")
+
+    old_customer = _create_customer(session, dni="30111222")
+    old_sale = repository_venta.create_sale(session, old_customer, [(product, 1, product.unit_price)])
+    repository.deactivate_by_dni(session, "30111222")
+
+    new_customer = repository.create_customer(
+        session,
+        dni="30111222",
+        first_name="Ana",
+        last_name="Diaz",
+        email="ana@dominio.com",
+        phone="222",
+    )
+    new_sale = repository_venta.create_sale(session, new_customer, [(product, 1, product.unit_price)])
+
+    found, sales = repository_venta.find_sales_by_customer_dni(session, "30111222")
+
+    assert found is True
+    assert {sale.id for sale in sales} == {old_sale.id, new_sale.id}

@@ -198,6 +198,34 @@ def listar_ventas(
     )
 
 
+@router.get("/ventas/cliente/{dni}")
+def buscar_ventas_de_cliente(
+    dni: str, session: Session = Depends(get_session)
+) -> JSONResponse:
+    found, sales = repository_venta.find_sales_by_customer_dni(session, dni)
+
+    if not found:
+        return JSONResponse(
+            status_code=404,
+            content={"errors": [{"field": "dni", "message": CUSTOMER_NOT_FOUND_MESSAGE}]},
+        )
+
+    return JSONResponse(
+        status_code=200,
+        content={
+            "sales": [
+                {
+                    "id": sale.id,
+                    "sale_date": sale.sale_date.isoformat(),
+                    "status": sale.status.value,
+                    "total": sale.total,
+                }
+                for sale in sales
+            ]
+        },
+    )
+
+
 @router.get("/ventas/{sale_id}")
 def buscar_venta(sale_id: int, session: Session = Depends(get_session)) -> JSONResponse:
     sale = repository_venta.find_by_id(session, sale_id)

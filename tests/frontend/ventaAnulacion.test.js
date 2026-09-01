@@ -1,33 +1,50 @@
 import { describe, expect, it } from "vitest";
 
-import { ANULACION_STATE, evaluateAnulacionResult } from "../../app/frontend/ventaAnulacion.js";
+import {
+  ANULACION_STATE,
+  evaluateClienteSalesParaAnular,
+} from "../../app/frontend/ventaAnulacion.js";
 
-describe("evaluateAnulacionResult", () => {
-  it("devuelve NOT_FOUND cuando la búsqueda no encuentra la venta", () => {
-    const result = evaluateAnulacionResult({
+describe("evaluateClienteSalesParaAnular", () => {
+  it("devuelve CLIENT_NOT_FOUND cuando la búsqueda falla", () => {
+    const result = evaluateClienteSalesParaAnular({
       success: false,
-      errors: [{ field: "id", message: "Venta no encontrada" }],
+      errors: [{ field: "dni", message: "Cliente no encontrado" }],
     });
 
-    expect(result.state).toBe(ANULACION_STATE.NOT_FOUND);
-    expect(result.message).toBe("Venta no encontrada");
+    expect(result.state).toBe(ANULACION_STATE.CLIENT_NOT_FOUND);
+    expect(result.message).toBe("Cliente no encontrado");
   });
 
-  it("devuelve REQUIRES_CONFIRMATION cuando la venta está Confirmada", () => {
-    const sale = { id: 1, status: "Confirmada" };
+  it("devuelve NO_CONFIRMED_SALES cuando el cliente no tiene ventas", () => {
+    const result = evaluateClienteSalesParaAnular({ success: true, sales: [] });
 
-    const result = evaluateAnulacionResult({ success: true, sale });
-
-    expect(result.state).toBe(ANULACION_STATE.REQUIRES_CONFIRMATION);
-    expect(result.sale).toEqual(sale);
+    expect(result.state).toBe(ANULACION_STATE.NO_CONFIRMED_SALES);
+    expect(result.message).toBe("El cliente no tiene ventas confirmadas para anular");
   });
 
-  it("devuelve ALREADY_CANCELLED cuando la venta ya está Anulada", () => {
-    const sale = { id: 1, status: "Anulada" };
+  it("devuelve NO_CONFIRMED_SALES cuando el cliente solo tiene ventas en otros estados", () => {
+    const sales = [
+      { id: 1, sale_date: "2026-01-01T00:00:00", status: "Borrador", total: 100 },
+      { id: 2, sale_date: "2026-01-02T00:00:00", status: "Anulada", total: 200 },
+    ];
 
-    const result = evaluateAnulacionResult({ success: true, sale });
+    const result = evaluateClienteSalesParaAnular({ success: true, sales });
 
-    expect(result.state).toBe(ANULACION_STATE.ALREADY_CANCELLED);
-    expect(result.message).toBe("La venta ya se encuentra anulada");
+    expect(result.state).toBe(ANULACION_STATE.NO_CONFIRMED_SALES);
+  });
+
+  it("devuelve SALES_LIST solo con las ventas Confirmada", () => {
+    const sales = [
+      { id: 1, sale_date: "2026-01-01T00:00:00", status: "Borrador", total: 100 },
+      { id: 2, sale_date: "2026-01-02T00:00:00", status: "Confirmada", total: 200 },
+      { id: 3, sale_date: "2026-01-03T00:00:00", status: "Confirmada", total: 300 },
+      { id: 4, sale_date: "2026-01-04T00:00:00", status: "Anulada", total: 400 },
+    ];
+
+    const result = evaluateClienteSalesParaAnular({ success: true, sales });
+
+    expect(result.state).toBe(ANULACION_STATE.SALES_LIST);
+    expect(result.sales.map((sale) => sale.id)).toEqual([2, 3]);
   });
 });

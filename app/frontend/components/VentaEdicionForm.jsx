@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { buscarProductosParaVenta } from "../api/productosApi.js";
-import { buscarVenta, cerrarVenta, reemplazarDetalleVenta } from "../api/ventasApi.js";
+import { buscarVenta, buscarVentasDeCliente, cerrarVenta, reemplazarDetalleVenta } from "../api/ventasApi.js";
 import {
   POSITIVE_NUMBER_MESSAGE,
   addItem,
@@ -9,7 +9,12 @@ import {
   removeItem,
   validateQuantityFormat,
 } from "../ventaDetalle.js";
-import { EDICION_STATE, evaluateEdicionResult } from "../ventaEdicion.js";
+import {
+  CLIENTE_SALES_STATE,
+  EDICION_STATE,
+  evaluateClienteSalesParaModificar,
+  evaluateEdicionResult,
+} from "../ventaEdicion.js";
 import "./VentaEdicionForm.css";
 
 const NO_PRODUCTS_FOUND_MESSAGE = "No se encontraron productos";
@@ -29,14 +34,19 @@ function toVentaDetalleItems(items) {
 }
 
 /**
- * Formulario de modificación de venta (HU-VEN-03): búsqueda por ID,
- * edición del detalle de una venta en "Borrador" (agregar/quitar
- * productos) y cierre definitivo.
+ * Formulario de modificación de venta (HU-VEN-03, HU-VEN-06): búsqueda
+ * de las ventas de un cliente por DNI, elección de una en Borrador
+ * (ícono de editar) para editar su detalle (agregar/quitar productos)
+ * y cierre definitivo.
  * @returns {import("react").JSX.Element}
  */
 export function VentaEdicionForm() {
-  const [idInput, setIdInput] = useState("");
-  const [isSearching, setIsSearching] = useState(false);
+  const [dniInput, setDniInput] = useState("");
+  const [isSearchingClient, setIsSearchingClient] = useState(false);
+  const [clienteEvaluation, setClienteEvaluation] = useState(
+    /** @type {import("../ventaEdicion.js").ClienteSalesEvaluation | null} */ (null)
+  );
+
   const [editState, setEditState] = useState(
     /** @type {import("../ventaEdicion.js").EdicionEvaluation | null} */ (null)
   );
@@ -103,27 +113,54 @@ export function VentaEdicionForm() {
     /** @type {import("../api/ventasApi.js").Venta | null} */ (null)
   );
 
-  /** @param {import("react").FormEvent<HTMLFormElement>} event */
-  async function handleSearch(event) {
-    event.preventDefault();
-    setIsSearching(true);
+  function resetEditing() {
     setEditState(null);
-    setConfirmedSale(null);
+    setSaleId(null);
+    setItems([]);
+    setProductQuery("");
+    setSelectedProduct(null);
+    setProductResults([]);
+    setHasSearchedProducts(false);
+    setQuantityInput("");
+    setItemError("");
     setSaveMessage("");
     setSaveErrors([]);
+    setShowCloseConfirm(false);
     setCloseMessage("");
     setCloseError("");
+    setConfirmedSale(null);
+  }
+
+  /** @param {import("react").FormEvent<HTMLFormElement>} event */
+  async function handleSearchClient(event) {
+    event.preventDefault();
+    setIsSearchingClient(true);
+    setClienteEvaluation(null);
+    resetEditing();
     try {
-      const result = await buscarVenta(idInput);
-      const evaluation = evaluateEdicionResult(result);
-      setEditState(evaluation);
-      if (evaluation.state === EDICION_STATE.EDITABLE && evaluation.sale) {
-        setSaleId(evaluation.sale.id);
-        setItems(toVentaDetalleItems(evaluation.sale.items));
-      }
+      const result = await buscarVentasDeCliente(dniInput);
+      setClienteEvaluation(evaluateClienteSalesParaModificar(result));
     } finally {
-      setIsSearching(false);
+      setIsSearchingClient(false);
     }
+  }
+
+  /** @param {number} id */
+  async function handleSelectSaleToEdit(id) {
+    setEditState(null);
+    const result = await buscarVenta(id);
+    const evaluation = evaluateEdicionResult(result);
+    setEditState(evaluation);
+    if (evaluation.state === EDICION_STATE.EDITABLE && evaluation.sale) {
+      setSaleId(evaluation.sale.id);
+      setItems(toVentaDetalleItems(evaluation.sale.items));
+    }
+  }
+
+  async function handleBackToList() {
+    resetEditing();
+    const result = await buscarVentasDeCliente(dniInput);
+    setClienteEvaluation(evaluateClienteSalesParaModificar(result));
   }
 
   /** @param {import("react").FormEvent<HTMLFormElement>} event */
@@ -219,28 +256,74 @@ export function VentaEdicionForm() {
 
   return (
     <div className="venta-edicion">
-      <form className="venta-edicion__search" onSubmit={handleSearch} noValidate>
+      <form className="venta-edicion__search" onSubmit={handleSearchClient} noValidate>
         <p className="venta-edicion__intro">
-          Ingresá el ID de la venta que querés modificar.
+          Ingresá el DNI del cliente para ver sus ventas.
         </p>
 
         <div className="venta-edicion__field">
-          <label htmlFor="edicion-id">ID de la venta</label>
+          <label htmlFor="edicion-dni">DNI del cliente</label>
           <input
-            id="edicion-id"
-            name="id"
+            id="edicion-dni"
+            name="dni"
             type="text"
             inputMode="numeric"
             autoComplete="off"
-            value={idInput}
-            onChange={(event) => setIdInput(event.target.value)}
+            value={dniInput}
+            onChange={(event) => setDniInput(event.target.value)}
           />
         </div>
 
-        <button type="submit" disabled={isSearching || !idInput}>
-          {isSearching ? "Buscando…" : "Buscar venta"}
+        <button type="submit" disabled={isSearchingClient || !dniInput}>
+          {isSearchingClient ? "Buscando…" : "Buscar ventas"}
         </button>
       </form>
+
+      {!editState && clienteEvaluation?.state === CLIENTE_SALES_STATE.CLIENT_NOT_FOUND && (
+        <p className="venta-edicion__banner venta-edicion__banner--error" role="alert">
+          {clienteEvaluation.message}
+        </p>
+      )}
+
+      {!editState && clienteEvaluation?.state === CLIENTE_SALES_STATE.NO_SALES && (
+        <p className="venta-edicion__banner venta-edicion__banner--warning" role="alert">
+          {clienteEvaluation.message}
+        </p>
+      )}
+
+      {!editState && clienteEvaluation?.state === CLIENTE_SALES_STATE.SALES_LIST && (
+        <table className="venta-edicion__client-sales-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Fecha</th>
+              <th>Estado</th>
+              <th>Total</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {(clienteEvaluation.sales ?? []).map((sale) => (
+              <tr key={sale.id}>
+                <td>{sale.id}</td>
+                <td>{sale.sale_date}</td>
+                <td>{sale.status}</td>
+                <td>{sale.total}</td>
+                <td>
+                  <button
+                    type="button"
+                    aria-label={`Editar venta ${sale.id}`}
+                    disabled={sale.status !== "Borrador"}
+                    onClick={() => handleSelectSaleToEdit(sale.id)}
+                  >
+                    Editar
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
 
       {editState?.state === EDICION_STATE.NOT_FOUND && (
         <p className="venta-edicion__banner venta-edicion__banner--error" role="alert">
@@ -258,6 +341,12 @@ export function VentaEdicionForm() {
         <p className="venta-edicion__banner venta-edicion__banner--success" role="status">
           {closeMessage}
         </p>
+      )}
+
+      {editState && (
+        <button type="button" onClick={handleBackToList}>
+          Volver a la lista
+        </button>
       )}
 
       {isEditable && (

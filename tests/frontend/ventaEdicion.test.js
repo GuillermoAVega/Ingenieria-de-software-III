@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { EDICION_STATE, evaluateEdicionResult } from "../../app/frontend/ventaEdicion.js";
+import {
+  CLIENTE_SALES_STATE,
+  EDICION_STATE,
+  evaluateClienteSalesParaModificar,
+  evaluateEdicionResult,
+} from "../../app/frontend/ventaEdicion.js";
 
 describe("evaluateEdicionResult", () => {
   it("devuelve NOT_FOUND cuando la búsqueda falla", () => {
@@ -38,5 +43,37 @@ describe("evaluateEdicionResult", () => {
 
     expect(result.state).toBe(EDICION_STATE.EDITABLE);
     expect(result.sale).toBe(sale);
+  });
+});
+
+describe("evaluateClienteSalesParaModificar", () => {
+  it("devuelve CLIENT_NOT_FOUND cuando la búsqueda falla", () => {
+    const result = evaluateClienteSalesParaModificar({
+      success: false,
+      errors: [{ field: "dni", message: "Cliente no encontrado" }],
+    });
+
+    expect(result.state).toBe(CLIENTE_SALES_STATE.CLIENT_NOT_FOUND);
+    expect(result.message).toBe("Cliente no encontrado");
+  });
+
+  it("devuelve NO_SALES cuando el cliente no tiene ninguna venta", () => {
+    const result = evaluateClienteSalesParaModificar({ success: true, sales: [] });
+
+    expect(result.state).toBe(CLIENTE_SALES_STATE.NO_SALES);
+    expect(result.message).toBe("El cliente no tiene ventas registradas");
+  });
+
+  it("devuelve SALES_LIST con todas las ventas, conservando su status", () => {
+    const sales = [
+      { id: 1, sale_date: "2026-01-01T00:00:00", status: "Borrador", total: 100 },
+      { id: 2, sale_date: "2026-01-02T00:00:00", status: "Confirmada", total: 200 },
+      { id: 3, sale_date: "2026-01-03T00:00:00", status: "Anulada", total: 300 },
+    ];
+
+    const result = evaluateClienteSalesParaModificar({ success: true, sales });
+
+    expect(result.state).toBe(CLIENTE_SALES_STATE.SALES_LIST);
+    expect(result.sales).toEqual(sales);
   });
 });

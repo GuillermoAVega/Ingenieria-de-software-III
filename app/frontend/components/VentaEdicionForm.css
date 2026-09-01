@@ -161,6 +161,34 @@
   border: 1px solid #f5dfa3;
 }
 
+.venta-edicion__client-sales-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #ffffff;
+  border: 1px solid #e2e5ea;
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.venta-edicion__client-sales-table th,
+.venta-edicion__client-sales-table td {
+  text-align: left;
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid #e2e5ea;
+  font-size: 0.9rem;
+}
+
+.venta-edicion__client-sales-table th {
+  background: #f4f6fa;
+  font-weight: 600;
+  color: #333a47;
+}
+
+.venta-edicion__client-sales-table td button:disabled {
+  background: #cbd2dc;
+  cursor: not-allowed;
+}
+
 .venta-edicion__table {
   width: 100%;
   border-collapse: collapse;

@@ -2,12 +2,35 @@ from datetime import date, datetime, timezone
 
 from sqlalchemy.orm import Session
 
-from app.backend import core_venta
+from app.backend import core, core_venta
 from app.backend.models import Customer, Product, Sale, SaleItem, SaleStatus
 
 
 def find_by_id(session: Session, sale_id: int) -> Sale | None:
     return session.query(Sale).filter_by(id=sale_id).first()
+
+
+def find_sales_by_customer_dni(
+    session: Session, dni: str
+) -> tuple[bool, list[Sale]]:
+    normalized_dni = core.try_normalize_dni(dni)
+    if normalized_dni is None:
+        return False, []
+
+    customer_ids = [
+        customer.id
+        for customer in session.query(Customer).filter(Customer.dni == normalized_dni).all()
+    ]
+    if not customer_ids:
+        return False, []
+
+    sales = (
+        session.query(Sale)
+        .filter(Sale.customer_id.in_(customer_ids))
+        .order_by(Sale.sale_date.desc())
+        .all()
+    )
+    return True, sales
 
 
 def list_sales(

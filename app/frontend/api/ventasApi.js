@@ -122,6 +122,26 @@
  * @property {FieldError[]} errors
  */
 
+/**
+ * @typedef {Object} VentaClienteResumen
+ * @property {number} id
+ * @property {string} sale_date
+ * @property {"Borrador" | "Confirmada" | "Anulada"} status
+ * @property {number} total
+ */
+
+/**
+ * @typedef {Object} VentasDeClienteSuccess
+ * @property {true} success
+ * @property {VentaClienteResumen[]} sales
+ */
+
+/**
+ * @typedef {Object} VentasDeClienteFailure
+ * @property {false} success
+ * @property {FieldError[]} errors
+ */
+
 const VENTAS_ENDPOINT = "/ventas";
 
 /**
@@ -245,6 +265,22 @@ export async function cerrarVenta(id) {
 
   if (response.ok) {
     return { success: true, message: body.message, sale: body.sale };
+  }
+
+  return { success: false, errors: body.errors };
+}
+
+/**
+ * @param {string} dni
+ * @returns {Promise<VentasDeClienteSuccess | VentasDeClienteFailure>}
+ */
+export async function buscarVentasDeCliente(dni) {
+  const response = await fetch(`${VENTAS_ENDPOINT}/cliente/${encodeURIComponent(dni)}`);
+
+  const body = await response.json();
+
+  if (response.ok) {
+    return { success: true, sales: body.sales };
   }
 
   return { success: false, errors: body.errors };

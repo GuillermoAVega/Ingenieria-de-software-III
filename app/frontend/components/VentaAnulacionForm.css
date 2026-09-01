@@ -103,6 +103,40 @@
   border: 1px solid #f5dfa3;
 }
 
+.venta-anulacion__table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #ffffff;
+  border: 1px solid #e2e5ea;
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.venta-anulacion__table th,
+.venta-anulacion__table td {
+  text-align: left;
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid #e2e5ea;
+  font-size: 0.9rem;
+}
+
+.venta-anulacion__table th {
+  background: #f4f6fa;
+  font-weight: 600;
+  color: #333a47;
+}
+
+.venta-anulacion__table td button {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #ffffff;
+  background: #b3261e;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
 .venta-anulacion__confirm {
   display: flex;
   flex-direction: column;

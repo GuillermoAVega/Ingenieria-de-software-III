@@ -6,7 +6,12 @@ import {
   buscarProducto,
   buscarProductosParaVenta,
 } from "../../app/frontend/api/productosApi.js";
-import { buscarVenta, cerrarVenta, reemplazarDetalleVenta } from "../../app/frontend/api/ventasApi.js";
+import {
+  buscarVenta,
+  buscarVentasDeCliente,
+  cerrarVenta,
+  reemplazarDetalleVenta,
+} from "../../app/frontend/api/ventasApi.js";
 import { VentaEdicionForm } from "../../app/frontend/components/VentaEdicionForm.jsx";
 
 vi.mock("../../app/frontend/api/productosApi.js", () => ({
@@ -15,9 +20,13 @@ vi.mock("../../app/frontend/api/productosApi.js", () => ({
 }));
 vi.mock("../../app/frontend/api/ventasApi.js", () => ({
   buscarVenta: vi.fn(),
+  buscarVentasDeCliente: vi.fn(),
   reemplazarDetalleVenta: vi.fn(),
   cerrarVenta: vi.fn(),
 }));
+
+const DRAFT_SALE_SUMMARY = { id: 1, sale_date: "2026-01-15", status: "Borrador", total: 701 };
+const CONFIRMED_SALE_SUMMARY = { id: 2, sale_date: "2026-01-10", status: "Confirmada", total: 200 };
 
 const DRAFT_SALE = {
   id: 1,
@@ -39,9 +48,15 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-async function buscar(user, id = "1") {
-  await user.type(screen.getByLabelText("ID de la venta"), id);
-  await user.click(screen.getByRole("button", { name: "Buscar venta" }));
+async function buscarCliente(user, dni = "30111222") {
+  await user.type(screen.getByLabelText("DNI del cliente"), dni);
+  await user.click(screen.getByRole("button", { name: "Buscar ventas" }));
+}
+
+async function abrirEdicionDeVentaBorrador(user) {
+  buscarVenta.mockResolvedValue({ success: true, sale: DRAFT_SALE });
+  await user.click(await screen.findByRole("button", { name: "Editar venta 1" }));
+  await screen.findByLabelText("Producto");
 }
 
 async function elegirProducto(user, { criterio = "sprite", product = ACTIVE_PRODUCT } = {}) {
@@ -58,30 +73,73 @@ async function agregarItem(user, { criterio = "sprite", product = ACTIVE_PRODUCT
   await user.click(screen.getByRole("button", { name: "Agregar" }));
 }
 
-describe("VentaEdicionForm — búsqueda", () => {
-  it("muestra 'Venta no encontrada' y no renderiza el editor", async () => {
-    buscarVenta.mockResolvedValue({
+describe("VentaEdicionForm — búsqueda por cliente", () => {
+  it("muestra 'Cliente no encontrado' y no renderiza la lista", async () => {
+    buscarVentasDeCliente.mockResolvedValue({
       success: false,
-      errors: [{ field: "id", message: "Venta no encontrada" }],
+      errors: [{ field: "dni", message: "Cliente no encontrado" }],
     });
     const user = userEvent.setup();
     render(<VentaEdicionForm />);
 
-    await buscar(user);
+    await buscarCliente(user);
 
-    expect(await screen.findByText("Venta no encontrada")).toBeInTheDocument();
+    expect(await screen.findByText("Cliente no encontrado")).toBeInTheDocument();
     expect(screen.queryByLabelText("Producto")).not.toBeInTheDocument();
   });
 
-  it("muestra 'no admite modificaciones' para una venta Confirmada, sin controles de edición", async () => {
-    buscarVenta.mockResolvedValue({
+  it("muestra el mensaje de sin ventas cuando el cliente no tiene ninguna", async () => {
+    buscarVentasDeCliente.mockResolvedValue({ success: true, sales: [] });
+    const user = userEvent.setup();
+    render(<VentaEdicionForm />);
+
+    await buscarCliente(user);
+
+    expect(
+      await screen.findByText("El cliente no tiene ventas registradas")
+    ).toBeInTheDocument();
+  });
+
+  it("lista todas las ventas del cliente, con el ícono de editar deshabilitado fuera de Borrador", async () => {
+    buscarVentasDeCliente.mockResolvedValue({
       success: true,
-      sale: { id: 1, status: "Confirmada", total: 701, items: [] },
+      sales: [DRAFT_SALE_SUMMARY, CONFIRMED_SALE_SUMMARY],
     });
     const user = userEvent.setup();
     render(<VentaEdicionForm />);
 
-    await buscar(user);
+    await buscarCliente(user);
+
+    expect(await screen.findByText("Borrador")).toBeInTheDocument();
+    expect(screen.getByText("Confirmada")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Editar venta 1" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Editar venta 2" })).toBeDisabled();
+  });
+
+  it("presionar editar sobre una venta en Borrador abre la vista de edición", async () => {
+    buscarVentasDeCliente.mockResolvedValue({ success: true, sales: [DRAFT_SALE_SUMMARY] });
+    buscarVenta.mockResolvedValue({ success: true, sale: DRAFT_SALE });
+    const user = userEvent.setup();
+    render(<VentaEdicionForm />);
+
+    await buscarCliente(user);
+    await user.click(await screen.findByRole("button", { name: "Editar venta 1" }));
+
+    expect(await screen.findByLabelText("Producto")).toBeInTheDocument();
+    expect(screen.getByText("Coca-Cola 500ml")).toBeInTheDocument();
+  });
+
+  it("si la venta ya no está en Borrador al presionar editar, advierte y no abre la edición", async () => {
+    buscarVentasDeCliente.mockResolvedValue({ success: true, sales: [DRAFT_SALE_SUMMARY] });
+    buscarVenta.mockResolvedValue({
+      success: true,
+      sale: { id: 1, status: "Confirmada", items: [] },
+    });
+    const user = userEvent.setup();
+    render(<VentaEdicionForm />);
+
+    await buscarCliente(user);
+    await user.click(await screen.findByRole("button", { name: "Editar venta 1" }));
 
     expect(
       await screen.findByText("La venta ya no admite modificaciones")
@@ -89,28 +147,33 @@ describe("VentaEdicionForm — búsqueda", () => {
     expect(screen.queryByLabelText("Producto")).not.toBeInTheDocument();
   });
 
-  it("muestra el detalle editable para una venta en Borrador", async () => {
+  it("'Volver a la lista' regresa a la lista de ventas del cliente", async () => {
+    buscarVentasDeCliente.mockResolvedValue({ success: true, sales: [DRAFT_SALE_SUMMARY] });
     buscarVenta.mockResolvedValue({ success: true, sale: DRAFT_SALE });
     const user = userEvent.setup();
     render(<VentaEdicionForm />);
 
-    await buscar(user);
+    await buscarCliente(user);
+    await user.click(await screen.findByRole("button", { name: "Editar venta 1" }));
+    await screen.findByLabelText("Producto");
 
-    expect(await screen.findByLabelText("Producto")).toBeInTheDocument();
-    expect(screen.getByText("Coca-Cola 500ml")).toBeInTheDocument();
-    expect(screen.getByText("701")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Volver a la lista" }));
+
+    expect(await screen.findByRole("button", { name: "Editar venta 1" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Producto")).not.toBeInTheDocument();
+    expect(buscarVentasDeCliente).toHaveBeenLastCalledWith("30111222");
   });
 });
 
 describe("VentaEdicionForm — selección de producto (HU-VEN-05)", () => {
   it("muestra las opciones encontradas al escribir un criterio", async () => {
-    buscarVenta.mockResolvedValue({ success: true, sale: DRAFT_SALE });
+    buscarVentasDeCliente.mockResolvedValue({ success: true, sales: [DRAFT_SALE_SUMMARY] });
     buscarProductosParaVenta.mockResolvedValue({ products: [ACTIVE_PRODUCT] });
     const user = userEvent.setup();
     render(<VentaEdicionForm />);
 
-    await buscar(user);
-    await screen.findByLabelText("Producto");
+    await buscarCliente(user);
+    await abrirEdicionDeVentaBorrador(user);
     await user.type(screen.getByLabelText("Producto"), "sprite");
 
     expect(
@@ -119,26 +182,26 @@ describe("VentaEdicionForm — selección de producto (HU-VEN-05)", () => {
   });
 
   it("muestra 'No se encontraron productos' sin coincidencias", async () => {
-    buscarVenta.mockResolvedValue({ success: true, sale: DRAFT_SALE });
+    buscarVentasDeCliente.mockResolvedValue({ success: true, sales: [DRAFT_SALE_SUMMARY] });
     buscarProductosParaVenta.mockResolvedValue({ products: [] });
     const user = userEvent.setup();
     render(<VentaEdicionForm />);
 
-    await buscar(user);
-    await screen.findByLabelText("Producto");
+    await buscarCliente(user);
+    await abrirEdicionDeVentaBorrador(user);
     await user.type(screen.getByLabelText("Producto"), "gaseosa");
 
     expect(await screen.findByText("No se encontraron productos")).toBeInTheDocument();
   });
 
   it("cambiar el texto tras elegir un producto descarta la selección (Agregar deshabilitado)", async () => {
-    buscarVenta.mockResolvedValue({ success: true, sale: DRAFT_SALE });
+    buscarVentasDeCliente.mockResolvedValue({ success: true, sales: [DRAFT_SALE_SUMMARY] });
     buscarProductosParaVenta.mockResolvedValue({ products: [ACTIVE_PRODUCT] });
     const user = userEvent.setup();
     render(<VentaEdicionForm />);
 
-    await buscar(user);
-    await screen.findByLabelText("Producto");
+    await buscarCliente(user);
+    await abrirEdicionDeVentaBorrador(user);
     await elegirProducto(user);
     await user.type(screen.getByLabelText("Cantidad"), "3");
     expect(screen.getByRole("button", { name: "Agregar" })).toBeEnabled();
@@ -151,12 +214,12 @@ describe("VentaEdicionForm — selección de producto (HU-VEN-05)", () => {
 
 describe("VentaEdicionForm — edición del detalle", () => {
   it("avisa cantidad inválida al perder el foco, antes de presionar Agregar", async () => {
-    buscarVenta.mockResolvedValue({ success: true, sale: DRAFT_SALE });
+    buscarVentasDeCliente.mockResolvedValue({ success: true, sales: [DRAFT_SALE_SUMMARY] });
     const user = userEvent.setup();
     render(<VentaEdicionForm />);
 
-    await buscar(user);
-    await screen.findByLabelText("Producto");
+    await buscarCliente(user);
+    await abrirEdicionDeVentaBorrador(user);
     await user.type(screen.getByLabelText("Cantidad"), "0");
     await user.click(screen.getByLabelText("Producto"));
 
@@ -167,13 +230,13 @@ describe("VentaEdicionForm — edición del detalle", () => {
   });
 
   it("agrega un producto nuevo sin llamar a buscarProducto y recalcula el total", async () => {
-    buscarVenta.mockResolvedValue({ success: true, sale: DRAFT_SALE });
+    buscarVentasDeCliente.mockResolvedValue({ success: true, sales: [DRAFT_SALE_SUMMARY] });
     buscarProductosParaVenta.mockResolvedValue({ products: [ACTIVE_PRODUCT] });
     const user = userEvent.setup();
     render(<VentaEdicionForm />);
 
-    await buscar(user);
-    await screen.findByLabelText("Producto");
+    await buscarCliente(user);
+    await abrirEdicionDeVentaBorrador(user);
     await agregarItem(user, { quantity: "3" });
 
     expect(await screen.findByText("Sprite 500ml")).toBeInTheDocument();
@@ -182,12 +245,12 @@ describe("VentaEdicionForm — edición del detalle", () => {
   });
 
   it("quita un producto del detalle y recalcula el total", async () => {
-    buscarVenta.mockResolvedValue({ success: true, sale: DRAFT_SALE });
+    buscarVentasDeCliente.mockResolvedValue({ success: true, sales: [DRAFT_SALE_SUMMARY] });
     const user = userEvent.setup();
     render(<VentaEdicionForm />);
 
-    await buscar(user);
-    await screen.findByText("Coca-Cola 500ml");
+    await buscarCliente(user);
+    await abrirEdicionDeVentaBorrador(user);
     await user.click(screen.getByRole("button", { name: "Quitar" }));
 
     expect(screen.queryByText("Coca-Cola 500ml")).not.toBeInTheDocument();
@@ -195,7 +258,7 @@ describe("VentaEdicionForm — edición del detalle", () => {
   });
 
   it("guardar cambios con múltiples errores del backend los muestra todos juntos", async () => {
-    buscarVenta.mockResolvedValue({ success: true, sale: DRAFT_SALE });
+    buscarVentasDeCliente.mockResolvedValue({ success: true, sales: [DRAFT_SALE_SUMMARY] });
     reemplazarDetalleVenta.mockResolvedValue({
       success: false,
       errors: [
@@ -206,8 +269,8 @@ describe("VentaEdicionForm — edición del detalle", () => {
     const user = userEvent.setup();
     render(<VentaEdicionForm />);
 
-    await buscar(user);
-    await screen.findByText("Coca-Cola 500ml");
+    await buscarCliente(user);
+    await abrirEdicionDeVentaBorrador(user);
     await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
 
     expect(
@@ -220,7 +283,7 @@ describe("VentaEdicionForm — edición del detalle", () => {
   });
 
   it("guardar cambios exitoso muestra el mensaje de éxito", async () => {
-    buscarVenta.mockResolvedValue({ success: true, sale: DRAFT_SALE });
+    buscarVentasDeCliente.mockResolvedValue({ success: true, sales: [DRAFT_SALE_SUMMARY] });
     reemplazarDetalleVenta.mockResolvedValue({
       success: true,
       message: "Detalle actualizado exitosamente",
@@ -229,8 +292,8 @@ describe("VentaEdicionForm — edición del detalle", () => {
     const user = userEvent.setup();
     render(<VentaEdicionForm />);
 
-    await buscar(user);
-    await screen.findByText("Coca-Cola 500ml");
+    await buscarCliente(user);
+    await abrirEdicionDeVentaBorrador(user);
     await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
 
     expect(
@@ -241,7 +304,7 @@ describe("VentaEdicionForm — edición del detalle", () => {
 
 describe("VentaEdicionForm — cierre", () => {
   it("cerrar exitosamente muestra el mensaje de éxito", async () => {
-    buscarVenta.mockResolvedValue({ success: true, sale: DRAFT_SALE });
+    buscarVentasDeCliente.mockResolvedValue({ success: true, sales: [DRAFT_SALE_SUMMARY] });
     cerrarVenta.mockResolvedValue({
       success: true,
       message: "Venta cerrada exitosamente",
@@ -250,8 +313,8 @@ describe("VentaEdicionForm — cierre", () => {
     const user = userEvent.setup();
     render(<VentaEdicionForm />);
 
-    await buscar(user);
-    await screen.findByText("Coca-Cola 500ml");
+    await buscarCliente(user);
+    await abrirEdicionDeVentaBorrador(user);
     await user.click(screen.getByRole("button", { name: "Cerrar venta" }));
     await user.click(await screen.findByRole("button", { name: "Confirmar" }));
 
@@ -260,7 +323,7 @@ describe("VentaEdicionForm — cierre", () => {
   });
 
   it("si el backend rechaza el cierre (stock insuficiente), muestra ese mensaje en vez de éxito", async () => {
-    buscarVenta.mockResolvedValue({ success: true, sale: DRAFT_SALE });
+    buscarVentasDeCliente.mockResolvedValue({ success: true, sales: [DRAFT_SALE_SUMMARY] });
     cerrarVenta.mockResolvedValue({
       success: false,
       errors: [
@@ -270,8 +333,8 @@ describe("VentaEdicionForm — cierre", () => {
     const user = userEvent.setup();
     render(<VentaEdicionForm />);
 
-    await buscar(user);
-    await screen.findByText("Coca-Cola 500ml");
+    await buscarCliente(user);
+    await abrirEdicionDeVentaBorrador(user);
     await user.click(screen.getByRole("button", { name: "Cerrar venta" }));
     await user.click(await screen.findByRole("button", { name: "Confirmar" }));
 
@@ -282,12 +345,12 @@ describe("VentaEdicionForm — cierre", () => {
   });
 
   it("cancelar el cierre no llama a cerrarVenta", async () => {
-    buscarVenta.mockResolvedValue({ success: true, sale: DRAFT_SALE });
+    buscarVentasDeCliente.mockResolvedValue({ success: true, sales: [DRAFT_SALE_SUMMARY] });
     const user = userEvent.setup();
     render(<VentaEdicionForm />);
 
-    await buscar(user);
-    await screen.findByText("Coca-Cola 500ml");
+    await buscarCliente(user);
+    await abrirEdicionDeVentaBorrador(user);
     await user.click(screen.getByRole("button", { name: "Cerrar venta" }));
     await user.click(await screen.findByRole("button", { name: "Cancelar" }));
 

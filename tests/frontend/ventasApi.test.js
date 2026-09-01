@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   anularVenta,
   buscarVenta,
+  buscarVentasDeCliente,
   cerrarVenta,
   listarVentas,
   registrarVenta,
@@ -305,6 +306,55 @@ describe("listarVentas", () => {
     expect(result).toEqual({
       success: false,
       errors: [{ field: "date_range", message: "El rango de fechas es inválido" }],
+    });
+  });
+});
+
+describe("buscarVentasDeCliente", () => {
+  it("devuelve success y las ventas ante una respuesta 200", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        sales: [{ id: 1, sale_date: "2026-01-01T00:00:00", status: "Borrador", total: 400 }],
+      }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    const result = await buscarVentasDeCliente("30111222");
+
+    expect(result).toEqual({
+      success: true,
+      sales: [{ id: 1, sale_date: "2026-01-01T00:00:00", status: "Borrador", total: 400 }],
+    });
+    expect(mockFetch).toHaveBeenCalledWith("/ventas/cliente/30111222");
+  });
+
+  it("devuelve success y una lista vacía cuando el cliente no tiene ventas", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ sales: [] }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    const result = await buscarVentasDeCliente("30111222");
+
+    expect(result).toEqual({ success: true, sales: [] });
+  });
+
+  it("devuelve success:false ante una respuesta 404", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({
+        errors: [{ field: "dni", message: "Cliente no encontrado" }],
+      }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    const result = await buscarVentasDeCliente("30111222");
+
+    expect(result).toEqual({
+      success: false,
+      errors: [{ field: "dni", message: "Cliente no encontrado" }],
     });
   });
 });

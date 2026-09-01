@@ -584,3 +584,39 @@ def test_listar_ventas_pagina_2_devuelve_el_resto(client):
     body = response.json()
     assert len(body["sales"]) == 5
     assert body["has_next"] is False
+
+
+def test_buscar_ventas_de_cliente_devuelve_todos_los_estados(client):
+    _registrar_cliente(client, "30111222")
+    client.post("/productos", json=dict(VALID_PRODUCT_PAYLOAD, stock="10000"))
+    draft_id = _registrar_venta(client, quantity="1")
+    confirmed_id = _registrar_y_confirmar_venta(client, dni="30111222")
+    cancelled_id = _registrar_y_confirmar_venta(client, dni="30111222")
+    client.patch(f"/ventas/{cancelled_id}/anular")
+
+    response = client.get("/ventas/cliente/30111222")
+
+    assert response.status_code == 200
+    sales = response.json()["sales"]
+    ids_and_status = {s["id"]: s["status"] for s in sales}
+    assert ids_and_status[draft_id] == "Borrador"
+    assert ids_and_status[confirmed_id] == "Confirmada"
+    assert ids_and_status[cancelled_id] == "Anulada"
+
+
+def test_buscar_ventas_de_cliente_inexistente_devuelve_404(client):
+    response = client.get("/ventas/cliente/30111222")
+
+    assert response.status_code == 404
+    assert response.json()["errors"] == [
+        {"field": "dni", "message": "Cliente no encontrado"}
+    ]
+
+
+def test_buscar_ventas_de_cliente_sin_ventas_devuelve_lista_vacia(client):
+    _registrar_cliente(client, "30111222")
+
+    response = client.get("/ventas/cliente/30111222")
+
+    assert response.status_code == 200
+    assert response.json()["sales"] == []
