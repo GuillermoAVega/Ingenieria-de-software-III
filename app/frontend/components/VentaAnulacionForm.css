@@ -123,7 +123,19 @@
 .venta-anulacion__table th {
   background: #f4f6fa;
   font-weight: 600;
-  color: #333a47;
+  color: #7c8595;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.venta-anulacion__table tbody tr:hover {
+  background: #f9fafc;
+}
+
+.venta-anulacion__table td:nth-child(3) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .venta-anulacion__table td button {
@@ -137,15 +149,45 @@
   cursor: pointer;
 }
 
+.venta-anulacion__confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(16, 24, 40, 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 100;
+  animation: venta-anulacion-fade-in 0.15s ease-out;
+}
+
 .venta-anulacion__confirm {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  width: 100%;
+  max-width: 26rem;
   padding: 1.25rem;
   box-sizing: border-box;
   background: #ffffff;
   border: 1px solid #e2e5ea;
   border-radius: 0.75rem;
+  box-shadow: 0 16px 40px rgba(16, 24, 40, 0.25);
+  animation: venta-anulacion-scale-in 0.15s ease-out;
+}
+
+@keyframes venta-anulacion-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes venta-anulacion-scale-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem) scale(0.98);
+  }
 }
 
 .venta-anulacion__confirm-summary {

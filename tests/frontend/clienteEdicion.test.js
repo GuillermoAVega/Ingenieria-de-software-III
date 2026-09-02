@@ -28,4 +28,21 @@ describe("evaluateEdicionBusqueda", () => {
     expect(result.state).toBe(EDICION_STATE.FOUND);
     expect(result.customer).toEqual(customer);
   });
+
+  it("devuelve INACTIVE cuando el cliente encontrado está Inactivo", () => {
+    const customer = {
+      dni: 30111222,
+      first_name: "Juan",
+      last_name: "Perez",
+      email: "juan@dominio.com",
+      phone: "11-4444-5555",
+      status: "Inactivo",
+    };
+
+    const result = evaluateEdicionBusqueda({ success: true, customer });
+
+    expect(result.state).toBe(EDICION_STATE.INACTIVE);
+    expect(result.message).toBe("El cliente está inactivo y no puede modificarse");
+    expect(result.customer).toEqual(customer);
+  });
 });

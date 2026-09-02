@@ -158,23 +158,25 @@ export function VentaAnulacionForm() {
       )}
 
       {confirmingSale && (
-        <div className="venta-anulacion__confirm">
-          <p className="venta-anulacion__confirm-summary">
-            Venta #{confirmingSale.id} — Total {confirmingSale.total}
-          </p>
-          <p>¿Confirmás anular esta venta? Se repondrá el stock de sus productos.</p>
-          <div className="venta-anulacion__confirm-actions">
-            <button type="button" onClick={handleConfirm} disabled={isConfirming}>
-              {isConfirming ? "Confirmando…" : "Confirmar"}
-            </button>
-            <button
-              type="button"
-              className="venta-anulacion__cancel"
-              onClick={handleCancel}
-              disabled={isConfirming}
-            >
-              Cancelar
-            </button>
+        <div className="venta-anulacion__confirm-backdrop">
+          <div className="venta-anulacion__confirm" role="dialog" aria-modal="true">
+            <p className="venta-anulacion__confirm-summary">
+              Venta #{confirmingSale.id} — Total {confirmingSale.total}
+            </p>
+            <p>¿Confirmás anular esta venta? Se repondrá el stock de sus productos.</p>
+            <div className="venta-anulacion__confirm-actions">
+              <button type="button" onClick={handleConfirm} disabled={isConfirming}>
+                {isConfirming ? "Confirmando…" : "Confirmar"}
+              </button>
+              <button
+                type="button"
+                className="venta-anulacion__cancel"
+                onClick={handleCancel}
+                disabled={isConfirming}
+              >
+                Cancelar
+              </button>
+            </div>
           </div>
         </div>
       )}

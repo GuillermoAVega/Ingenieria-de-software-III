@@ -128,14 +128,17 @@ export async function editarCliente(dni, input) {
 }
 
 /**
- * @param {{ q?: string, page?: number }} [options]
+ * @param {{ q?: string, field?: string, page?: number }} [options]
  * @returns {Promise<ClienteListadoResult>}
  */
 export async function listarClientes(options = {}) {
-  const { q, page } = options;
+  const { q, field, page } = options;
   const params = new URLSearchParams();
   if (q) {
     params.set("q", q);
+  }
+  if (field) {
+    params.set("field", field);
   }
   if (page) {
     params.set("page", String(page));

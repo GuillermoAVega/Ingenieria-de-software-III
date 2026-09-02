@@ -171,7 +171,8 @@ export function ClienteEdicionForm() {
         </button>
       </form>
 
-      {searchResult?.state === EDICION_STATE.NOT_FOUND && (
+      {(searchResult?.state === EDICION_STATE.NOT_FOUND ||
+        searchResult?.state === EDICION_STATE.INACTIVE) && (
         <p
           className="cliente-edicion__banner cliente-edicion__banner--error"
           role="alert"

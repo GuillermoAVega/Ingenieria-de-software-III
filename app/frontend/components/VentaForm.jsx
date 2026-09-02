@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 
 import { buscarCliente } from "../api/clientesApi.js";
-import { buscarProductosParaVenta } from "../api/productosApi.js";
+import { buscarProducto, buscarProductosParaVenta } from "../api/productosApi.js";
 import { confirmarVenta, registrarVenta } from "../api/ventasApi.js";
 import {
   POSITIVE_NUMBER_MESSAGE,
   addItem,
   computeTotal,
   removeItem,
+  updateItemQuantity,
   validateQuantityFormat,
 } from "../ventaDetalle.js";
 import "./VentaForm.css";
@@ -44,6 +45,13 @@ export function VentaForm() {
     /** @type {import("../ventaDetalle.js").VentaItem[]} */ ([])
   );
   const [itemError, setItemError] = useState("");
+
+  const [quantityDrafts, setQuantityDrafts] = useState(
+    /** @type {Record<string, string>} */ ({})
+  );
+  const [quantityErrors, setQuantityErrors] = useState(
+    /** @type {Record<string, string>} */ ({})
+  );
 
   const [pendingAction, setPendingAction] = useState(
     /** @type {"registrar" | "confirmar" | null} */ (null)
@@ -84,6 +92,8 @@ export function VentaForm() {
     setQuantityInput("");
     setItems([]);
     setItemError("");
+    setQuantityDrafts({});
+    setQuantityErrors({});
     setPendingAction(null);
   }
 
@@ -126,6 +136,81 @@ export function VentaForm() {
   /** @param {string} sku */
   function handleRemoveItem(sku) {
     setItems(removeItem(items, sku));
+    setQuantityDrafts((current) => {
+      const next = { ...current };
+      delete next[sku];
+      return next;
+    });
+    setQuantityErrors((current) => {
+      const next = { ...current };
+      delete next[sku];
+      return next;
+    });
+  }
+
+  /**
+   * @param {string} sku
+   * @param {string} value
+   */
+  function handleQuantityDraftChange(sku, value) {
+    setQuantityDrafts((current) => ({ ...current, [sku]: value }));
+    setQuantityErrors((current) => {
+      if (!(sku in current)) {
+        return current;
+      }
+      const next = { ...current };
+      delete next[sku];
+      return next;
+    });
+  }
+
+  /** @param {string} sku */
+  async function handleQuantityBlur(sku) {
+    const draft = quantityDrafts[sku];
+    if (draft === undefined) {
+      return;
+    }
+
+    const currentItem = items.find((item) => item.sku === sku);
+    if (currentItem && draft === String(currentItem.quantity)) {
+      setQuantityDrafts((current) => {
+        const next = { ...current };
+        delete next[sku];
+        return next;
+      });
+      return;
+    }
+
+    const formatError = validateQuantityFormat(draft);
+    if (formatError) {
+      setQuantityErrors((current) => ({ ...current, [sku]: formatError }));
+      return;
+    }
+
+    const result = await buscarProducto(sku);
+    if (!result.success) {
+      setQuantityErrors((current) => ({ ...current, [sku]: result.errors[0].message }));
+      return;
+    }
+
+    const outcome = updateItemQuantity(items, sku, draft, result.product.stock);
+    const stockError = outcome.error;
+    if (stockError) {
+      setQuantityErrors((current) => ({ ...current, [sku]: stockError }));
+      return;
+    }
+
+    setItems(outcome.items);
+    setQuantityDrafts((current) => {
+      const next = { ...current };
+      delete next[sku];
+      return next;
+    });
+    setQuantityErrors((current) => {
+      const next = { ...current };
+      delete next[sku];
+      return next;
+    });
   }
 
   /** @param {import("react").FormEvent<HTMLFormElement>} event */
@@ -320,7 +405,29 @@ export function VentaForm() {
                 <tr key={item.sku}>
                   <td>{item.sku}</td>
                   <td>{item.name}</td>
-                  <td>{item.quantity}</td>
+                  <td>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      aria-label={`Cantidad de ${item.name}`}
+                      value={quantityDrafts[item.sku] ?? String(item.quantity)}
+                      onChange={(event) =>
+                        handleQuantityDraftChange(item.sku, event.target.value)
+                      }
+                      onBlur={() => handleQuantityBlur(item.sku)}
+                      className={
+                        quantityErrors[item.sku]
+                          ? "venta-form__quantity-input venta-form__quantity-input--invalid"
+                          : "venta-form__quantity-input"
+                      }
+                    />
+                    {quantityErrors[item.sku] && (
+                      <p className="venta-form__quantity-error" role="alert">
+                        {quantityErrors[item.sku]}
+                      </p>
+                    )}
+                  </td>
                   <td>{item.unitPrice}</td>
                   <td>{item.quantity * item.unitPrice}</td>
                   <td>
@@ -355,28 +462,30 @@ export function VentaForm() {
       )}
 
       {pendingAction && (
-        <div className="venta-form__confirm">
-          <p>
-            {pendingAction === "confirmar"
-              ? "¿Confirmás esta venta? Quedará Confirmada y se descontará el stock de inmediato."
-              : "¿Confirmás registrar esta venta? Quedará en Borrador, sin descontar stock."}
-          </p>
-          <div className="venta-form__confirm-actions">
-            <button type="button" onClick={handleConfirmAction} disabled={isSubmitting}>
-              {isSubmitting
-                ? pendingAction === "confirmar"
-                  ? "Confirmando…"
-                  : "Registrando…"
-                : "Confirmar"}
-            </button>
-            <button
-              type="button"
-              className="venta-form__cancel"
-              onClick={handleCancelAction}
-              disabled={isSubmitting}
-            >
-              Cancelar
-            </button>
+        <div className="venta-form__confirm-backdrop">
+          <div className="venta-form__confirm" role="dialog" aria-modal="true">
+            <p>
+              {pendingAction === "confirmar"
+                ? "¿Confirmás esta venta? Quedará Confirmada y se descontará el stock de inmediato."
+                : "¿Confirmás registrar esta venta? Quedará en Borrador, sin descontar stock."}
+            </p>
+            <div className="venta-form__confirm-actions">
+              <button type="button" onClick={handleConfirmAction} disabled={isSubmitting}>
+                {isSubmitting
+                  ? pendingAction === "confirmar"
+                    ? "Confirmando…"
+                    : "Registrando…"
+                  : "Confirmar"}
+              </button>
+              <button
+                type="button"
+                className="venta-form__cancel"
+                onClick={handleCancelAction}
+                disabled={isSubmitting}
+              >
+                Cancelar
+              </button>
+            </div>
           </div>
         </div>
       )}

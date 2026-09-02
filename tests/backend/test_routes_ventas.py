@@ -517,15 +517,19 @@ def test_reemplazar_detalle_venta_no_editable_devuelve_422(client):
     ]
 
 
-def test_reemplazar_detalle_venta_admite_lista_vacia(client):
+def test_reemplazar_detalle_venta_rechaza_lista_vacia(client):
     sale_id = _registrar_venta(client, quantity="2")
 
     response = client.put(f"/ventas/{sale_id}/detalle", json={"items": []})
 
-    assert response.status_code == 200
-    body = response.json()["sale"]
-    assert body["items"] == []
-    assert body["total"] == 0
+    assert response.status_code == 422
+    assert response.json()["errors"] == [
+        {"field": "items", "message": "La venta debe tener al menos un ítem"}
+    ]
+
+    posterior = client.get(f"/ventas/{sale_id}").json()["sale"]
+    assert len(posterior["items"]) == 1
+    assert posterior["total"] == 701.0
 
 
 def test_reemplazar_detalle_venta_reporta_todos_los_errores_combinados(client):
@@ -588,16 +592,11 @@ def test_cerrar_venta_ya_no_esta_en_borrador_devuelve_422(client):
     ]
 
 
-def test_cerrar_venta_con_detalle_vacio_devuelve_422(client):
-    sale_id = _registrar_venta(client, quantity="2")
-    client.put(f"/ventas/{sale_id}/detalle", json={"items": []})
-
-    response = client.patch(f"/ventas/{sale_id}/cerrar")
-
-    assert response.status_code == 422
-    assert response.json()["errors"] == [
-        {"field": "items", "message": "La venta debe tener al menos un ítem"}
-    ]
+# Nota: una venta en Borrador ya no puede quedar sin ítems desde la API
+# (PUT /ventas/{id}/detalle rechaza la lista vacía), así que el caso de
+# cerrar una venta con detalle vacío solo se puede ejercitar a nivel de
+# repositorio: ver test_close_sale_con_detalle_vacio_no_cambia_estado en
+# tests/backend/test_repository_venta.py.
 
 
 def test_cerrar_venta_con_stock_insuficiente_devuelve_422_sin_descontar(client):
@@ -638,7 +637,7 @@ def _registrar_y_confirmar_venta(client, dni="30111222", sku="ABC123"):
     return sale_id
 
 
-def test_listar_ventas_endpoint_devuelve_resumen_sin_items_ni_estado(client):
+def test_listar_ventas_endpoint_devuelve_resumen_con_estado_y_sin_items(client):
     sale_id = _registrar_y_confirmar_venta(client)
 
     response = client.get("/ventas")
@@ -650,11 +649,11 @@ def test_listar_ventas_endpoint_devuelve_resumen_sin_items_ni_estado(client):
     sale = next(s for s in body["sales"] if s["id"] == sale_id)
     assert sale["customer"]["dni"] == 30111222
     assert sale["total"] == 350.5
+    assert sale["status"] == "Confirmada"
     assert "items" not in sale
-    assert "status" not in sale
 
 
-def test_listar_ventas_excluye_borrador_y_anulada(client):
+def test_listar_ventas_incluye_anuladas_y_excluye_borrador(client):
     _registrar_cliente(client, "30111222")
     client.post("/productos", json=VALID_PRODUCT_PAYLOAD)
     draft_id = client.post(
@@ -667,9 +666,12 @@ def test_listar_ventas_excluye_borrador_y_anulada(client):
 
     response = client.get("/ventas")
 
-    ids = {s["id"] for s in response.json()["sales"]}
+    sales = response.json()["sales"]
+    ids = {s["id"] for s in sales}
     assert draft_id not in ids
-    assert cancelled_id not in ids
+    assert cancelled_id in ids
+    anulada = next(s for s in sales if s["id"] == cancelled_id)
+    assert anulada["status"] == "Anulada"
 
 
 def test_listar_ventas_filtro_fechas(client):

@@ -38,10 +38,22 @@ describe("ClienteListado", () => {
     expect(screen.getByText("Perez")).toBeInTheDocument();
     expect(screen.getByText("Ana")).toBeInTheDocument();
     expect(screen.getByText("Inactivo")).toBeInTheDocument();
-    expect(listarClientes).toHaveBeenCalledWith({ q: undefined, page: 1 });
+    expect(listarClientes).toHaveBeenCalledWith({
+      q: undefined,
+      field: "first_name",
+      page: 1,
+    });
   });
 
-  it("buscar un criterio llama a listarClientes con ese q", async () => {
+  it("el campo de búsqueda tiene 'Nombre' seleccionado por defecto", () => {
+    listarClientes.mockResolvedValue({ customers: [], page: 1, hasNext: false });
+
+    render(<ClienteListado />);
+
+    expect(screen.getByLabelText("Filtro")).toHaveValue("first_name");
+  });
+
+  it("buscar un criterio llama a listarClientes con ese q y el campo por defecto", async () => {
     listarClientes.mockResolvedValue({ customers: CUSTOMERS, page: 1, hasNext: false });
     const user = userEvent.setup();
     render(<ClienteListado />);
@@ -50,7 +62,41 @@ describe("ClienteListado", () => {
     await user.type(screen.getByLabelText("Buscar"), "perez");
     await user.click(screen.getByRole("button", { name: "Buscar" }));
 
-    expect(listarClientes).toHaveBeenLastCalledWith({ q: "perez", page: 1 });
+    expect(listarClientes).toHaveBeenLastCalledWith({
+      q: "perez",
+      field: "first_name",
+      page: 1,
+    });
+  });
+
+  it("buscar con DNI elegido en el desplegable llama con field: dni", async () => {
+    listarClientes.mockResolvedValue({ customers: CUSTOMERS, page: 1, hasNext: false });
+    const user = userEvent.setup();
+    render(<ClienteListado />);
+
+    await screen.findByText("Juan");
+    await user.selectOptions(screen.getByLabelText("Filtro"), "dni");
+    await user.type(screen.getByLabelText("Buscar"), "301112");
+    await user.click(screen.getByRole("button", { name: "Buscar" }));
+
+    expect(listarClientes).toHaveBeenLastCalledWith({
+      q: "301112",
+      field: "dni",
+      page: 1,
+    });
+  });
+
+  it("cambiar el campo elegido sin presionar Buscar no dispara una nueva búsqueda", async () => {
+    listarClientes.mockResolvedValue({ customers: CUSTOMERS, page: 1, hasNext: false });
+    const user = userEvent.setup();
+    render(<ClienteListado />);
+
+    await screen.findByText("Juan");
+    const llamadasAntes = listarClientes.mock.calls.length;
+
+    await user.selectOptions(screen.getByLabelText("Filtro"), "last_name");
+
+    expect(listarClientes.mock.calls.length).toBe(llamadasAntes);
   });
 
   it("borrar el criterio y volver a buscar llama sin q", async () => {
@@ -65,7 +111,11 @@ describe("ClienteListado", () => {
     await user.clear(input);
     await user.click(screen.getByRole("button", { name: "Buscar" }));
 
-    expect(listarClientes).toHaveBeenLastCalledWith({ q: undefined, page: 1 });
+    expect(listarClientes).toHaveBeenLastCalledWith({
+      q: undefined,
+      field: "first_name",
+      page: 1,
+    });
   });
 
   it("muestra 'no se encontraron resultados' cuando customers viene vacío", async () => {
@@ -90,7 +140,11 @@ describe("ClienteListado", () => {
 
     await user.click(siguiente);
 
-    expect(listarClientes).toHaveBeenLastCalledWith({ q: undefined, page: 2 });
+    expect(listarClientes).toHaveBeenLastCalledWith({
+      q: undefined,
+      field: "first_name",
+      page: 2,
+    });
   });
 
   it("con hasNext:false, 'Siguiente' está deshabilitado", async () => {
@@ -109,11 +163,19 @@ describe("ClienteListado", () => {
 
     await screen.findByText("Juan");
     await user.click(screen.getByRole("button", { name: "Siguiente" }));
-    expect(listarClientes).toHaveBeenLastCalledWith({ q: undefined, page: 2 });
+    expect(listarClientes).toHaveBeenLastCalledWith({
+      q: undefined,
+      field: "first_name",
+      page: 2,
+    });
 
     await user.type(screen.getByLabelText("Buscar"), "perez");
     await user.click(screen.getByRole("button", { name: "Buscar" }));
 
-    expect(listarClientes).toHaveBeenLastCalledWith({ q: "perez", page: 1 });
+    expect(listarClientes).toHaveBeenLastCalledWith({
+      q: "perez",
+      field: "first_name",
+      page: 1,
+    });
   });
 });

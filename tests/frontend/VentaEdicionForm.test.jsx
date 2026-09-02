@@ -116,7 +116,7 @@ describe("VentaEdicionForm — búsqueda por cliente", () => {
     expect(screen.getByRole("button", { name: "Editar venta 2" })).toBeDisabled();
   });
 
-  it("muestra la fecha en formato año-mes-día, sin hora", async () => {
+  it("muestra la fecha en formato dd/mm/aaaa, sin hora", async () => {
     buscarVentasDeCliente.mockResolvedValue({
       success: true,
       sales: [{ id: 1, sale_date: "2026-01-15T10:00:00+00:00", status: "Borrador", total: 701 }],
@@ -126,7 +126,7 @@ describe("VentaEdicionForm — búsqueda por cliente", () => {
 
     await buscarCliente(user);
 
-    expect(await screen.findByText("2026-01-15")).toBeInTheDocument();
+    expect(await screen.findByText("15/01/2026")).toBeInTheDocument();
     expect(screen.queryByText("2026-01-15T10:00:00+00:00")).not.toBeInTheDocument();
   });
 
@@ -260,15 +260,101 @@ describe("VentaEdicionForm — edición del detalle", () => {
 
   it("quita un producto del detalle y recalcula el total", async () => {
     buscarVentasDeCliente.mockResolvedValue({ success: true, sales: [DRAFT_SALE_SUMMARY] });
+    buscarProductosParaVenta.mockResolvedValue({ products: [ACTIVE_PRODUCT] });
     const user = userEvent.setup();
     render(<VentaEdicionForm />);
 
     await buscarCliente(user);
     await abrirEdicionDeVentaBorrador(user);
-    await user.click(screen.getByRole("button", { name: "Quitar" }));
+    await agregarItem(user, { quantity: "3" });
+    await user.click(screen.getAllByRole("button", { name: "Quitar" })[0]);
 
     expect(screen.queryByText("Coca-Cola 500ml")).not.toBeInTheDocument();
-    expect(screen.getByText("Total: 0")).toBeInTheDocument();
+    expect(screen.getByText("Sprite 500ml")).toBeInTheDocument();
+    expect(screen.getByText("Total: 600")).toBeInTheDocument();
+  });
+
+  it("no permite quitar el último producto: la venta no puede quedar vacía", async () => {
+    buscarVentasDeCliente.mockResolvedValue({ success: true, sales: [DRAFT_SALE_SUMMARY] });
+    const user = userEvent.setup();
+    render(<VentaEdicionForm />);
+
+    await buscarCliente(user);
+    await abrirEdicionDeVentaBorrador(user);
+
+    expect(screen.getByRole("button", { name: "Quitar" })).toBeDisabled();
+    expect(
+      screen.getByText("La venta debe tener al menos un producto")
+    ).toBeInTheDocument();
+    expect(screen.getByText("Coca-Cola 500ml")).toBeInTheDocument();
+  });
+
+  it("editar la cantidad de un ítem la valida contra el stock y recalcula el total", async () => {
+    buscarVentasDeCliente.mockResolvedValue({ success: true, sales: [DRAFT_SALE_SUMMARY] });
+    buscarProducto.mockResolvedValue({
+      success: true,
+      product: { sku: "ABC123", name: "Coca-Cola 500ml", unit_price: 350.5, stock: 10 },
+    });
+    const user = userEvent.setup();
+    render(<VentaEdicionForm />);
+
+    await buscarCliente(user);
+    await abrirEdicionDeVentaBorrador(user);
+
+    const cantidad = screen.getByLabelText("Cantidad de Coca-Cola 500ml");
+    expect(cantidad).toHaveValue("2");
+
+    await user.clear(cantidad);
+    await user.type(cantidad, "4");
+    await user.tab();
+
+    expect(buscarProducto).toHaveBeenCalledWith("ABC123");
+    expect(await screen.findByText("Total: 1402")).toBeInTheDocument();
+  });
+
+  it("editar la cantidad por encima del stock muestra cuánto hay disponible y no aplica el cambio", async () => {
+    buscarVentasDeCliente.mockResolvedValue({ success: true, sales: [DRAFT_SALE_SUMMARY] });
+    buscarProducto.mockResolvedValue({
+      success: true,
+      product: { sku: "ABC123", name: "Coca-Cola 500ml", unit_price: 350.5, stock: 10 },
+    });
+    const user = userEvent.setup();
+    render(<VentaEdicionForm />);
+
+    await buscarCliente(user);
+    await abrirEdicionDeVentaBorrador(user);
+
+    const cantidad = screen.getByLabelText("Cantidad de Coca-Cola 500ml");
+    await user.clear(cantidad);
+    await user.type(cantidad, "50");
+    await user.tab();
+
+    expect(
+      await screen.findByText(
+        "No hay stock suficiente para completar la operación (disponible: 10)"
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByText("Total: 701")).toBeInTheDocument();
+  });
+
+  it("editar la cantidad con un valor inválido no llama a buscarProducto", async () => {
+    buscarVentasDeCliente.mockResolvedValue({ success: true, sales: [DRAFT_SALE_SUMMARY] });
+    const user = userEvent.setup();
+    render(<VentaEdicionForm />);
+
+    await buscarCliente(user);
+    await abrirEdicionDeVentaBorrador(user);
+
+    const cantidad = screen.getByLabelText("Cantidad de Coca-Cola 500ml");
+    await user.clear(cantidad);
+    await user.type(cantidad, "0");
+    await user.tab();
+
+    expect(
+      await screen.findByText("El valor debe ser un número positivo")
+    ).toBeInTheDocument();
+    expect(buscarProducto).not.toHaveBeenCalled();
+    expect(screen.getByText("Total: 701")).toBeInTheDocument();
   });
 
   it("guardar cambios con múltiples errores del backend los muestra todos juntos", async () => {
@@ -296,7 +382,7 @@ describe("VentaEdicionForm — edición del detalle", () => {
     expect(screen.getByText("Coca-Cola 500ml")).toBeInTheDocument();
   });
 
-  it("guardar cambios exitoso muestra el mensaje de éxito", async () => {
+  it("guardar cambios exitoso muestra el mensaje de éxito y vuelve al listado de ventas", async () => {
     buscarVentasDeCliente.mockResolvedValue({ success: true, sales: [DRAFT_SALE_SUMMARY] });
     reemplazarDetalleVenta.mockResolvedValue({
       success: true,
@@ -313,6 +399,11 @@ describe("VentaEdicionForm — edición del detalle", () => {
     expect(
       await screen.findByText("Detalle actualizado exitosamente")
     ).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "Editar venta 1" })
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Producto")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Guardar cambios" })).not.toBeInTheDocument();
   });
 });
 

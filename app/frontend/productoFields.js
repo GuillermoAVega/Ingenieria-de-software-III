@@ -5,7 +5,7 @@
 
 /** @type {{ field: string, label: string, hint: string, inputMode: "numeric" | "decimal" | "text", required: boolean }[]} */
 export const PRODUCTO_FIELDS = [
-  { field: "sku", label: "Código/SKU", hint: "Cualquier texto, sin espacios al inicio/fin", inputMode: "text", required: true },
+  { field: "sku", label: "Código/SKU", hint: "Identificador único del producto", inputMode: "text", required: true },
   { field: "name", label: "Nombre", hint: "Nombre del producto", inputMode: "text", required: true },
   { field: "brand", label: "Marca", hint: "Marca del producto", inputMode: "text", required: true },
   { field: "description", label: "Descripción (opcional)", hint: "Detalle adicional del producto", inputMode: "text", required: false },

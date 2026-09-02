@@ -114,21 +114,60 @@ def test_normalize_search_text_ignora_tildes():
     assert core.normalize_search_text("Pérez") == core.normalize_search_text("Perez")
 
 
-def test_matches_search_por_nombre():
+def test_matches_search_field_first_name_matchea_solo_ese_campo():
     query = core.normalize_search_text("jua")
-    assert core.matches_search(query, dni=30111222, first_name="Juan", last_name="Perez") is True
+    assert (
+        core.matches_search_field(
+            query, "first_name", dni=30111222, first_name="Juan", last_name="Perez"
+        )
+        is True
+    )
+    query_apellido = core.normalize_search_text("pere")
+    assert (
+        core.matches_search_field(
+            query_apellido,
+            "first_name",
+            dni=30111222,
+            first_name="Juan",
+            last_name="Perez",
+        )
+        is False
+    )
 
 
-def test_matches_search_por_apellido():
+def test_matches_search_field_last_name_matchea_solo_ese_campo():
     query = core.normalize_search_text("pere")
-    assert core.matches_search(query, dni=30111222, first_name="Juan", last_name="Perez") is True
+    assert (
+        core.matches_search_field(
+            query, "last_name", dni=30111222, first_name="Juan", last_name="Perez"
+        )
+        is True
+    )
+    query_nombre = core.normalize_search_text("jua")
+    assert (
+        core.matches_search_field(
+            query_nombre,
+            "last_name",
+            dni=30111222,
+            first_name="Juan",
+            last_name="Perez",
+        )
+        is False
+    )
 
 
-def test_matches_search_por_dni_parcial():
+def test_matches_search_field_dni_parcial_matchea_solo_ese_campo():
     query = core.normalize_search_text("301112")
-    assert core.matches_search(query, dni=30111222, first_name="Juan", last_name="Perez") is True
-
-
-def test_matches_search_sin_coincidencia():
-    query = core.normalize_search_text("gomez")
-    assert core.matches_search(query, dni=30111222, first_name="Juan", last_name="Perez") is False
+    assert (
+        core.matches_search_field(
+            query, "dni", dni=30111222, first_name="Juan", last_name="Perez"
+        )
+        is True
+    )
+    query_nombre = core.normalize_search_text("jua")
+    assert (
+        core.matches_search_field(
+            query_nombre, "dni", dni=30111222, first_name="Juan", last_name="Perez"
+        )
+        is False
+    )

@@ -105,6 +105,7 @@
  * @property {number} id
  * @property {string} sale_date
  * @property {{ dni: number, first_name: string, last_name: string }} customer
+ * @property {string} status
  * @property {number} total
  */
 

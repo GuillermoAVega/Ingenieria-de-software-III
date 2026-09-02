@@ -368,7 +368,7 @@ def _create_confirmed_sale(session, customer, product, quantity=1, sale_date=Non
     return sale
 
 
-def test_list_sales_excluye_borrador_y_anulada_y_ordena_por_fecha_desc(session):
+def test_list_sales_incluye_anulada_excluye_borrador_y_ordena_por_fecha_desc(session):
     customer = _create_customer(session)
     product = _create_product(session, stock="1000")
 
@@ -386,10 +386,9 @@ def test_list_sales_excluye_borrador_y_anulada_y_ordena_por_fecha_desc(session):
 
     rows, has_next = repository_venta.list_sales(session)
 
-    assert [sale.id for sale, _ in rows] == [newer.id, older.id]
+    assert [sale.id for sale, _ in rows] == [cancelled.id, newer.id, older.id]
     assert has_next is False
     assert draft.id not in [sale.id for sale, _ in rows]
-    assert cancelled.id not in [sale.id for sale, _ in rows]
 
 
 def test_list_sales_filtra_por_rango_de_fechas_con_extremos_inclusivos(session):

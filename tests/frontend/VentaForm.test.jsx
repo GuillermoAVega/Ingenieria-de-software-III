@@ -219,7 +219,9 @@ describe("VentaForm — agregar ítems al detalle", () => {
     await agregarItem(user, { quantity: "50" });
 
     expect(
-      await screen.findByText("No hay stock suficiente para completar la operación")
+      await screen.findByText(
+        "No hay stock suficiente para completar la operación (disponible: 10)"
+      )
     ).toBeInTheDocument();
   });
 
@@ -235,7 +237,49 @@ describe("VentaForm — agregar ítems al detalle", () => {
     await agregarItem(user, { quantity: "3" });
 
     expect(await screen.findAllByText("Coca-Cola 500ml")).toHaveLength(1);
-    expect(screen.getByText("5")).toBeInTheDocument();
+    expect(screen.getByLabelText("Cantidad de Coca-Cola 500ml")).toHaveValue("5");
+  });
+
+  it("editar la cantidad de un ítem la valida contra el stock y recalcula el total", async () => {
+    buscarCliente.mockResolvedValue({ success: true, customer: ACTIVE_CUSTOMER });
+    buscarProductosParaVenta.mockResolvedValue({ products: [ACTIVE_PRODUCT] });
+    buscarProducto.mockResolvedValue({ success: true, product: ACTIVE_PRODUCT });
+    const user = userEvent.setup();
+    render(<VentaForm />);
+
+    await buscarClienteActivo(user);
+    await agregarItem(user, { quantity: "2" });
+
+    const cantidad = await screen.findByLabelText("Cantidad de Coca-Cola 500ml");
+    await user.clear(cantidad);
+    await user.type(cantidad, "4");
+    await user.tab();
+
+    expect(buscarProducto).toHaveBeenCalledWith("ABC123");
+    expect(await screen.findByText("Total: 1402")).toBeInTheDocument();
+  });
+
+  it("editar la cantidad por encima del stock avisa cuánto hay y no aplica el cambio", async () => {
+    buscarCliente.mockResolvedValue({ success: true, customer: ACTIVE_CUSTOMER });
+    buscarProductosParaVenta.mockResolvedValue({ products: [ACTIVE_PRODUCT] });
+    buscarProducto.mockResolvedValue({ success: true, product: ACTIVE_PRODUCT });
+    const user = userEvent.setup();
+    render(<VentaForm />);
+
+    await buscarClienteActivo(user);
+    await agregarItem(user, { quantity: "2" });
+
+    const cantidad = await screen.findByLabelText("Cantidad de Coca-Cola 500ml");
+    await user.clear(cantidad);
+    await user.type(cantidad, "50");
+    await user.tab();
+
+    expect(
+      await screen.findByText(
+        "No hay stock suficiente para completar la operación (disponible: 10)"
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByText("Total: 701")).toBeInTheDocument();
   });
 
   it("quita un producto del detalle y recalcula el total", async () => {

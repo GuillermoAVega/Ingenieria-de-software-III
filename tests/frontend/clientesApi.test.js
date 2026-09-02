@@ -211,4 +211,16 @@ describe("listarClientes", () => {
 
     expect(mockFetch).toHaveBeenCalledWith("/clientes?q=perez&page=2");
   });
+
+  it("llama a /clientes con field cuando se pasa", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ customers: [], page: 1, has_next: false }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    await listarClientes({ q: "perez", field: "last_name", page: 1 });
+
+    expect(mockFetch).toHaveBeenCalledWith("/clientes?q=perez&field=last_name&page=1");
+  });
 });

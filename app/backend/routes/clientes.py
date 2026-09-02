@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.backend import core, repository
 from app.backend.database import get_session
-from app.backend.models import Customer
+from app.backend.models import ClientStatus, Customer
 
 router = APIRouter()
 
@@ -21,6 +21,7 @@ CUSTOMER_NOT_FOUND_MESSAGE = "Cliente no encontrado"
 BAJA_SUCCESS_MESSAGE = "Cliente dado de baja exitosamente"
 EDICION_SUCCESS_MESSAGE = "Cliente modificado exitosamente"
 DNI_EN_USO_MESSAGE = "El DNI ya está en uso"
+CUSTOMER_INACTIVE_MESSAGE = "El cliente está inactivo y no puede modificarse"
 
 _REQUIRED_FIELDS = ("dni", "first_name", "last_name", "email", "phone")
 
@@ -103,10 +104,13 @@ def alta_cliente(
 @router.get("/clientes")
 def listar_clientes(
     q: str | None = None,
+    field: str | None = None,
     page: int = Query(1, ge=1),
     session: Session = Depends(get_session),
 ) -> JSONResponse:
-    customers, has_next = repository.list_customers(session, query=q, page=page)
+    customers, has_next = repository.list_customers(
+        session, query=q, field=field or "first_name", page=page
+    )
 
     return JSONResponse(
         status_code=200,
@@ -172,6 +176,16 @@ def editar_cliente(
             status_code=404,
             content={
                 "errors": [{"field": "dni", "message": CUSTOMER_NOT_FOUND_MESSAGE}]
+            },
+        )
+
+    if customer.status == ClientStatus.INACTIVE:
+        return JSONResponse(
+            status_code=422,
+            content={
+                "errors": [
+                    {"field": "status", "message": CUSTOMER_INACTIVE_MESSAGE}
+                ]
             },
         )
 

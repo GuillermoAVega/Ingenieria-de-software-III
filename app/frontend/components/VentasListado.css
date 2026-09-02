@@ -43,9 +43,144 @@
   box-sizing: border-box;
   padding: 0.6rem 0.75rem;
   font-size: 1rem;
+  font-family: inherit;
   border: 1px solid #cbd2dc;
   border-radius: 0.5rem;
   background: #fbfbfd;
+}
+
+.ventas-listado__field input:focus {
+  outline: none;
+  border-color: #2f6fed;
+  box-shadow: 0 0 0 3px rgba(47, 111, 237, 0.15);
+  background: #ffffff;
+}
+
+/* Ajustes sobre los estilos base de react-datepicker para que el
+   calendario combine con el resto de la barra de filtros. */
+.ventas-listado__field .react-datepicker-wrapper {
+  display: block;
+  width: 11rem;
+}
+
+.ventas-listado__field .react-datepicker__input-container {
+  position: relative;
+  display: block;
+}
+
+/* Deja lugar a la derecha para la "x" de limpiar, para que no se
+   superponga con la fecha ni con el placeholder. */
+.ventas-listado__field .react-datepicker__input-container input {
+  width: 100%;
+  padding-right: 2.25rem;
+}
+
+/* La "x" de limpiar es un <button> dentro de la barra de filtros, así que
+   hay que neutralizar el estilo del botón primario (fondo azul) que
+   aplica `.ventas-listado__search button`. */
+.ventas-listado__field .react-datepicker__close-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  top: 50%;
+  right: 0.4rem;
+  transform: translateY(-50%);
+  padding: 0;
+  color: #566072;
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+}
+
+.ventas-listado__field .react-datepicker__close-icon::after {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  font-size: 1.05rem;
+  line-height: 1;
+  color: inherit;
+  background: transparent;
+}
+
+.ventas-listado__field .react-datepicker__close-icon:hover {
+  color: #b3261e;
+  background: #f4f6fa;
+}
+
+/* Con el campo vacío no hay nada que limpiar: la "x" solo aparece cuando
+   hay una fecha elegida. */
+.ventas-listado__field
+  .react-datepicker__input-container
+  input:placeholder-shown
+  ~ .react-datepicker__close-icon {
+  display: none;
+}
+
+.react-datepicker {
+  font-family: inherit;
+  border-color: #e2e5ea;
+  border-radius: 0.75rem;
+  box-shadow: 0 8px 24px rgba(16, 24, 40, 0.16);
+  overflow: hidden;
+}
+
+.react-datepicker__header {
+  background: #f4f6fa;
+  border-bottom: 1px solid #e2e5ea;
+}
+
+.react-datepicker__current-month,
+.react-datepicker__day-name {
+  color: #333a47;
+  text-transform: capitalize;
+}
+
+/* Las flechas de mes también son <button> dentro de la barra de filtros:
+   hay que sacarles el fondo azul del botón primario. */
+.ventas-listado__field .react-datepicker__navigation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  top: 0.5rem;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+}
+
+.ventas-listado__field .react-datepicker__navigation:hover {
+  background: #e6ebf5;
+}
+
+.ventas-listado__field .react-datepicker__navigation-icon::before {
+  border-color: #566072;
+  border-width: 2px 2px 0 0;
+}
+
+.react-datepicker__day:hover {
+  background: #eef3fe;
+}
+
+.react-datepicker__day--selected,
+.react-datepicker__day--keyboard-selected,
+.react-datepicker__day--in-range {
+  background: #2f6fed;
+  color: #ffffff;
+}
+
+.react-datepicker__day--in-selecting-range {
+  background: #9db4e8;
+}
+
+.react-datepicker__day--disabled {
+  color: #c3c9d3;
 }
 
 .ventas-listado__search button {
@@ -104,6 +239,60 @@
   color: #333a47;
 }
 
+.ventas-listado__status {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  border-radius: 999px;
+  background: #f4f6fa;
+  color: #566072;
+}
+
+.ventas-listado__status--confirmada {
+  background: #e6f4ea;
+  color: #1e7a34;
+}
+
+.ventas-listado__status--anulada {
+  background: #fdecec;
+  color: #b3261e;
+}
+
+.ventas-listado__table td:last-child {
+  width: 1%;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.ventas-listado__detail-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  color: #7c8595;
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 0.12s ease, background-color 0.12s ease;
+}
+
+.ventas-listado__detail-button:hover {
+  color: #2f6fed;
+  background: #eef3fe;
+}
+
+.ventas-listado__detail-button:focus-visible {
+  outline: none;
+  color: #2f6fed;
+  box-shadow: 0 0 0 3px rgba(47, 111, 237, 0.2);
+}
+
 .ventas-listado__pagination {
   display: flex;
   justify-content: center;
@@ -124,4 +313,177 @@
 .ventas-listado__pagination button:disabled {
   color: #9aa2af;
   cursor: not-allowed;
+}
+
+.ventas-listado__modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(16, 24, 40, 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 100;
+  animation: ventas-listado-fade-in 0.15s ease-out;
+}
+
+.ventas-listado__modal {
+  position: relative;
+  width: 100%;
+  max-width: 32rem;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 1.5rem;
+  background: #ffffff;
+  border-radius: 0.75rem;
+  box-shadow: 0 16px 40px rgba(16, 24, 40, 0.25);
+  animation: ventas-listado-scale-in 0.15s ease-out;
+}
+
+@keyframes ventas-listado-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes ventas-listado-scale-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem) scale(0.98);
+  }
+}
+
+.ventas-listado__modal-notfound {
+  margin: 0.25rem 2rem 0 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #b3261e;
+}
+
+.ventas-listado__modal-header {
+  padding-right: 2rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid #e2e5ea;
+  padding-bottom: 1rem;
+}
+
+.ventas-listado__modal-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1f2430;
+}
+
+.ventas-listado__modal-date {
+  font-weight: 400;
+  color: #7c8595;
+}
+
+.ventas-listado__modal-customer {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+  color: #333a47;
+}
+
+.ventas-listado__modal-status {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 999px;
+  background: #f4f6fa;
+  color: #566072;
+}
+
+.ventas-listado__modal-status--confirmada {
+  background: #e6f4ea;
+  color: #1e7a34;
+}
+
+.ventas-listado__modal-status--anulada {
+  background: #fdecec;
+  color: #b3261e;
+}
+
+.ventas-listado__modal-status--borrador {
+  background: #f4f6fa;
+  color: #566072;
+}
+
+.ventas-listado__detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+}
+
+.ventas-listado__detail-table th,
+.ventas-listado__detail-table td {
+  text-align: left;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.85rem;
+  border-bottom: 1px solid #eef0f4;
+}
+
+.ventas-listado__detail-table th {
+  font-weight: 600;
+  color: #7c8595;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.03em;
+}
+
+.ventas-listado__detail-table td:nth-child(n + 3) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.ventas-listado__modal-total {
+  margin: 0 0 1.25rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e2e5ea;
+  text-align: right;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1f2430;
+}
+
+.ventas-listado__modal-footer-close {
+  width: 100%;
+  padding: 0.6rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #333a47;
+  background: #eceff3;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.ventas-listado__modal-footer-close:hover {
+  background: #e2e5ea;
+}
+
+.ventas-listado__modal-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  color: #566072;
+  background: transparent;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.ventas-listado__modal-close:hover {
+  background: #f4f6fa;
 }

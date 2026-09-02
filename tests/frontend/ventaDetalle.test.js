@@ -4,6 +4,7 @@ import {
   addItem,
   computeTotal,
   removeItem,
+  updateItemQuantity,
   validateQuantityFormat,
 } from "../../app/frontend/ventaDetalle.js";
 
@@ -50,7 +51,9 @@ describe("addItem", () => {
 
     const second = addItem(first.items, { ...PRODUCT, quantity: "5" });
 
-    expect(second.error).toBe("No hay stock suficiente para completar la operación");
+    expect(second.error).toBe(
+      "No hay stock suficiente para completar la operación (disponible: 10)"
+    );
     expect(second.items).toEqual(first.items);
   });
 
@@ -60,6 +63,39 @@ describe("addItem", () => {
     const result = addItem(before, { ...PRODUCT, quantity: "abc" });
 
     expect(result.items).toBe(before);
+  });
+});
+
+describe("updateItemQuantity", () => {
+  const ITEMS = [
+    { sku: "ABC123", name: "Coca-Cola 500ml", unitPrice: 350.5, quantity: 2 },
+    { sku: "XYZ999", name: "Otro producto", unitPrice: 200, quantity: 3 },
+  ];
+
+  it("reemplaza (no acumula) la cantidad del ítem indicado", () => {
+    const result = updateItemQuantity(ITEMS, "ABC123", "7", 10);
+
+    expect(result.error).toBeNull();
+    expect(result.items).toEqual([
+      { sku: "ABC123", name: "Coca-Cola 500ml", unitPrice: 350.5, quantity: 7 },
+      { sku: "XYZ999", name: "Otro producto", unitPrice: 200, quantity: 3 },
+    ]);
+  });
+
+  it("rechaza una cantidad no positiva o no entera sin modificar el detalle", () => {
+    const result = updateItemQuantity(ITEMS, "ABC123", "0", 10);
+
+    expect(result.error).toBe("El valor debe ser un número positivo");
+    expect(result.items).toBe(ITEMS);
+  });
+
+  it("rechaza una cantidad mayor al stock disponible, indicando cuánto hay", () => {
+    const result = updateItemQuantity(ITEMS, "ABC123", "15", 10);
+
+    expect(result.error).toBe(
+      "No hay stock suficiente para completar la operación (disponible: 10)"
+    );
+    expect(result.items).toBe(ITEMS);
   });
 });
 

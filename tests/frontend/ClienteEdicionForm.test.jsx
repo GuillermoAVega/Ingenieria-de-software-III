@@ -43,6 +43,23 @@ describe("ClienteEdicionForm", () => {
     expect(screen.queryByRole("button", { name: "Guardar cambios" })).not.toBeInTheDocument();
   });
 
+  it("muestra el aviso de cliente Inactivo y no renderiza el formulario de edición", async () => {
+    buscarCliente.mockResolvedValue({
+      success: true,
+      customer: { ...EXISTING_CUSTOMER, status: "Inactivo" },
+    });
+    const user = userEvent.setup();
+    render(<ClienteEdicionForm />);
+
+    await buscar(user);
+
+    expect(
+      await screen.findByText("El cliente está inactivo y no puede modificarse")
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Guardar cambios" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Nombre")).not.toBeInTheDocument();
+  });
+
   it("muestra el formulario pre-cargado con los datos del cliente encontrado", async () => {
     buscarCliente.mockResolvedValue({ success: true, customer: EXISTING_CUSTOMER });
     const user = userEvent.setup();

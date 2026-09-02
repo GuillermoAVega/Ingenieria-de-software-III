@@ -232,17 +232,24 @@ def test_editar_cliente_activo_guarda_los_cambios(client):
     assert body["customer"]["status"] == "Activo"
 
 
-def test_editar_cliente_inactivo_guarda_los_cambios_sin_reactivarlo(client):
+def test_editar_cliente_inactivo_bloquea_la_modificacion(client):
     client.post("/clientes", json=VALID_PAYLOAD)
     client.patch("/clientes/30111222/baja")
     edicion = dict(VALID_PAYLOAD, first_name="Juan Ignacio")
 
     response = client.put("/clientes/30111222/editar", json=edicion)
 
-    assert response.status_code == 200
-    body = response.json()
-    assert body["customer"]["first_name"] == "Juan Ignacio"
-    assert body["customer"]["status"] == "Inactivo"
+    assert response.status_code == 422
+    assert response.json()["errors"] == [
+        {
+            "field": "status",
+            "message": "El cliente está inactivo y no puede modificarse",
+        }
+    ]
+
+    posterior = client.get("/clientes/30111222")
+    assert posterior.json()["customer"]["first_name"] == VALID_PAYLOAD["first_name"]
+    assert posterior.json()["customer"]["status"] == "Inactivo"
 
 
 def test_editar_cliente_sin_cambiar_dni_no_dispara_duplicado(client):
@@ -363,11 +370,42 @@ def test_listar_clientes_con_filtro_insensible_a_tildes(client):
     client.post("/clientes", json=VALID_PAYLOAD)
     client.post("/clientes", json=OTHER_PAYLOAD)
 
-    response = client.get("/clientes", params={"q": "PEREZ"})
+    response = client.get("/clientes", params={"q": "PEREZ", "field": "last_name"})
 
     assert response.status_code == 200
     body = response.json()
     assert [c["dni"] for c in body["customers"]] == [int(VALID_PAYLOAD["dni"])]
+
+
+def test_listar_clientes_con_field_first_name_no_matchea_por_apellido(client):
+    client.post("/clientes", json=VALID_PAYLOAD)
+    client.post("/clientes", json=OTHER_PAYLOAD)
+
+    response = client.get("/clientes", params={"q": "perez", "field": "first_name"})
+
+    assert response.status_code == 200
+    assert response.json()["customers"] == []
+
+
+def test_listar_clientes_con_field_dni_filtra_solo_por_dni(client):
+    client.post("/clientes", json=VALID_PAYLOAD)
+    client.post("/clientes", json=OTHER_PAYLOAD)
+
+    response = client.get("/clientes", params={"q": "301112", "field": "dni"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [c["dni"] for c in body["customers"]] == [int(VALID_PAYLOAD["dni"])]
+
+
+def test_listar_clientes_sin_field_usa_first_name_por_defecto(client):
+    client.post("/clientes", json=VALID_PAYLOAD)
+    client.post("/clientes", json=OTHER_PAYLOAD)
+
+    response = client.get("/clientes", params={"q": "perez"})
+
+    assert response.status_code == 200
+    assert response.json()["customers"] == []
 
 
 def test_listar_clientes_sin_coincidencias_devuelve_lista_vacia(client):

@@ -209,13 +209,99 @@
 .venta-edicion__table th {
   background: #f4f6fa;
   font-weight: 600;
-  color: #333a47;
+  color: #7c8595;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.venta-edicion__table tbody tr:hover {
+  background: #f9fafc;
+}
+
+.venta-edicion__table td:nth-child(4),
+.venta-edicion__table td:nth-child(5) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.venta-edicion__confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(16, 24, 40, 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 100;
+  animation: venta-edicion-fade-in 0.15s ease-out;
+}
+
+.venta-edicion__confirm-backdrop .venta-edicion__confirm {
+  width: 100%;
+  max-width: 26rem;
+  box-shadow: 0 16px 40px rgba(16, 24, 40, 0.25);
+  animation: venta-edicion-scale-in 0.15s ease-out;
+}
+
+@keyframes venta-edicion-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes venta-edicion-scale-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem) scale(0.98);
+  }
 }
 
 .venta-edicion__table td button {
   padding: 0.35rem 0.7rem;
   font-size: 0.85rem;
   background: #b3261e;
+}
+
+.venta-edicion__quantity-input {
+  box-sizing: border-box;
+  width: 4.5rem;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: #1f2430;
+  border: 1px solid #cbd2dc;
+  border-radius: 0.4rem;
+  background: #fbfbfd;
+}
+
+.venta-edicion__quantity-input:focus {
+  outline: none;
+  border-color: #2f6fed;
+  box-shadow: 0 0 0 3px rgba(47, 111, 237, 0.18);
+  background: #ffffff;
+}
+
+.venta-edicion__quantity-input--invalid {
+  border-color: #b3261e;
+  background: #fdecec;
+}
+
+.venta-edicion__quantity-error {
+  margin: 0.3rem 0 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: #b3261e;
+}
+
+.venta-edicion__hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #7c8595;
 }
 
 .venta-edicion__total {

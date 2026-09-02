@@ -46,6 +46,12 @@ describe("ProductoForm", () => {
     expect(screen.getByLabelText("Stock inicial")).toBeInTheDocument();
   });
 
+  it("muestra el texto de ayuda del campo Código/SKU", () => {
+    render(<ProductoForm />);
+
+    expect(screen.getByText("Identificador único del producto")).toBeInTheDocument();
+  });
+
   it("muestra advertencias de campo obligatorio sin llamar a la API si el formulario está vacío", async () => {
     const user = userEvent.setup();
     render(<ProductoForm />);

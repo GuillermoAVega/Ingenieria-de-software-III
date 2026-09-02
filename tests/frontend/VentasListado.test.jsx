@@ -19,12 +19,14 @@ const SALES = [
     id: 1,
     sale_date: "2026-01-15T10:00:00+00:00",
     customer: { dni: 30111222, first_name: "Juan", last_name: "Perez" },
+    status: "Confirmada",
     total: 701,
   },
   {
     id: 2,
     sale_date: "2026-01-10T10:00:00+00:00",
     customer: { dni: 40222333, first_name: "Ana", last_name: "Diaz" },
+    status: "Anulada",
     total: 200,
   },
 ];
@@ -53,8 +55,8 @@ describe("VentasListado", () => {
     await screen.findByText("Juan Perez (30111222)");
     const desde = screen.getByLabelText("Desde");
     const hasta = screen.getByLabelText("Hasta");
-    await user.type(desde, "2026-01-01");
-    await user.type(hasta, "2026-01-31");
+    await user.type(desde, "01/01/2026");
+    await user.type(hasta, "31/01/2026");
     await user.type(screen.getByLabelText("DNI del cliente"), "3011");
     await user.click(screen.getByRole("button", { name: "Buscar" }));
 
@@ -64,6 +66,53 @@ describe("VentasListado", () => {
       dateTo: "2026-01-31",
       page: 1,
     });
+  });
+
+  it("el campo de fecha abre un calendario en español al hacer foco", async () => {
+    listarVentas.mockResolvedValue({ success: true, sales: SALES, page: 1, hasNext: false });
+    const user = userEvent.setup();
+    render(<VentasListado />);
+
+    await screen.findByText("Juan Perez (30111222)");
+    const desde = screen.getByLabelText("Desde");
+    expect(desde).toHaveAttribute("placeholder", "dd/mm/aaaa");
+    await user.click(desde);
+    await user.type(desde, "15/01/2026");
+
+    expect(screen.getByRole("heading", { name: "enero 2026" })).toBeInTheDocument();
+    expect(screen.getByRole("gridcell", { name: /15 de enero de 2026/ })).toBeInTheDocument();
+  });
+
+  it("elegir un día en el calendario completa el campo en dd/mm/aaaa", async () => {
+    listarVentas.mockResolvedValue({ success: true, sales: SALES, page: 1, hasNext: false });
+    const user = userEvent.setup();
+    render(<VentasListado />);
+
+    await screen.findByText("Juan Perez (30111222)");
+    const desde = screen.getByLabelText("Desde");
+    await user.click(desde);
+    await user.type(desde, "15/01/2026");
+
+    await user.click(screen.getByRole("gridcell", { name: /20 de enero de 2026/ }));
+
+    expect(desde).toHaveValue("20/01/2026");
+  });
+
+  it("la fecha elegida en el calendario se envía al backend en formato ISO", async () => {
+    listarVentas.mockResolvedValue({ success: true, sales: SALES, page: 1, hasNext: false });
+    const user = userEvent.setup();
+    render(<VentasListado />);
+
+    await screen.findByText("Juan Perez (30111222)");
+    const desde = screen.getByLabelText("Desde");
+    await user.click(desde);
+    await user.type(desde, "15/01/2026");
+    await user.click(screen.getByRole("gridcell", { name: /20 de enero de 2026/ }));
+    await user.click(screen.getByRole("button", { name: "Buscar" }));
+
+    expect(listarVentas).toHaveBeenLastCalledWith(
+      expect.objectContaining({ dateFrom: "2026-01-20", page: 1 })
+    );
   });
 
   it("borrar los filtros y volver a buscar llama sin ellos", async () => {
@@ -154,15 +203,26 @@ describe("VentasListado", () => {
     );
   });
 
-  it("la columna Fecha muestra año-mes-día, sin hora", async () => {
+  it("la columna Fecha muestra dd/mm/aaaa, sin hora", async () => {
     listarVentas.mockResolvedValue({ success: true, sales: SALES, page: 1, hasNext: false });
 
     render(<VentasListado />);
 
     await screen.findByText("Juan Perez (30111222)");
-    expect(screen.getByText("2026-01-15")).toBeInTheDocument();
-    expect(screen.getByText("2026-01-10")).toBeInTheDocument();
+    expect(screen.getByText("15/01/2026")).toBeInTheDocument();
+    expect(screen.getByText("10/01/2026")).toBeInTheDocument();
     expect(screen.queryByText("2026-01-15T10:00:00+00:00")).not.toBeInTheDocument();
+  });
+
+  it("la tabla muestra el estado de cada venta, incluidas las anuladas", async () => {
+    listarVentas.mockResolvedValue({ success: true, sales: SALES, page: 1, hasNext: false });
+
+    render(<VentasListado />);
+
+    await screen.findByText("Juan Perez (30111222)");
+    expect(screen.getByRole("columnheader", { name: "Estado" })).toBeInTheDocument();
+    expect(screen.getByText("Confirmada")).toBeInTheDocument();
+    expect(screen.getByText("Anulada")).toBeInTheDocument();
   });
 
   it("cada fila tiene una acción para ver el detalle de esa venta", async () => {
@@ -173,6 +233,18 @@ describe("VentasListado", () => {
     await screen.findByText("Juan Perez (30111222)");
     expect(screen.getByRole("button", { name: "Ver detalle de la venta 1" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Ver detalle de la venta 2" })).toBeInTheDocument();
+  });
+
+  it("el botón de ver detalle usa un ícono SVG, no el emoji de texto", async () => {
+    listarVentas.mockResolvedValue({ success: true, sales: SALES, page: 1, hasNext: false });
+
+    render(<VentasListado />);
+
+    await screen.findByText("Juan Perez (30111222)");
+    const boton = screen.getByRole("button", { name: "Ver detalle de la venta 1" });
+
+    expect(boton.querySelector("svg")).toBeInTheDocument();
+    expect(boton.textContent).not.toContain("👁");
   });
 
   it("ver detalle de una venta muestra sus ítems, total, fecha y cliente en un modal", async () => {
@@ -216,6 +288,33 @@ describe("VentasListado", () => {
     await user.click(screen.getByRole("button", { name: "Ver detalle de la venta 1" }));
 
     expect(await screen.findByText("Venta no encontrada")).toBeInTheDocument();
+  });
+
+  it("el botón de cierre con ícono X cierra el modal", async () => {
+    listarVentas.mockResolvedValue({ success: true, sales: SALES, page: 1, hasNext: false });
+    buscarVenta.mockResolvedValue({
+      success: true,
+      sale: {
+        id: 1,
+        sale_date: "2026-01-15T10:00:00+00:00",
+        customer: { dni: 30111222, first_name: "Juan", last_name: "Perez" },
+        items: [],
+        total: 0,
+        status: "Confirmada",
+      },
+    });
+    const user = userEvent.setup();
+    render(<VentasListado />);
+
+    await screen.findByText("Juan Perez (30111222)");
+    await user.click(screen.getByRole("button", { name: "Ver detalle de la venta 1" }));
+
+    const cerrarIcono = await screen.findByRole("button", { name: "Cerrar detalle" });
+    expect(cerrarIcono.querySelector("svg")).toBeInTheDocument();
+
+    await user.click(cerrarIcono);
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("cerrar el modal conserva la página y los filtros del listado de fondo", async () => {

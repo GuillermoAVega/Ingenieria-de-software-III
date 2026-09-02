@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { buscarProductosParaVenta } from "../api/productosApi.js";
+import { buscarProducto, buscarProductosParaVenta } from "../api/productosApi.js";
 import { buscarVenta, buscarVentasDeCliente, cerrarVenta, reemplazarDetalleVenta } from "../api/ventasApi.js";
 import { toDateOnly } from "../dateFormat.js";
 import {
@@ -8,6 +8,7 @@ import {
   addItem,
   computeTotal,
   removeItem,
+  updateItemQuantity,
   validateQuantityFormat,
 } from "../ventaDetalle.js";
 import {
@@ -19,6 +20,7 @@ import {
 import "./VentaEdicionForm.css";
 
 const NO_PRODUCTS_FOUND_MESSAGE = "No se encontraron productos";
+const LAST_ITEM_MESSAGE = "La venta debe tener al menos un producto";
 const PRODUCT_SEARCH_DEBOUNCE_MS = 300;
 
 /**
@@ -67,6 +69,13 @@ export function VentaEdicionForm() {
   const [quantityInput, setQuantityInput] = useState("");
   const [itemError, setItemError] = useState("");
 
+  const [quantityDrafts, setQuantityDrafts] = useState(
+    /** @type {Record<string, string>} */ ({})
+  );
+  const [quantityErrors, setQuantityErrors] = useState(
+    /** @type {Record<string, string>} */ ({})
+  );
+
   useEffect(() => {
     if (selectedProduct || !productQuery.trim()) {
       setProductResults([]);
@@ -103,6 +112,7 @@ export function VentaEdicionForm() {
   }
 
   const [isSaving, setIsSaving] = useState(false);
+  const [listMessage, setListMessage] = useState("");
   const [saveMessage, setSaveMessage] = useState("");
   const [saveErrors, setSaveErrors] = useState(/** @type {string[]} */ ([]));
 
@@ -124,6 +134,8 @@ export function VentaEdicionForm() {
     setHasSearchedProducts(false);
     setQuantityInput("");
     setItemError("");
+    setQuantityDrafts({});
+    setQuantityErrors({});
     setSaveMessage("");
     setSaveErrors([]);
     setShowCloseConfirm(false);
@@ -137,6 +149,7 @@ export function VentaEdicionForm() {
     event.preventDefault();
     setIsSearchingClient(true);
     setClienteEvaluation(null);
+    setListMessage("");
     resetEditing();
     try {
       const result = await buscarVentasDeCliente(dniInput);
@@ -149,6 +162,7 @@ export function VentaEdicionForm() {
   /** @param {number} id */
   async function handleSelectSaleToEdit(id) {
     setEditState(null);
+    setListMessage("");
     const result = await buscarVenta(id);
     const evaluation = evaluateEdicionResult(result);
     setEditState(evaluation);
@@ -160,6 +174,7 @@ export function VentaEdicionForm() {
 
   async function handleBackToList() {
     resetEditing();
+    setListMessage("");
     const result = await buscarVentasDeCliente(dniInput);
     setClienteEvaluation(evaluateClienteSalesParaModificar(result));
   }
@@ -195,6 +210,81 @@ export function VentaEdicionForm() {
   /** @param {string} sku */
   function handleRemoveItem(sku) {
     setItems(removeItem(items, sku));
+    setQuantityDrafts((current) => {
+      const next = { ...current };
+      delete next[sku];
+      return next;
+    });
+    setQuantityErrors((current) => {
+      const next = { ...current };
+      delete next[sku];
+      return next;
+    });
+  }
+
+  /**
+   * @param {string} sku
+   * @param {string} value
+   */
+  function handleQuantityDraftChange(sku, value) {
+    setQuantityDrafts((current) => ({ ...current, [sku]: value }));
+    setQuantityErrors((current) => {
+      if (!(sku in current)) {
+        return current;
+      }
+      const next = { ...current };
+      delete next[sku];
+      return next;
+    });
+  }
+
+  /** @param {string} sku */
+  async function handleQuantityBlur(sku) {
+    const draft = quantityDrafts[sku];
+    if (draft === undefined) {
+      return;
+    }
+
+    const currentItem = items.find((item) => item.sku === sku);
+    if (currentItem && draft === String(currentItem.quantity)) {
+      setQuantityDrafts((current) => {
+        const next = { ...current };
+        delete next[sku];
+        return next;
+      });
+      return;
+    }
+
+    const formatError = validateQuantityFormat(draft);
+    if (formatError) {
+      setQuantityErrors((current) => ({ ...current, [sku]: formatError }));
+      return;
+    }
+
+    const result = await buscarProducto(sku);
+    if (!result.success) {
+      setQuantityErrors((current) => ({ ...current, [sku]: result.errors[0].message }));
+      return;
+    }
+
+    const outcome = updateItemQuantity(items, sku, draft, result.product.stock);
+    const stockError = outcome.error;
+    if (stockError) {
+      setQuantityErrors((current) => ({ ...current, [sku]: stockError }));
+      return;
+    }
+
+    setItems(outcome.items);
+    setQuantityDrafts((current) => {
+      const next = { ...current };
+      delete next[sku];
+      return next;
+    });
+    setQuantityErrors((current) => {
+      const next = { ...current };
+      delete next[sku];
+      return next;
+    });
   }
 
   async function handleSaveDetail() {
@@ -215,8 +305,11 @@ export function VentaEdicionForm() {
       );
 
       if (result.success) {
-        setSaveMessage(result.message);
-        setItems(toVentaDetalleItems(result.sale.items));
+        const message = result.message;
+        resetEditing();
+        setListMessage(message);
+        const refreshed = await buscarVentasDeCliente(dniInput);
+        setClienteEvaluation(evaluateClienteSalesParaModificar(refreshed));
         return;
       }
 
@@ -279,6 +372,12 @@ export function VentaEdicionForm() {
           {isSearchingClient ? "Buscando…" : "Buscar ventas"}
         </button>
       </form>
+
+      {listMessage && (
+        <p className="venta-edicion__banner venta-edicion__banner--success" role="status">
+          {listMessage}
+        </p>
+      )}
 
       {!editState && clienteEvaluation?.state === CLIENTE_SALES_STATE.CLIENT_NOT_FOUND && (
         <p className="venta-edicion__banner venta-edicion__banner--error" role="alert">
@@ -441,11 +540,38 @@ export function VentaEdicionForm() {
                 <tr key={item.sku}>
                   <td>{item.sku}</td>
                   <td>{item.name}</td>
-                  <td>{item.quantity}</td>
+                  <td>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      aria-label={`Cantidad de ${item.name}`}
+                      value={quantityDrafts[item.sku] ?? String(item.quantity)}
+                      onChange={(event) =>
+                        handleQuantityDraftChange(item.sku, event.target.value)
+                      }
+                      onBlur={() => handleQuantityBlur(item.sku)}
+                      className={
+                        quantityErrors[item.sku]
+                          ? "venta-edicion__quantity-input venta-edicion__quantity-input--invalid"
+                          : "venta-edicion__quantity-input"
+                      }
+                    />
+                    {quantityErrors[item.sku] && (
+                      <p className="venta-edicion__quantity-error" role="alert">
+                        {quantityErrors[item.sku]}
+                      </p>
+                    )}
+                  </td>
                   <td>{item.unitPrice}</td>
                   <td>{item.quantity * item.unitPrice}</td>
                   <td>
-                    <button type="button" onClick={() => handleRemoveItem(item.sku)}>
+                    <button
+                      type="button"
+                      disabled={items.length === 1}
+                      title={items.length === 1 ? LAST_ITEM_MESSAGE : undefined}
+                      onClick={() => handleRemoveItem(item.sku)}
+                    >
                       Quitar
                     </button>
                   </td>
@@ -453,6 +579,10 @@ export function VentaEdicionForm() {
               ))}
             </tbody>
           </table>
+
+          {items.length === 1 && (
+            <p className="venta-edicion__hint">{LAST_ITEM_MESSAGE}</p>
+          )}
 
           <p className="venta-edicion__total">Total: {total}</p>
 
@@ -477,7 +607,11 @@ export function VentaEdicionForm() {
           )}
 
           <div className="venta-edicion__actions">
-            <button type="button" onClick={handleSaveDetail} disabled={isSaving}>
+            <button
+              type="button"
+              onClick={handleSaveDetail}
+              disabled={isSaving || items.length === 0}
+            >
               {isSaving ? "Guardando…" : "Guardar cambios"}
             </button>
             <button
@@ -490,20 +624,22 @@ export function VentaEdicionForm() {
           </div>
 
           {showCloseConfirm && (
-            <div className="venta-edicion__confirm">
-              <p>¿Confirmás cerrar esta venta? Se descontará el stock de sus productos.</p>
-              <div className="venta-edicion__confirm-actions">
-                <button type="button" onClick={handleConfirmClose} disabled={isClosing}>
-                  {isClosing ? "Cerrando…" : "Confirmar"}
-                </button>
-                <button
-                  type="button"
-                  className="venta-edicion__cancel"
-                  onClick={handleCancelClose}
-                  disabled={isClosing}
-                >
-                  Cancelar
-                </button>
+            <div className="venta-edicion__confirm-backdrop">
+              <div className="venta-edicion__confirm" role="dialog" aria-modal="true">
+                <p>¿Confirmás cerrar esta venta? Se descontará el stock de sus productos.</p>
+                <div className="venta-edicion__confirm-actions">
+                  <button type="button" onClick={handleConfirmClose} disabled={isClosing}>
+                    {isClosing ? "Cerrando…" : "Confirmar"}
+                  </button>
+                  <button
+                    type="button"
+                    className="venta-edicion__cancel"
+                    onClick={handleCancelClose}
+                    disabled={isClosing}
+                  >
+                    Cancelar
+                  </button>
+                </div>
               </div>
             </div>
           )}

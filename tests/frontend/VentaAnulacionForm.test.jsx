@@ -69,7 +69,7 @@ describe("VentaAnulacionForm", () => {
     expect(screen.getAllByRole("button", { name: "Anular" })).toHaveLength(2);
   });
 
-  it("muestra la fecha en formato año-mes-día, sin hora", async () => {
+  it("muestra la fecha en formato dd/mm/aaaa, sin hora", async () => {
     buscarVentasDeCliente.mockResolvedValue({
       success: true,
       sales: [
@@ -81,7 +81,7 @@ describe("VentaAnulacionForm", () => {
 
     await buscar(user);
 
-    expect(await screen.findByText("2026-01-15")).toBeInTheDocument();
+    expect(await screen.findByText("15/01/2026")).toBeInTheDocument();
     expect(screen.queryByText("2026-01-15T10:00:00+00:00")).not.toBeInTheDocument();
   });
 

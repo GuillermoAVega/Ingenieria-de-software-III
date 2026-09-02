@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 
 from sqlalchemy.orm import Session
 
@@ -44,7 +44,7 @@ def list_sales(
     rows = (
         session.query(Sale, Customer)
         .join(Customer, Sale.customer_id == Customer.id)
-        .filter(Sale.status == SaleStatus.CONFIRMED)
+        .filter(Sale.status.in_([SaleStatus.CONFIRMED, SaleStatus.CANCELLED]))
         .all()
     )
 
@@ -75,7 +75,7 @@ def create_sale(
 
     sale = Sale(
         customer_id=customer.id,
-        sale_date=datetime.now(timezone.utc),
+        sale_date=datetime.now(),
         total=total,
         status=SaleStatus.DRAFT,
     )
@@ -106,7 +106,7 @@ def create_confirmed_sale(
 
     sale = Sale(
         customer_id=customer.id,
-        sale_date=datetime.now(timezone.utc),
+        sale_date=datetime.now(),
         total=total,
         status=SaleStatus.CONFIRMED,
     )

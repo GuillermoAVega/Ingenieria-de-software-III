@@ -398,9 +398,36 @@ def test_list_customers_filtra_por_criterio_insensible_a_tildes(session):
         phone="11-2222-3333",
     )
 
-    customers, _ = repository.list_customers(session, query="perez", page=1)
+    customers, _ = repository.list_customers(
+        session, query="perez", field="last_name", page=1
+    )
 
     assert [c.dni for c in customers] == [30111222]
+
+
+def test_list_customers_field_first_name_no_incluye_coincidencia_por_last_name(session):
+    repository.create_customer(
+        session,
+        dni="30111222",
+        first_name="Juan",
+        last_name="Perez",
+        email="juan@dominio.com",
+        phone="11-4444-5555",
+    )
+    repository.create_customer(
+        session,
+        dni="41234567",
+        first_name="Ana",
+        last_name="Lopez",
+        email="ana@dominio.com",
+        phone="11-2222-3333",
+    )
+
+    customers, _ = repository.list_customers(
+        session, query="perez", field="first_name", page=1
+    )
+
+    assert customers == []
 
 
 def test_list_customers_filtra_por_dni_parcial(session):
@@ -421,7 +448,9 @@ def test_list_customers_filtra_por_dni_parcial(session):
         phone="11-2222-3333",
     )
 
-    customers, _ = repository.list_customers(session, query="301112", page=1)
+    customers, _ = repository.list_customers(
+        session, query="301112", field="dni", page=1
+    )
 
     assert [c.dni for c in customers] == [30111222]
 

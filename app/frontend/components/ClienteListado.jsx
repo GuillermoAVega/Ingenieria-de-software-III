@@ -9,18 +9,20 @@ import "./ClienteListado.css";
  */
 export function ClienteListado() {
   const [searchInput, setSearchInput] = useState("");
+  const [fieldInput, setFieldInput] = useState("first_name");
   const [customers, setCustomers] = useState(
     /** @type {import("../api/clientesApi.js").Cliente[]} */ ([])
   );
   const [page, setPage] = useState(1);
   const [hasNext, setHasNext] = useState(false);
   const [appliedQuery, setAppliedQuery] = useState(/** @type {string | undefined} */ (undefined));
+  const [appliedField, setAppliedField] = useState("first_name");
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
-    listarClientes({ q: appliedQuery, page }).then((result) => {
+    listarClientes({ q: appliedQuery, field: appliedField, page }).then((result) => {
       if (cancelled) {
         return;
       }
@@ -31,26 +33,44 @@ export function ClienteListado() {
     return () => {
       cancelled = true;
     };
-  }, [appliedQuery, page]);
+  }, [appliedQuery, appliedField, page]);
 
   /** @param {import("react").FormEvent<HTMLFormElement>} event */
   function handleSearch(event) {
     event.preventDefault();
     setAppliedQuery(searchInput.trim() || undefined);
+    setAppliedField(fieldInput);
     setPage(1);
   }
 
   return (
     <div className="cliente-listado">
       <form className="cliente-listado__search" onSubmit={handleSearch}>
-        <label htmlFor="listado-buscar">Buscar</label>
-        <input
-          id="listado-buscar"
-          name="buscar"
-          type="text"
-          value={searchInput}
-          onChange={(event) => setSearchInput(event.target.value)}
-        />
+        <div className="cliente-listado__field cliente-listado__field--campo">
+          <label htmlFor="listado-buscar-campo">Filtro</label>
+          <select
+            id="listado-buscar-campo"
+            name="campo"
+            value={fieldInput}
+            onChange={(event) => setFieldInput(event.target.value)}
+          >
+            <option value="first_name">Nombre</option>
+            <option value="last_name">Apellido</option>
+            <option value="dni">DNI</option>
+          </select>
+        </div>
+
+        <div className="cliente-listado__field cliente-listado__field--valor">
+          <label htmlFor="listado-buscar">Buscar</label>
+          <input
+            id="listado-buscar"
+            name="buscar"
+            type="text"
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+          />
+        </div>
+
         <button type="submit" disabled={isLoading}>
           Buscar
         </button>

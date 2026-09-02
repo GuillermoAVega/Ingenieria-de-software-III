@@ -70,6 +70,7 @@ def _serialize_sale_summary(sale: Sale, customer: Customer) -> dict[str, Any]:
             "first_name": customer.first_name,
             "last_name": customer.last_name,
         },
+        "status": sale.status.value,
         "total": sale.total,
     }
 
@@ -328,7 +329,7 @@ def reemplazar_detalle_venta(
     resolved_items, errors = _resolve_items(
         session,
         payload.get("items"),
-        require_non_empty=False,
+        require_non_empty=True,
         check_product_active=True,
         check_stock=True,
     )

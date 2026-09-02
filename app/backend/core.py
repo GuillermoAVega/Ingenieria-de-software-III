@@ -52,11 +52,11 @@ def normalize_search_text(value: str) -> str:
     return without_accents.lower()
 
 
-def matches_search(
-    normalized_query: str, *, dni: int, first_name: str, last_name: str
+def matches_search_field(
+    normalized_query: str, field: str, *, dni: int, first_name: str, last_name: str
 ) -> bool:
-    if normalized_query in normalize_search_text(first_name):
-        return True
-    if normalized_query in normalize_search_text(last_name):
-        return True
+    if field == "first_name":
+        return normalized_query in normalize_search_text(first_name)
+    if field == "last_name":
+        return normalized_query in normalize_search_text(last_name)
     return normalized_query in str(dni)
