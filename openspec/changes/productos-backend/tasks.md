@@ -39,26 +39,26 @@ Cambio: `productos-backend`. Entradas: `proposal.md`, `design.md`, `specs/produc
 
 ## Fase 1: Constantes y modelos
 
-- [ ] **1.1 `constants.py`** — Archivos: `Backend/src/productos/__init__.py`, `Backend/src/productos/constants.py`, `Backend/tests/productos/__init__.py`, `Backend/tests/productos/test_constantes.py`.
+- [x] **1.1 `constants.py`** — Archivos: `Backend/src/productos/__init__.py`, `Backend/src/productos/constants.py`, `Backend/tests/productos/__init__.py`, `Backend/tests/productos/test_constantes.py`.
   - RED: prueba que importa cada constante (`TIPO_PLATO`, `TIPO_BEBIDA`, `TIPO_POSTRE`, `TIPO_MENU_EJECUTIVO`, `TIPO_COMBO_PROMOCION`, `NOMBRE_MAX=100`, `DESCRIPCION_MAX=500`, `PRECIO_DIGITOS=10`, `PRECIO_DECIMALES=2`, `CANT_PERSONAS_MIN=1`, `TIPO_MAX=30`) y comprueba valores y que los `TIPO_*` son distintos y caben en `TIPO_MAX`.
   - GREEN: crear paquete y `constants.py`.
   - Escenarios: soporte (valores usados por CAT-18, CAT-20, CAT-28).
   - Hecho cuando: la prueba pasa.
 
-- [ ] **1.2 `Producto` abstracto + Plato, Bebida, Postre** — Archivos: `Backend/src/productos/models.py`, `Backend/tests/productos/test_modelos.py`. Depende de 1.1.
+- [x] **1.2 `Producto` abstracto + Plato, Bebida, Postre** — Archivos: `Backend/src/productos/models.py`, `Backend/tests/productos/test_modelos.py`. Depende de 1.1.
   - RED: `Producto()` lanza `TypeError` (CAT-02); `create_all` crea `producto`, `plato`, `bebida`, `postre` con las columnas del diseño; persistir un Plato, una Bebida y un Postre y releerlos con el `tipo` correcto; `CHECK precio > 0` y `CHECK cant_personas >= 1` rechazados por la BD; índice parcial `ux_producto_nombre_activo` existe, rechaza dos activos con igual `nombre_normalizado` y permite un activo + uno dado de baja (respaldo de CAT-25).
   - GREEN: `Producto(ModeloBase)` con `polymorphic_on`, `polymorphic_abstract` y `__init__` que rechaza la instancia directa; subtipos con herencia de tablas unidas; índice parcial único; CHECK.
   - Escenarios: CAT-02 (Instanciación directa rechazada, S); soporte de CAT-21..25.
   - Hecho cuando: las pruebas pasan.
 
-- [ ] **1.3 `MenuEjecutivo` y relaciones bidireccionales con Plato/Postre** — Archivos: `Backend/src/productos/models.py`, `Backend/tests/productos/test_modelos.py`. Depende de 1.2.
+- [x] **1.3 `MenuEjecutivo` y relaciones bidireccionales con Plato/Postre** — Archivos: `Backend/src/productos/models.py`, `Backend/tests/productos/test_modelos.py`. Depende de 1.2.
   - RED: `configure_mappers()` no lanza `AmbiguousForeignKeysError` (CAT-03); `MenuEjecutivo.plato` / `Plato.menus` y `MenuEjecutivo.postre` / `Postre.menus` son bidireccionales (`back_populates` comprobado asignando de un lado y leyendo del otro); FK a `plato.id`/`postre.id` rechaza con la BD un `plato_id` de una Bebida (FK ya activa por 0.3).
   - GREEN: `MenuEjecutivo` con `inherit_condition`, `foreign_keys` explícitos en cada relationship.
   - Escenarios: CAT-03 (Los mappers se configuran, parcial: se completa en 1.4).
   - Hecho cuando: las pruebas pasan.
   - `[COMMIT]` junto con 1.1 y 1.2 (jerarquía base) si se prefiere un solo commit de modelos parciales; de lo contrario, continuar a 1.4.
 
-- [ ] **1.4 `ComboPromocion`, tablas de asociación y propiedades `*_ids`** — Archivos: `Backend/src/productos/models.py`, `Backend/tests/productos/test_modelos.py`. Depende de 1.3.
+- [x] **1.4 `ComboPromocion`, tablas de asociación y propiedades `*_ids`** — Archivos: `Backend/src/productos/models.py`, `Backend/tests/productos/test_modelos.py`. Depende de 1.3.
   - RED: `configure_mappers()` global sin errores con los cinco subtipos (CAT-03); `combo_plato`/`combo_bebida`/`combo_postre` con PK compuesta (un duplicado lanza `IntegrityError`); relaciones `ComboPromocion.platos/bebidas/postres` ↔ `Plato.combos/Bebida.combos/Postre.combos` bidireccionales; `platos_ids`, `bebidas_ids`, `postres_ids` devuelven listas ordenadas; `CHECK fecha_desde <= fecha_hasta` rechazado por la BD (respaldo de CAT-29).
   - GREEN: modelo, tablas secundarias, propiedades, `back_populates`.
   - Escenarios: CAT-03 (completo); soporte de CAT-29.
