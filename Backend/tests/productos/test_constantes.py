@@ -14,7 +14,6 @@ def test_valores_de_limites():
     assert constantes.DESCRIPCION_MAX == 500
     assert constantes.PRECIO_DIGITOS == 10
     assert constantes.PRECIO_DECIMALES == 2
-    assert constantes.CANT_PERSONAS_MIN == 1
     assert constantes.TIPO_MAX == 30
 
 

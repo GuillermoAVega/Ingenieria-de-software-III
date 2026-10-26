@@ -14,6 +14,7 @@ from sqlalchemy.pool import StaticPool
 from src.database import configurar_sqlite, get_db
 from src.main import app
 from src.models import ModeloBase
+from src.productos import registro  # noqa: F401  (carga los mappers de todos los subtipos)
 
 # Fecha fija para las pruebas (el override de obtener_hoy se agrega en 7.1)
 HOY_FIJO = date(2026, 6, 15)
