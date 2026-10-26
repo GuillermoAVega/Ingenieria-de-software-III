@@ -1,0 +1,55 @@
+schema: spec-driven
+
+context: |
+  Restaurant management system (university project).
+  Backend: FastAPI + SQLAlchemy + Pydantic + SQLite (Backend/src).
+  Frontend: React 19 + TypeScript + Vite (Frontend/).
+  Backend convention: one folder per entity, Backend/src/<entity>/ with models.py,
+  schemas.py, exceptions.py, constants.py, services.py, router.py.
+  Shared in Backend/src/: main.py, database.py, models.py (ModeloBase), exceptions.py.
+  SDD artifacts are written in neutral professional Spanish (user decision); code identifiers stay as-is.
+
+# Enabled by the user (2026-10-25). pytest is installed by the first task of
+# productos-backend; until then the test command is not yet runnable.
+strict_tdd: true
+
+projects:
+  - path: Backend
+    stack: Python, FastAPI, SQLAlchemy 2, Pydantic 2, SQLite
+    test_command: "cd Backend && python -m pytest"
+    test_framework: pytest
+    layers: {unit: true, integration: true, e2e: false}
+    integration_libs: [httpx, fastapi.testclient]
+    coverage: null
+    linter: null
+    type_checker: null
+    formatter: null
+  - path: Frontend
+    stack: TypeScript, React 19, Vite 8
+    test_command: null
+    test_framework: null
+    layers: {unit: false, integration: false, e2e: false}
+    coverage: null
+    linter: "npm run lint (eslint)"
+    type_checker: "tsc -b"
+    formatter: null
+
+testing:
+  workspace_test_command: "cd Backend && python -m pytest"
+  note: "Backend uses pytest (added by productos-backend). Frontend has no runner yet."
+
+rules:
+  proposal:
+    - Reference the entity-per-folder backend convention when adding entities.
+  specs:
+    - Use Given/When/Then scenarios.
+  design:
+    - Keep shared code in Backend/src root; entity code in its own folder.
+  tasks:
+    - Order tasks test-first once a test runner is available.
+  apply:
+    - Follow existing conventions; write tests first when a runner exists.
+  verify:
+    - Run available quality tools (Frontend lint, tsc -b).
+  archive:
+    - Merge delta specs into openspec/specs before archiving.
