@@ -15,20 +15,20 @@ Cambio: `productos-backend`. Entradas: `proposal.md`, `design.md`, `specs/produc
 
 ## Fase 0: Infraestructura de pruebas
 
-- [ ] **0.1 Instalar pytest y configuración base** — Archivos: `Backend/requirements.txt`, `Backend/pytest.ini`, `Backend/tests/__init__.py` (si hace falta), `Backend/tests/test_smoke.py` (temporal).
+- [x] **0.1 Instalar pytest y configuración base** — Archivos: `Backend/requirements.txt`, `Backend/pytest.ini`, `Backend/tests/__init__.py` (si hace falta), `Backend/tests/test_smoke.py` (temporal).
   - RED: `python -m pytest` falla (pytest no instalado / sin configuración); prueba de humo trivial que importa `src` (requiere `pythonpath = .`).
   - GREEN: agregar `pytest` (versión fijada) a `requirements.txt`, instalarlo, crear `pytest.ini` con `pythonpath = .` y `testpaths = tests`. Verificar que `openspec/config.yaml` ya contiene `test_command` y `strict_tdd: true` (no requiere cambios).
   - Escenarios: CAT-50 (parcial).
   - Hecho cuando: `cd Backend && python -m pytest` descubre y ejecuta la prueba de humo en verde.
 
-- [ ] **0.2 Fixtures aisladas en `conftest.py`** — Archivos: `Backend/tests/conftest.py`, `Backend/tests/test_infraestructura.py`. Depende de 0.1.
-  - RED: pruebas que usan fixtures `engine`, `db`, `client`, `HOY` y comprueban que `get_db` está sobrescrito, que `obtener_hoy` devuelve `HOY` y que el archivo SQLite real no se toca (URL del engine = `sqlite://`).
-  - GREEN: `conftest.py` fija `os.environ["ENV"]="test"` y `os.environ["DB_URL"]="sqlite://"` antes de importar `src.main`; engine `sqlite://` con `StaticPool` y `check_same_thread=False`; `create_all`/`drop_all` por prueba; override de `get_db`; fixture `client = TestClient(app)`. El override de `obtener_hoy` queda diferido a 7.1 (donde nace la dependencia); aquí se deja la constante `HOY` fija y el fixture preparado.
+- [x] **0.2 Fixtures aisladas en `conftest.py`** — Archivos: `Backend/tests/conftest.py`, `Backend/tests/test_infraestructura.py`. Depende de 0.1.
+  - RED: pruebas que usan fixtures `motor`, `sesion`, `cliente`, `HOY` y comprueban que `get_db` está sobrescrito, que `obtener_hoy` devuelve `HOY` y que el archivo SQLite real no se toca (URL del engine = `sqlite://`).
+  - GREEN: `conftest.py` fija `os.environ["ENV"]="test"` y `os.environ["DB_URL"]="sqlite://"` antes de importar `src.main`; engine `sqlite://` con `StaticPool` y `check_same_thread=False`; `create_all`/`drop_all` por prueba; override de `get_db`; fixture `cliente = TestClient(app)`. El override de `obtener_hoy` queda diferido a 7.1 (donde nace la dependencia); aquí se deja la constante `HOY` fija y el fixture preparado.
   - Escenarios: CAT-50 (La suite se ejecuta de forma aislada), con ejecución sin variables de entorno externas.
   - Hecho cuando: las pruebas pasan sin variables de entorno externas y sin crear ni modificar el archivo SQLite real. Eliminar `test_smoke.py`.
   - `[COMMIT]` junto con 0.1 (infraestructura mínima ejecutable).
 
-- [ ] **0.3 `configurar_sqlite(engine)` en `database.py`** — Archivos: `Backend/src/database.py`, `Backend/tests/test_database.py`, `Backend/tests/conftest.py` (usar `configurar_sqlite` en el engine de prueba). Depende de 0.2.
+- [x] **0.3 `configurar_sqlite(engine)` en `database.py`** — Archivos: `Backend/src/database.py`, `Backend/tests/test_database.py`, `Backend/tests/conftest.py` (usar `configurar_sqlite` en el engine de prueba). Depende de 0.2.
   - RED: (a) prueba que inserta una fila con FK inexistente y espera `IntegrityError` (demuestra `PRAGMA foreign_keys=ON`); (b) prueba que una escritura confirma (`commit`) y es visible desde otra sesión del mismo engine bajo `BEGIN IMMEDIATE`; (c) prueba que el listener `begin` emite `BEGIN IMMEDIATE` (captura de eventos o `PRAGMA`/log); (d) prueba de que `get_db` ya no ejecuta el `PRAGMA`.
   - GREEN: crear `configurar_sqlite(engine)` con listener `connect` (`isolation_level=None`, `PRAGMA foreign_keys=ON`) y listener `begin` (`BEGIN IMMEDIATE`); aplicarlo al engine real; quitar el `PRAGMA` de `get_db`.
   - Escenarios: soporte de CAT-50; mitiga el riesgo de `BEGIN IMMEDIATE`/Python 3.14/SQLAlchemy 2.1 y respalda la atomicidad de CAT-30..33, CAT-34..40, LD-10..15.
