@@ -6,6 +6,7 @@ context: |
   Frontend: React 19 + TypeScript + Vite (Frontend/).
   Backend convention: one folder per entity, Backend/src/<entity>/ with models.py,
   schemas.py, exceptions.py, constants.py, services.py, router.py.
+  Entity hierarchies: the abstract base and shared logic stay in Backend/src/<entity>/ and each concrete subtype gets a nested subpackage Backend/src/<entity>/<subtype>/ with the same six files (tests mirror it under Backend/tests/<entity>/<subtype>/).
   Shared in Backend/src/: main.py, database.py, models.py (ModeloBase), exceptions.py.
   SDD artifacts are written in neutral professional Spanish (user decision); code identifiers stay as-is.
 

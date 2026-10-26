@@ -2,12 +2,12 @@
 
 ## Enfoque técnico
 
-Módulo `Backend/src/productos/` según la convención de una carpeta por entidad (rules.design: lo compartido queda en `Backend/src/`). Capas: `router.py` (HTTP, delgado) → `services.py` (reglas de negocio, sin FastAPI) → `models.py` (SQLAlchemy 2, herencia de tablas unidas sobre `ModeloBase`). Una petición = una sesión = una transacción. Las excepciones de dominio se traducen a HTTP mediante manejadores registrados en `main.py`. Implementa `specs/product-catalog` y `specs/product-logical-delete`.
+Módulo `Backend/src/productos/` según la convención de una carpeta por entidad (rules.design: lo compartido queda en `Backend/src/`). Como `Producto` es una jerarquía, cada subclase concreta tiene su propio subpaquete anidado (`platos/`, `bebidas/`, `postres/`, `menus_ejecutivos/`, `combos/`) con los seis archivos de la convención; `productos/` conserva la raíz abstracta y lo compartido (véase Estructura de módulos). Capas en cada nivel: `router.py` (HTTP, delgado) → `services.py` (reglas de negocio, sin FastAPI) → `models.py` (SQLAlchemy 2, herencia de tablas unidas sobre `ModeloBase`). Una petición = una sesión = una transacción. Las excepciones de dominio se traducen a HTTP mediante manejadores que `productos/router.py` expone y `main.py` registra. Implementa `specs/product-catalog` y `specs/product-logical-delete`.
 
 ```
-HTTP ─→ router.py ─(Pydantic 422)─→ services.py ─→ models.py ─→ SQLite
-            ▲                            │ ErrorDominio
-            └── manejadores (main.py) ◀──┘  404 / 409 / 422
+HTTP ─→ <sub>/router.py ─(Pydantic 422)─→ <sub>/services.py ─→ productos/services.py ─→ models ─→ SQLite
+            ▲                                     │ ErrorDominio
+            └── manejadores (productos/router.py, registrados en main.py) ◀── 404 / 409 / 422
 ```
 
 ## Decisiones de arquitectura
@@ -16,23 +16,28 @@ HTTP ─→ router.py ─(Pydantic 422)─→ services.py ─→ models.py ─�
 |---|------|----------|------------|----------|
 | 1 | Unicidad case-insensitive entre activos | (a) solo servicio; (b) índice parcial sobre `lower(nombre)`; (c) columna `nombre_normalizado` + índice parcial único | (b) `lower()` de SQLite es solo ASCII: "Ñandú" y "ñandú" no colisionan. Registrar una función Python en SQLite rompe el archivo para otras herramientas. (c) agrega una columna redundante | **(c) + verificación en servicio**. `nombre_normalizado = nombre.strip().casefold()` lo calcula el servicio en cada alta/edición (el `nombre` ya llega recortado por el validador de Pydantic). Índice `ux_producto_nombre_activo` UNIQUE sobre `nombre_normalizado` `WHERE dado_de_baja = 0` como respaldo. El servicio verifica primero (409 con mensaje claro); un `IntegrityError` de ese índice también se traduce a 409. Distingue tildes ("Á" ≠ "A"); solo ignora mayúsculas |
 | 2 | Check-then-act en SQLite | (a) confiar en el escritor único de SQLite; (b) `BEGIN IMMEDIATE` mediante listeners del engine; (c) bloqueos a nivel aplicación | (a) pysqlite inicia la transacción recién en el primer DML, por lo que dos peticiones pueden pasar la verificación. (b) serializa también las lecturas (aceptable en un proyecto académico). (c) no protege frente a varios procesos | **(b)**. Función `configurar_sqlite(engine)` en `database.py`: listener `connect` (fija `isolation_level=None` y ejecuta `PRAGMA foreign_keys=ON`) y listener `begin` (emite `BEGIN IMMEDIATE`). Se aplica al engine real y al de pruebas. El `PRAGMA` sale de `get_db`, porque dentro de una transacción es un no-op |
-| 3 | Excepciones | (a) `HTTPException` en servicios; (b) try/except en cada endpoint; (c) excepciones de dominio + manejadores globales | (a) acopla servicios a FastAPI. (b) duplica código | **(c)**. `productos/exceptions.py` es Python puro. `router.py` expone `MANEJADORES_EXCEPCIONES` y `main.py` los registra con `app.add_exception_handler`. Las excepciones raíz (`DetailedHTTPException`) no se usan en servicios porque importan FastAPI |
-| 4 | Esquemas | (a) un esquema genérico con campos opcionales; (b) Base/Create/Update/Respuesta por subtipo + unión discriminada | (a) pierde la validación por subtipo | **(b)**. Respuesta polimórfica = `Annotated[Union[...], Field(discriminator="tipo")]` |
-| 5 | Fecha "hoy" | (a) `date.today()` dentro del servicio; (b) parámetro `hoy` en servicios + dependencia `obtener_hoy` | (a) no es testeable sin monkeypatch | **(b)**. Los servicios reciben `hoy: date`; el router lo obtiene con `Depends(obtener_hoy)`; las pruebas lo sobrescriben con `app.dependency_overrides` |
+| 3 | Excepciones | (a) `HTTPException` en servicios; (b) try/except en cada endpoint; (c) excepciones de dominio + manejadores globales | (a) acopla servicios a FastAPI. (b) duplica código | **(c)**. Los `exceptions.py` son Python puro: los compartidos en `productos/exceptions.py`, los exclusivos de combos en `combos/exceptions.py` (véase Contrato de errores). `productos/router.py` expone `MANEJADORES_EXCEPCIONES` y `main.py` los registra con `app.add_exception_handler`. Las excepciones raíz (`DetailedHTTPException`) no se usan en servicios porque importan FastAPI |
+| 4 | Esquemas | (a) un esquema genérico con campos opcionales; (b) Base/Create/Update/Respuesta por subtipo + unión discriminada | (a) pierde la validación por subtipo | **(b)**. Bases comunes en `productos/schemas.py`; esquemas de cada subtipo en `<sub>/schemas.py`. Respuesta polimórfica = `Annotated[Union[...], Field(discriminator="tipo")]`, definida en `productos/registro.py` (véase decisión 8) |
+| 5 | Fecha "hoy" | (a) `date.today()` dentro del servicio; (b) parámetro `hoy` en servicios + dependencia `obtener_hoy` | (a) no es testeable sin monkeypatch | **(b)**. Los servicios reciben `hoy: date`; los routers lo obtienen con `Depends(obtener_hoy)` (única función, en `productos/services.py`); las pruebas lo sobrescriben con `app.dependency_overrides` |
 | 6 | Pruebas | (a) archivo temporal; (b) SQLite en memoria con `StaticPool` | (a) más lento, requiere limpieza | **(b)**, esquema recreado por prueba |
 | 7 | Ruta por id polimórfica | `{producto_id}` vs `{producto_id:int}` | Sin convertidor, `/productos/platos` podría capturarse como id y devolver 422 según el orden de registro | **`{producto_id:int}`** en todas las rutas por id. `POST /productos` devuelve 405 de forma nativa (la ruta existe solo con GET) |
+| 8 | Registro de mappers y agregación de subpaquetes | (a) `productos/__init__.py` importa todos los modelos; (b) módulo explícito `productos/registro.py`; (c) importaciones diferidas dentro de funciones | (a) importar `src.productos.constants` cargaría todo el ORM, y el paquete padre parcialmente inicializado favorece ciclos. (c) oculta el grafo real | **(b)**. `registro.py` es el único módulo que conoce todos los subpaquetes; solo importa sus `models` y `schemas` (hojas). `productos/__init__.py` queda vacío |
+| 9 | Lógica específica en el cambio de estado compartido | (a) `aplicar_cambio_estado` importa servicios/excepciones de menús y combos; (b) gancho `verificar_reactivacion` inyectado por el servicio del subtipo | (a) ciclo `combos.services → productos.services → combos.*` | **(b)**. La función sigue siendo única (decisión 1 de la propuesta); el subtipo compuesto aporta su verificación de reactivación |
 
 ### Contrato de errores
 
-| Excepción (`productos/exceptions.py`) | HTTP | Cuerpo |
-|---|---|---|
-| `ErrorDominio` (base abstracta) | — | — |
-| `ProductoNoEncontrado` | 404 | `{"detail": msg}` |
-| `ComponenteInvalido(campo, ids)` (inexistente o de tipo incorrecto) | 422 | `{"detail": [{"loc": ["body", campo], "msg": msg, "type": "componente_invalido", "ids": [...]}]}` (misma forma que el 422 de Pydantic) |
-| `FechaHastaVencida` (alta de combo) | 422 | idem, `loc: ["body","fecha_hasta"]` |
-| `ErrorConflicto` (base 409) | 409 | `{"detail": msg}` |
-| └ `NombreDuplicado`, `ComponenteInactivo(ids)`, `ComboVencidoInmutable` | 409 | `ComponenteInactivo` agrega `"ids": [...]` |
-| └ `BajaRestringida(bloqueantes)` | 409 | `{"detail": msg, "bloqueantes": [10, 20]}` (ordenados) |
+| Excepción | Ubicación | HTTP | Cuerpo |
+|---|---|---|---|
+| `ErrorDominio` (base abstracta) | `productos/exceptions.py` | — | — |
+| `ProductoNoEncontrado` | `productos/exceptions.py` | 404 | `{"detail": msg}` |
+| `ComponenteInvalido(campo, ids)` (inexistente o de tipo incorrecto) | `productos/exceptions.py` (la usan menús y combos) | 422 | `{"detail": [{"loc": ["body", campo], "msg": msg, "type": "componente_invalido", "ids": [...]}]}` (misma forma que el 422 de Pydantic) |
+| `FechaHastaVencida` (alta de combo) | `combos/exceptions.py` | 422 | idem, `loc: ["body","fecha_hasta"]` |
+| `ErrorConflicto` (base 409) | `productos/exceptions.py` | 409 | `{"detail": msg}` |
+| └ `NombreDuplicado`, `ComponenteInactivo(ids)` | `productos/exceptions.py` | 409 | `ComponenteInactivo` agrega `"ids": [...]` |
+| └ `ComboVencidoInmutable` | `combos/exceptions.py` (hereda de `ErrorConflicto`) | 409 | `{"detail": msg}` |
+| └ `BajaRestringida(bloqueantes)` | `productos/exceptions.py` | 409 | `{"detail": msg, "bloqueantes": [10, 20]}` (ordenados) |
+
+`MANEJADORES_EXCEPCIONES` se indexa por `ProductoNoEncontrado`, `ComponenteInvalido`, `FechaHastaVencida` y `ErrorConflicto`; Starlette resuelve por MRO, por lo que el manejador de `ErrorConflicto` cubre también `ComboVencidoInmutable`.
 
 ## Modelo de datos
 
@@ -46,16 +51,18 @@ HTTP ─→ router.py ─(Pydantic 422)─→ services.py ─→ models.py ─�
 | `combo_promocion` | `id` PK/FK, `fecha_desde` Date, `fecha_hasta` Date | CHECK `fecha_desde <= fecha_hasta` |
 | `combo_plato` / `combo_bebida` / `combo_postre` | `combo_id` FK→`combo_promocion.id`, `<x>_id` FK→`<x>.id` | PK compuesta (impide duplicados) |
 
-Mapeo (puntos no obvios):
+Mapeo (puntos no obvios). Las referencias entre subtipos son siempre por nombre (cadena), de modo que ningún `models.py` de un subpaquete importa a otro:
 
 ```python
+# productos/models.py: solo la raíz abstracta
 class Producto(ModeloBase):
     __mapper_args__ = {"polymorphic_on": "tipo", "polymorphic_abstract": True}
-    def __init__(self, **kw):
-        if type(self) is Producto:
+    def __new__(cls, *a, **kw):  # __init__ lo envuelve la instrumentación de SQLAlchemy
+        if cls is Producto:
             raise TypeError("Producto es abstracto")
-        super().__init__(**kw)
+        return super().__new__(cls)
 
+# menus_ejecutivos/models.py: importa solo productos.models y productos.constants
 class MenuEjecutivo(Producto):
     id = mapped_column(ForeignKey("producto.id"), primary_key=True)
     plato_id = mapped_column(ForeignKey("plato.id"))
@@ -64,37 +71,77 @@ class MenuEjecutivo(Producto):
                        "inherit_condition": id == Producto.id}
     plato = relationship("Plato", foreign_keys=[plato_id], back_populates="menus")
     postre = relationship("Postre", foreign_keys=[postre_id], back_populates="menus")
-# Plato.menus = relationship("MenuEjecutivo", foreign_keys="MenuEjecutivo.plato_id", back_populates="plato")
-# ComboPromocion.platos = relationship("Plato", secondary=combo_plato, back_populates="combos"), idem bebidas/postres
+
+# platos/models.py
+#   menus  = relationship("MenuEjecutivo", foreign_keys="MenuEjecutivo.plato_id", back_populates="plato")
+#   combos = relationship("ComboPromocion", secondary="combo_plato", back_populates="platos")
+# combos/models.py: define combo_plato/combo_bebida/combo_postre (dueño de la composición)
+#   platos = relationship("Plato", secondary=combo_plato, back_populates="combos"), idem bebidas/postres
 ```
 
-`ComboPromocion` expone propiedades `platos_ids`, `bebidas_ids`, `postres_ids` (listas ordenadas de ids) para la serialización con `from_attributes`. Los listados usan `selectin_polymorphic`/`selectinload` para evitar N+1.
+`secondary="combo_plato"` se resuelve contra `ModeloBase.metadata` en `configure_mappers`, por lo que basta con que `combos/models.py` esté cargado (lo garantiza `registro.py`). `ComboPromocion` expone propiedades `platos_ids`, `bebidas_ids`, `postres_ids` (listas ordenadas de ids) para la serialización con `from_attributes`. Los listados usan `selectin_polymorphic(Producto, MODELOS_POR_TIPO.values())`/`selectinload` para evitar N+1.
 
-## Archivos por responsabilidad
+## Estructura de módulos
 
-| Archivo | Acción | Responsabilidad |
+```
+Backend/src/productos/
+├── __init__.py      vacío (sin efectos de importación)
+├── constants.py     TIPO_* (los cinco discriminadores), NOMBRE_MAX, DESCRIPCION_MAX, PRECIO_DIGITOS, PRECIO_DECIMALES, TIPO_MAX
+├── models.py        Producto abstracto, índice parcial, CHECK de precio
+├── schemas.py       ProductoBase (campos comunes + strip de nombre), ProductoRespuestaBase (id, dado_de_baja, from_attributes)
+├── exceptions.py    jerarquía compartida (véase Contrato de errores)
+├── registro.py      MODELOS_POR_TIPO, RESTRICT_POR_TIPO, ProductoRespuesta (unión discriminada)
+├── services.py      lógica compartida
+├── router.py        GET /productos, GET /productos/{producto_id:int}, include_router de subpaquetes, MANEJADORES_EXCEPCIONES
+└── platos/ bebidas/ postres/ menus_ejecutivos/ combos/
+    └── __init__.py (vacío), models.py, schemas.py, exceptions.py, constants.py, services.py, router.py
+```
+
+Contenido de cada subpaquete (ningún archivo queda vacío sin motivo; los delgados declaran su responsabilidad en el docstring del módulo):
+
+| Subpaquete | models | schemas | exceptions | constants | services | router |
+|---|---|---|---|---|---|---|
+| `platos` | `Plato` | `PlatoCrear/Actualizar/Respuesta` | docstring: usa las compartidas | `CANT_PERSONAS_MIN=1`, `PREFIJO="/platos"` | `crear_plato`, `actualizar_plato` | CRUD + DELETE |
+| `bebidas` | `Bebida` | `Bebida*` | docstring: usa las compartidas | `PREFIJO="/bebidas"` | `crear_bebida`, `actualizar_bebida` | CRUD + DELETE |
+| `postres` | `Postre` | `Postre*` | docstring: usa las compartidas | `PREFIJO="/postres"` | `crear_postre`, `actualizar_postre` | CRUD + DELETE |
+| `menus_ejecutivos` | `MenuEjecutivo` | `Menu*` | docstring: usa `ComponenteInvalido/Inactivo` compartidas | `PREFIJO="/menus-ejecutivos"` | `resolver_componentes_menu`, `crear_menu`, `actualizar_menu` | CRUD + DELETE |
+| `combos` | `ComboPromocion`, `combo_plato`, `combo_bebida`, `combo_postre` | `Combo*` (`model_validator`) | `FechaHastaVencida`, `ComboVencidoInmutable` | `PREFIJO="/combos"` | `resolver_componentes_combo`, `_sin_otros_cambios`, `crear_combo`, `actualizar_combo` | CRUD + DELETE |
+
+### Grafo de importaciones (sin ciclos)
+
+Cada módulo importa solo de niveles estrictamente inferiores:
+
+| Nivel | Módulos | Restricción |
 |---|---|---|
-| `Backend/src/productos/__init__.py` | Crear | Paquete |
-| `Backend/src/productos/constants.py` | Crear | `TIPO_PLATO="plato"`, `TIPO_BEBIDA="bebida"`, `TIPO_POSTRE="postre"`, `TIPO_MENU_EJECUTIVO="menu_ejecutivo"`, `TIPO_COMBO_PROMOCION="combo_promocion"`; `NOMBRE_MAX=100`, `DESCRIPCION_MAX=500`, `PRECIO_DIGITOS=10`, `PRECIO_DECIMALES=2`, `CANT_PERSONAS_MIN=1`, `TIPO_MAX=30` |
-| `Backend/src/productos/models.py` | Crear | Jerarquía, tablas de asociación, índice parcial |
-| `Backend/src/productos/schemas.py` | Crear | `ProductoBase` (nombre, precio, descripcion, imagen; un `field_validator("nombre", mode="before")` aplica `strip()` antes de validar la longitud 1–100, de modo que vacío o solo espacios → 422); `<X>Crear`, `<X>Actualizar` (= Crear + `dado_de_baja: bool \| None = None`), `<X>Respuesta` (+ `id`, `tipo: Literal[...]`, `dado_de_baja`); `ComboCrear` con `model_validator` (≥1 id total, sin duplicados por lista, `fecha_desde <= fecha_hasta`); `ProductoRespuesta` unión discriminada. Precio: `condecimal(gt=0, max_digits=10, decimal_places=2)` |
-| `Backend/src/productos/exceptions.py` | Crear | Jerarquía de la tabla anterior |
-| `Backend/src/productos/services.py` | Crear | `obtener_hoy()`, lecturas genéricas `listar(db, modelo, incluir_bajas)` / `obtener(db, modelo, id)`, `crear_<x>`, `actualizar_<x>`, `dar_de_baja(db, modelo, id, hoy)`, y la función compartida `aplicar_cambio_estado(db, producto, nuevo_estado, hoy)` |
-| `Backend/src/productos/router.py` | Crear | `APIRouter(prefix="/productos")`, endpoints, `MANEJADORES_EXCEPCIONES` |
-| `Backend/src/main.py` | Modificar | `include_router`, registrar manejadores, importar modelos antes de `create_all` |
-| `Backend/src/database.py` | Modificar | `configurar_sqlite(engine)`; quitar el `PRAGMA` de `get_db` |
-| `Backend/requirements.txt` | Modificar | Agregar `pytest` (versión fijada al aplicar) |
-| `Backend/pytest.ini` | Crear | `pythonpath = .`, `testpaths = tests` |
-| `Backend/tests/conftest.py` | Crear | Entorno, engine, fixtures |
-| `Backend/tests/productos/test_*.py` | Crear | Suite (ver Estrategia de pruebas) |
-| `openspec/config.yaml` | Modificar | `test_command: "cd Backend && python -m pytest"`, `strict_tdd: true` |
+| 1 | `src/main.py` | importa `src.productos.registro` antes de `create_all` y `productos.router` |
+| 2 | `productos/router.py` | incluye los `router` de cada subpaquete |
+| 3 | `<sub>/router.py` | — |
+| 4 | `<sub>/services.py` | usa `productos.services`; un compuesto obtiene los modelos de sus componentes desde `productos.registro` |
+| 5 | `productos/services.py` | nunca importa `productos.<sub>.*`; accede a subtipos solo mediante `productos.registro` |
+| 6 | `productos/registro.py` | importa solo `<sub>.models` y `<sub>.schemas` |
+| 7 | `<sub>/models`, `schemas`, `exceptions`, `constants` | solo su propio subpaquete y el nivel 8; nunca otro subpaquete |
+| 8 | `productos/models`, `schemas`, `exceptions`, `constants`; `src/models.py`, `src/database.py` | — |
+
+Registro de mappers: como las relaciones usan cadenas, `configure_mappers()`/`create_all` exigen que los cinco `models.py` estén cargados. Lo garantiza `productos/registro.py`, importado por `src/main.py` (tarea 7.1) y por `Backend/tests/conftest.py` (tarea 1.5), de modo que incluso una prueba que solo importa `platos.models` encuentra todos los mappers.
+
+### Servicios compartidos y por subtipo
+
+| `productos/services.py` (compartido) | `<sub>/services.py` |
+|---|---|
+| `obtener_hoy`, `normalizar_nombre`, `verificar_nombre_unico`, `listar(db, modelo, incluir_bajas)`, `obtener(db, modelo, id)` (con `modelo=Producto` es polimórfico), `asignar_campos_comunes`, traducción de `IntegrityError` a `NombreDuplicado`, `buscar_bloqueantes`, `aplicar_cambio_estado`, `dar_de_baja(db, modelo, id, hoy)` | Altas y ediciones del subtipo, resolución de componentes, orden de validación del PUT; invocan las funciones compartidas |
+
+RESTRICT sin ciclos: `registro.py` declara `RESTRICT_POR_TIPO = {TIPO_PLATO: ("plato_id", combo_plato, "plato_id"), TIPO_POSTRE: ("postre_id", combo_postre, "postre_id"), TIPO_BEBIDA: (None, combo_bebida, "bebida_id")}` (columna en `menu_ejecutivo` o `None`, tabla de asociación y su columna). `buscar_bloqueantes` arma la consulta UNION con esos datos y con `MenuEjecutivo`/`ComboPromocion` obtenidos de `registro`; un tipo ausente del mapa (compuestos) no tiene RESTRICT.
+
+### Composición de routers
+
+Cada `<sub>/router.py` declara `router = APIRouter(prefix=PREFIJO)` con todas sus rutas en el cuerpo del módulo (FastAPI copia las rutas al incluir; una ruta agregada después se perdería). `productos/router.py` declara `router = APIRouter(prefix="/productos")` con los dos GET polimórficos y ejecuta `router.include_router(...)` para los cinco subpaquetes. `main.py` registra solo `productos.router.router` y recorre `MANEJADORES_EXCEPCIONES`.
 
 ### Función compartida de estado
 
-`aplicar_cambio_estado(db, producto, nuevo_estado: bool | None, hoy)`; la usan DELETE y todos los PUT:
+`aplicar_cambio_estado(db, producto, nuevo_estado: bool | None, hoy, verificar_reactivacion=None)`; la usan DELETE y todos los PUT:
 - `None` (campo `dado_de_baja` omitido en el PUT: conserva el estado actual) o igual al estado actual: no hace nada (DELETE repetido = 204 idempotente; PUT repetido con `dado_de_baja=True` = 200 idempotente).
-- `True` (baja): si es Plato/Bebida/Postre → `buscar_bloqueantes`; si hay → `BajaRestringida`. Los compuestos no tienen RESTRICT.
-- `False` (reactivación): combo vencido → `ComboVencidoInmutable`; compuesto → componentes activos (`ComponenteInactivo`); unicidad de nombre (`NombreDuplicado`).
+- `True` (baja): si `producto.tipo` está en `RESTRICT_POR_TIPO` (Plato/Bebida/Postre) → `buscar_bloqueantes`; si hay → `BajaRestringida`. Los compuestos no tienen RESTRICT.
+- `False` (reactivación): ejecuta `verificar_reactivacion(producto)` si se proporcionó (combos: vencido → `ComboVencidoInmutable`, luego componentes activos; menús: componentes activos → `ComponenteInactivo`); después, unicidad de nombre (`NombreDuplicado`). El gancho reutiliza la misma función de verificación de componentes del paso 4 del PUT.
 
 ### Orden de validación en PUT
 
@@ -106,11 +153,32 @@ Prioridad de errores cuando fallan varias reglas: 422 → 404 → combo vencido 
 
 `_sin_otros_cambios` compara el payload (sin `dado_de_baja`) con lo persistido: `nombre` (ya recortado) exacto, `precio` como `Decimal`, `descripcion`/`imagen` incluido `None`, fechas, y las listas de ids como conjuntos. PUT es reemplazo completo: un campo opcional omitido se interpreta como `None` (excepto `dado_de_baja`, que conserva el estado actual).
 
+## Archivos por responsabilidad
+
+| Archivo | Acción | Responsabilidad |
+|---|---|---|
+| `Backend/src/productos/__init__.py` | Crear (vacío) | Paquete |
+| `Backend/src/productos/constants.py` | Crear; reducir en 1.5 | Constantes compartidas (`CANT_PERSONAS_MIN` pasa a `platos/constants.py`) |
+| `Backend/src/productos/models.py` | Crear; reducir en 1.5 | Solo `Producto` |
+| `Backend/src/productos/schemas.py` | Crear | `ProductoBase` (nombre, precio, descripcion, imagen; un `field_validator("nombre", mode="before")` aplica `strip()` antes de validar la longitud 1–100, de modo que vacío o solo espacios → 422; precio `condecimal(gt=0, max_digits=10, decimal_places=2)`), `ProductoRespuestaBase` |
+| `Backend/src/productos/exceptions.py` | Crear | Jerarquía compartida |
+| `Backend/src/productos/registro.py` | Crear | `MODELOS_POR_TIPO`, `RESTRICT_POR_TIPO`, reexporta tablas de asociación, `ProductoRespuesta` |
+| `Backend/src/productos/services.py` | Crear | Servicios compartidos (tabla anterior) |
+| `Backend/src/productos/router.py` | Crear | `APIRouter(prefix="/productos")`, GET polimórficos, inclusión de subrouters, `MANEJADORES_EXCEPCIONES` |
+| `Backend/src/productos/<sub>/*.py` (×5 subpaquetes, 7 archivos cada uno) | Crear | Según la tabla de contenido por subpaquete. `<X>Actualizar` = `<X>Crear` + `dado_de_baja: bool \| None = None`; `<X>Respuesta` = `ProductoRespuestaBase` + campos propios + `tipo: Literal[...]`; `ComboCrear` con `model_validator` (≥1 id total, sin duplicados por lista, `fecha_desde <= fecha_hasta`) |
+| `Backend/src/main.py` | Modificar | Importar `src.productos.registro` antes de `create_all`, `include_router`, registrar manejadores |
+| `Backend/src/database.py` | Modificar | `configurar_sqlite(engine)`; quitar el `PRAGMA` de `get_db` |
+| `Backend/requirements.txt` | Modificar | Agregar `pytest` (versión fijada al aplicar) |
+| `Backend/pytest.ini` | Crear | `pythonpath = .`, `testpaths = tests` |
+| `Backend/tests/conftest.py` | Crear | Entorno, engine, fixtures; importa `src.productos.registro` |
+| `Backend/tests/productos/**` | Crear | Suite espejo de la estructura (ver Estrategia de pruebas) |
+| `openspec/config.yaml` | Modificar | `test_command: "cd Backend && python -m pytest"`, `strict_tdd: true`; convención de subpaquetes anidados |
+
 ## Flujo: DELETE /productos/platos/{id} con RESTRICT
 
 ```
-Cliente ─DELETE─→ router.eliminar_plato(id, db, hoy=Depends(obtener_hoy))
-  → services.dar_de_baja(db, Plato, id, hoy)
+Cliente ─DELETE─→ platos/router.eliminar_plato(id, db, hoy=Depends(obtener_hoy))
+  → productos/services.dar_de_baja(db, Plato, id, hoy)
       BEGIN IMMEDIATE (listener)
       obtener(db, Plato, id) ──── no existe ─→ ProductoNoEncontrado → 404
       aplicar_cambio_estado(db, plato, True, hoy)
@@ -118,7 +186,7 @@ Cliente ─DELETE─→ router.eliminar_plato(id, db, hoy=Depends(obtener_hoy))
       plato.dado_de_baja = True; commit ─→ 204 sin cuerpo
 ```
 
-Consulta de bloqueantes (Plato; Postre análoga con `postre_id`/`combo_postre`; Bebida solo la rama de combos):
+Consulta de bloqueantes (Plato; Postre análoga con `postre_id`/`combo_postre`; Bebida solo la rama de combos; columnas y tablas tomadas de `RESTRICT_POR_TIPO`):
 
 ```sql
 SELECT m.id FROM menu_ejecutivo m JOIN producto p ON p.id = m.id
@@ -133,17 +201,17 @@ ORDER BY 1
 
 ## Estrategia de pruebas
 
-`conftest.py`: antes de importar `src.main` fija `os.environ["ENV"]="test"` y `os.environ["DB_URL"]="sqlite://"` (`load_dotenv` no sobrescribe). Engine `sqlite://` con `StaticPool` y `check_same_thread=False`, `configurar_sqlite(engine)`, `create_all`/`drop_all` por prueba. Sobrescribe `get_db` y `obtener_hoy` (fecha fija `HOY`). Fixture `client` = `TestClient(app)`. Comando: `cd Backend && python -m pytest`.
+`conftest.py`: antes de importar `src.main` fija `os.environ["ENV"]="test"` y `os.environ["DB_URL"]="sqlite://"` (`load_dotenv` no sobrescribe); importa `src.productos.registro`. Engine `sqlite://` con `StaticPool` y `check_same_thread=False`, `configurar_sqlite(engine)`, `create_all`/`drop_all` por prueba. Sobrescribe `get_db` y `obtener_hoy` (fecha fija `HOY`). Fixture `client` = `TestClient(app)`. Comando: `cd Backend && python -m pytest`.
 
-| Capa | Archivo | Qué prueba |
+Las pruebas reflejan la estructura: `Backend/tests/productos/` para lo compartido y `Backend/tests/productos/<sub>/` por subpaquete. Cada carpeta de pruebas tiene `__init__.py` (obligatorio: los nombres de archivo se repiten entre carpetas). Las funciones auxiliares de creación de objetos ORM pasan a fixtures fábrica en `Backend/tests/productos/conftest.py`, visibles para todas las subcarpetas.
+
+| Capa | Archivo(s) | Qué prueba |
 |---|---|---|
-| Unidad | `test_modelos.py` | `configure_mappers()`, `Producto()` lanza error, relaciones bidireccionales |
-| Integración | `test_lecturas.py` | Polimorfismo, 404, 405, `incluir_bajas` (incluido 422) |
-| Integración | `test_platos_bebidas_postres.py` | CRUD y validación de campos, unicidad (incluidos "Ñ"/mayúsculas) |
-| Integración | `test_menus.py`, `test_combos.py` | Composición, 422 vs 409, combos vencidos |
-| Integración | `test_baja_logica.py` | DELETE, PUT de estado, RESTRICT, reactivación, invariante |
-
-`strict_tdd` sigue en false hasta que pytest esté instalado; la primera tarea de apply es la infraestructura de pruebas.
+| Unidad | `productos/test_modelos.py`, `productos/test_registro.py` | `Producto()` lanza error, índice parcial, `configure_mappers()` global, `MODELOS_POR_TIPO`, unión discriminada |
+| Unidad | `productos/<sub>/test_modelos.py`, `test_schemas.py` | Tablas, CHECK y relaciones bidireccionales del subtipo; validación de esquemas |
+| Integración (servicio) | `productos/test_servicios_lectura.py`, `test_bloqueantes.py`, `test_estado_baja.py`, `test_estado_reactivacion.py`; `productos/<sub>/test_servicios.py` | Reglas compartidas y por subtipo |
+| Integración (HTTP) | `productos/test_manejadores.py`, `test_lecturas.py`, `test_baja_logica.py`, `test_invariante.py` | Manejadores, polimorfismo, 404, 405, `incluir_bajas`, DELETE/PUT de estado, RESTRICT, invariante |
+| Integración (HTTP) | `productos/<sub>/test_router.py` | CRUD y validación de campos por subtipo, composición, 422 vs 409, combos vencidos |
 
 ## Matriz de amenazas
 
@@ -151,7 +219,7 @@ N/A — sin enrutamiento de shell, subprocesos, automatización VCS/PR, clasific
 
 ## Migración / despliegue
 
-No hay migraciones: `create_all` crea las tablas nuevas. Una base existente no tiene tablas de producto, por lo que no hay conflicto.
+No hay migraciones: `create_all` crea las tablas nuevas. Una base existente no tiene tablas de producto, por lo que no hay conflicto. La reorganización en subpaquetes (tarea 1.5) no cambia nombres de tablas ni columnas.
 
 ## Riesgos
 
@@ -159,6 +227,8 @@ No hay migraciones: `create_all` crea las tablas nuevas. Una base existente no t
 - Las tildes no se normalizan ("Milanesa" ≠ "Milanésa"); decisión aceptada (véase Decisiones resueltas).
 - `Numeric` en SQLite emite una advertencia de Decimal; es aceptable.
 - `date.today()` usa la zona horaria del servidor.
+- Un módulo que use un subtipo sin que `registro.py` esté cargado falla en `configure_mappers` (nombre no resuelto). Mitigación: `conftest.py` y `main.py` importan `registro.py`; prueba de `configure_mappers()` global.
+- La unión `ProductoRespuesta` vive en `registro.py` y no en `productos/schemas.py`: ubicarla allí crearía el ciclo `productos.schemas ↔ <sub>.schemas`.
 
 ## Decisiones resueltas
 
@@ -172,3 +242,4 @@ Aprobadas por el usuario; sustituyen al informe de ambigüedades.
    - El PUT es reemplazo completo: los campos opcionales omitidos pasan a `null`.
    - Solo se ignoran las mayúsculas; las tildes son distintas ("Milanesa" ≠ "Milanésa").
    - Prioridad de errores cuando fallan varias reglas: 422 → 404 → combo vencido → componentes → nombre.
+5. **Subpaquetes anidados por subtipo**: cada subclase concreta de `Producto` tiene su carpeta dentro de `productos/` con los seis archivos de la convención; `productos/` conserva la raíz abstracta y lo compartido.

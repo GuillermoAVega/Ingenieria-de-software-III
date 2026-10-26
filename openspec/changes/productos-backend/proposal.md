@@ -7,7 +7,7 @@ El sistema del restaurante no tiene un catálogo de productos. Se agrega la jera
 ## Alcance
 
 ### Dentro del alcance
-- `Backend/src/productos/` siguiendo la convención de una carpeta por entidad (models, schemas, exceptions, constants, services, router).
+- `Backend/src/productos/` siguiendo la convención de una carpeta por entidad (models, schemas, exceptions, constants, services, router). Por tratarse de una jerarquía, cada subtipo concreto tiene su propio subpaquete anidado con los mismos seis archivos (`productos/platos/`, `productos/bebidas/`, `productos/postres/`, `productos/menus_ejecutivos/`, `productos/combos/`); `productos/` conserva el `Producto` abstracto y la lógica compartida.
 - `Producto` abstracto con herencia de tablas unidas (joined-table inheritance), discriminador `tipo`; tablas de subtipos más `combo_plato`, `combo_bebida`, `combo_postre`.
 - `relationship()` bidireccional con `back_populates` en todos los vínculos.
 - `GET /productos`, `GET /productos/{id}` (polimórficos, solo lectura); CRUD completo para `platos`, `bebidas`, `postres`, `menus-ejecutivos`, `combos`.
@@ -48,11 +48,12 @@ Todas las preguntas abiertas previas fueron resueltas por el usuario:
 
 | Área | Impacto | Descripción |
 |------|---------|-------------|
-| `Backend/src/productos/` | Nuevo | Módulo de la entidad |
+| `Backend/src/productos/` | Nuevo | Módulo de la entidad: raíz abstracta, lógica compartida y router agregador |
+| `Backend/src/productos/<subtipo>/` | Nuevo | Un subpaquete por subtipo (`platos`, `bebidas`, `postres`, `menus_ejecutivos`, `combos`) con models, schemas, exceptions, constants, services y router |
 | `Backend/src/main.py` | Modificado | Registro del router |
 | `Backend/requirements.txt` | Modificado | Agregar pytest |
-| `Backend/tests/` | Nuevo | Suite de pruebas y fixtures |
-| `openspec/config.yaml` | Modificado | Comando de pruebas; habilitar TDD estricto |
+| `Backend/tests/` | Nuevo | Suite de pruebas y fixtures; `Backend/tests/productos/` replica la estructura de subpaquetes |
+| `openspec/config.yaml` | Modificado | Comando de pruebas; habilitar TDD estricto; convención de subpaquetes anidados |
 
 ## Riesgos
 
