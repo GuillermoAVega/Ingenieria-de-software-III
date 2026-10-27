@@ -178,13 +178,13 @@ Cambio: `productos-backend`. Entradas: `proposal.md`, `design.md`, `specs/produc
 
 ## Fase 5: Servicios de MenuEjecutivo
 
-- [ ] **5.1 Resolución y validación de componentes de menú** — Archivos: `Backend/src/productos/menus_ejecutivos/services.py`, `Backend/tests/productos/menus_ejecutivos/test_servicios.py`. Depende de 4.3, 2.4.
+- [x] **5.1 Resolución y validación de componentes de menú** — Archivos: `Backend/src/productos/menus_ejecutivos/services.py`, `Backend/tests/productos/menus_ejecutivos/test_servicios.py`. Depende de 4.3, 2.4.
   - RED: `resolver_componentes_menu(db, plato_id, postre_id, exigir_activos)`: `plato_id` de una Bebida → `ComponenteInvalido("plato_id", [4])` (CAT-31 S); `postre_id` inexistente → `ComponenteInvalido("postre_id", [999])` (CAT-32 S); Plato dado de baja con `exigir_activos=True` → `ComponenteInactivo` (CAT-33 S); con `exigir_activos=False` no lanza.
   - GREEN: función auxiliar de validación (existencia/tipo siempre; actividad condicional); `Plato` y `Postre` se obtienen desde `productos.registro`.
   - Escenarios (S): CAT-31, CAT-32, CAT-33.
   - Hecho cuando: las pruebas pasan.
 
-- [ ] **5.2 `crear_menu` y `actualizar_menu`** — Archivos: `Backend/src/productos/menus_ejecutivos/services.py`, `Backend/tests/productos/menus_ejecutivos/test_servicios.py`. Depende de 5.1.
+- [x] **5.2 `crear_menu` y `actualizar_menu`** — Archivos: `Backend/src/productos/menus_ejecutivos/services.py`, `Backend/tests/productos/menus_ejecutivos/test_servicios.py`. Depende de 5.1.
   - RED: crear con Plato y Postre activos → persiste (CAT-30 S); nombre duplicado → `NombreDuplicado` (CAT-21 S); actualizar menú activo con Postre dado de baja → `ComponenteInactivo` y el menú no cambia (CAT-42 S); editar menú dado de baja con Plato inactivo, manteniéndolo de baja (`dado_de_baja=True` u omitido) → OK (CAT-43 S); PUT de menú dado de baja con `postre_id=999` manteniéndolo de baja → `ComponenteInvalido` (CAT-44 S); reactivar menú con componente inactivo → `ComponenteInactivo` y sigue de baja (LD-19 S); reactivar menú con componentes activos → OK (soporte LD-20); reactivar con nombre en conflicto → `NombreDuplicado`; cambio de precio de un Plato no cambia el del menú (CAT-41 S); `dar_de_baja` de un menú sin RESTRICT, componentes intactos (LD-16 S); prioridad de errores en el servicio: 404 → componentes → nombre (CAT-14 parcial S: 404 antes que 409/422 de componentes).
   - GREEN: funciones respetando el orden de validación del diseño y `aplicar_cambio_estado` (con `verificar_reactivacion` = verificación de componentes activos del menú).
   - Escenarios (S): CAT-21, CAT-30, CAT-33, CAT-41, CAT-42, CAT-43, CAT-44, LD-16, LD-19.

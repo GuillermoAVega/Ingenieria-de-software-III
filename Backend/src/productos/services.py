@@ -161,6 +161,7 @@ def actualizar_producto(
     producto_id: int,
     datos: ProductoBase,
     hoy: date,
+    verificar_reactivacion: Callable[[Producto], None] | None = None,
     **campos_propios,
 ) -> Producto:
     """Reemplazo completo de un producto del subtipo `modelo`.
@@ -168,6 +169,7 @@ def actualizar_producto(
     `datos.dado_de_baja` (si el esquema lo trae) omitido conserva el estado actual.
     Orden: carga (404) → unicidad del nombre si el producto queda activo (409) →
     cambio de estado (409 si la baja está restringida) → asignación → commit.
+    `verificar_reactivacion` es el gancho del subtipo compuesto para las reactivaciones.
     """
     nuevo_estado = getattr(datos, "dado_de_baja", None)
     try:
@@ -176,7 +178,14 @@ def actualizar_producto(
         # Una reactivación comprueba el nombre dentro de `aplicar_cambio_estado`
         if not estado_resultante and not producto.dado_de_baja:
             verificar_nombre_unico(sesion, datos.nombre, excluir_id=producto.id)
-        aplicar_cambio_estado(sesion, producto, nuevo_estado, hoy, nombre=datos.nombre)
+        aplicar_cambio_estado(
+            sesion,
+            producto,
+            nuevo_estado,
+            hoy,
+            verificar_reactivacion=verificar_reactivacion,
+            nombre=datos.nombre,
+        )
     except (ProductoNoEncontrado, NombreDuplicado, BajaRestringida):
         sesion.rollback()
         raise
