@@ -155,19 +155,19 @@ Cambio: `productos-backend`. Entradas: `proposal.md`, `design.md`, `specs/produc
 
 ## Fase 4: Cambio de estado y RESTRICT (servicio compartido)
 
-- [ ] **4.1 `buscar_bloqueantes`** — Archivos: `Backend/src/productos/registro.py` (`RESTRICT_POR_TIPO`), `Backend/src/productos/services.py`, `Backend/tests/productos/test_bloqueantes.py`. Depende de 1.5, 3.1.
+- [x] **4.1 `buscar_bloqueantes`** — Archivos: `Backend/src/productos/registro.py` (`RESTRICT_POR_TIPO`), `Backend/src/productos/services.py`, `Backend/tests/productos/test_bloqueantes.py`. Depende de 1.5, 3.1.
   - RED (filas creadas con el ORM): Plato en un menú activo → `[10]` (LD-10); Bebida en un combo activo con `fecha_hasta >= HOY` → `[20]` (LD-11); Postre en combo con `fecha_desde` futura y `fecha_hasta >= HOY` → incluye el combo (LD-12); Plato en menú 10 y combo 20 → `[10, 20]` ordenado (LD-13); menú dado de baja y combo vencido → `[]` (LD-14); combo activo vencido (`fecha_hasta < HOY`) → `[]` (LD-15); `fecha_hasta == HOY` bloquea (límite).
   - GREEN: `RESTRICT_POR_TIPO` en `registro.py` y consulta UNION del diseño construida a partir de ese mapa (rama de menús para Plato y Postre; solo combos para Bebida; tipos ausentes del mapa → `[]`), con `hoy` recibido por parámetro. `services.py` obtiene tablas y modelos solo desde `registro`.
   - Escenarios (S): LD-12, LD-13, LD-14, LD-15 (completos a nivel servicio); LD-10 y LD-11 (parcial: detección sin excepción).
   - Hecho cuando: las pruebas pasan.
 
-- [ ] **4.2 `aplicar_cambio_estado` — baja y RESTRICT** — Archivos: `Backend/src/productos/services.py`, `Backend/tests/productos/test_estado_baja.py`. Depende de 4.1, 2.1.
+- [x] **4.2 `aplicar_cambio_estado` — baja y RESTRICT** — Archivos: `Backend/src/productos/services.py`, `Backend/tests/productos/test_estado_baja.py`. Depende de 4.1, 2.1.
   - RED: `nuevo_estado=None` o igual al actual → sin efecto ni consulta de bloqueantes (idempotente, LD-03 S, LD-04..09 soporte); `True` sobre Plato/Bebida/Postre con bloqueantes → `BajaRestringida(bloqueantes)` ordenada (LD-10, LD-11, LD-12, LD-13 S); `True` sin bloqueantes → baja (LD-14, LD-15 S); `True` sobre MenuEjecutivo y ComboPromocion sin RESTRICT (LD-16, LD-18 soporte S); tras `BajaRestringida` el estado persistido no cambia y el menú sigue activo (LD-23 S, invariante).
   - GREEN: rama de baja de `aplicar_cambio_estado`.
   - Escenarios (S): LD-10..15, LD-23.
   - Hecho cuando: las pruebas pasan.
 
-- [ ] **4.3 `aplicar_cambio_estado` — reactivación y `dar_de_baja`; cableado en PUT de Plato/Bebida/Postre** — Archivos: `Backend/src/productos/services.py`, `Backend/src/productos/platos/services.py`, `Backend/src/productos/bebidas/services.py`, `Backend/src/productos/postres/services.py`, `Backend/tests/productos/test_estado_reactivacion.py`, `Backend/tests/productos/platos/test_servicios.py`. Depende de 4.2, 3.3.
+- [x] **4.3 `aplicar_cambio_estado` — reactivación y `dar_de_baja`; cableado en PUT de Plato/Bebida/Postre** — Archivos: `Backend/src/productos/services.py`, `Backend/src/productos/platos/services.py`, `Backend/src/productos/bebidas/services.py`, `Backend/src/productos/postres/services.py`, `Backend/tests/productos/test_estado_reactivacion.py`, `Backend/tests/productos/platos/test_servicios.py`. Depende de 4.2, 3.3.
   - RED: reactivar Plato dado de baja → activo (LD-09 S); con `verificar_reactivacion` provisto, se invoca antes de la unicidad y su excepción se propaga sin cambiar el estado; reactivar Bebida dada de baja con nombre único → activa (LD-22 S); reactivar con nombre activo duplicado → `NombreDuplicado` (LD-21 S); `dar_de_baja(db, modelo, id, hoy)`: baja sin borrar la fila (LD-01 S), 404 id desconocido o de otro subtipo (LD-02 S), repetido idempotente (LD-03 S); PUT con `dado_de_baja=True` sobre Postre sin bloqueantes (LD-08 S); PUT con `dado_de_baja=False` sobre activo = edición normal (LD-05 S); PUT sin `dado_de_baja` sobre dado de baja conserva (LD-07 S, CAT-12 S); PUT `dado_de_baja=True` sobre ya dado de baja → 200 sin cambio. (LD-04 y LD-06 los resuelve el esquema, 2.2, y se prueban a nivel H en 7.3.)
   - GREEN: rama de reactivación (parámetro opcional `verificar_reactivacion`, que aquí queda en `None`; nombre, ya con `verificar_nombre_unico`), `dar_de_baja`, y llamada a `aplicar_cambio_estado` en `actualizar_plato/bebida/postre` (orden del diseño: carga → unicidad solo si el estado resultante es activo → estado → asignar → commit).
   - Escenarios (S): LD-01, LD-02, LD-03, LD-05, LD-07, LD-08, LD-09, LD-21, LD-22.

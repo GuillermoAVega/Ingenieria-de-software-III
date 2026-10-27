@@ -27,8 +27,18 @@ MODELOS_POR_TIPO = {
     TIPO_COMBO_PROMOCION: ComboPromocion,
 }
 
+# Restricción de baja por tipo: (columna de `menu_ejecutivo` o None, tabla de
+# asociación del combo, columna del componente en esa tabla). Los compuestos
+# no figuran: no tienen RESTRICT.
+RESTRICT_POR_TIPO = {
+    TIPO_PLATO: ("plato_id", combo_plato, "plato_id"),
+    TIPO_POSTRE: ("postre_id", combo_postre, "postre_id"),
+    TIPO_BEBIDA: (None, combo_bebida, "bebida_id"),
+}
+
 __all__ = [
     "MODELOS_POR_TIPO",
+    "RESTRICT_POR_TIPO",
     "Bebida",
     "ComboPromocion",
     "MenuEjecutivo",

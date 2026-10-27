@@ -1,3 +1,5 @@
+from datetime import date
+
 from sqlalchemy.orm import Session
 
 from src.productos import services
@@ -11,7 +13,9 @@ def crear_plato(sesion: Session, datos: PlatoCrear) -> Plato:
     )
 
 
-def actualizar_plato(sesion: Session, plato_id: int, datos: PlatoActualizar) -> Plato:
+def actualizar_plato(
+    sesion: Session, plato_id: int, datos: PlatoActualizar, hoy: date
+) -> Plato:
     return services.actualizar_producto(
-        sesion, Plato, plato_id, datos, cant_personas=datos.cant_personas
+        sesion, Plato, plato_id, datos, hoy, cant_personas=datos.cant_personas
     )
