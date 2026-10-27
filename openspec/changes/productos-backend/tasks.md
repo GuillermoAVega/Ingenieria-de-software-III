@@ -132,19 +132,19 @@ Cambio: `productos-backend`. Entradas: `proposal.md`, `design.md`, `specs/produc
 
 ## Fase 3: Servicios de subtipos simples (Plato, Bebida, Postre)
 
-- [ ] **3.1 Obtención por id genérica + unicidad de nombre** — Archivos: `Backend/src/productos/services.py`, `Backend/tests/productos/test_servicios_lectura.py`. Depende de 2.7, 1.5, 2.1. (Sin `listar` ni lectura polimórfica: fuera de alcance.)
+- [x] **3.1 Obtención por id genérica + unicidad de nombre** — Archivos: `Backend/src/productos/services.py`, `Backend/tests/productos/test_servicios_lectura.py`. Depende de 2.7, 1.5, 2.1. (Sin `listar` ni lectura polimórfica: fuera de alcance.)
   - RED: `obtener(db, modelo, id)` con `modelo` subtipo concreto devuelve dados de baja (CAT-10 S) y lanza `ProductoNoEncontrado` si el id no existe o es de otro subtipo (CAT-08 S); `normalizar_nombre()` = `strip().casefold()` y distingue tildes; `verificar_nombre_unico(db, nombre, excluir_id)` lanza `NombreDuplicado` frente a activo (CAT-21, CAT-22, CAT-23 S) e ignora dados de baja (CAT-25 S), tildes distintas OK (CAT-24 S), excluye el propio id (CAT-26 S); `obtener_hoy()` devuelve `date.today()`.
   - GREEN: `obtener_hoy`, `obtener`, `normalizar_nombre`, `verificar_nombre_unico`. `services.py` no importa subpaquetes.
   - Escenarios (S): CAT-08, CAT-10, CAT-21..26.
   - Hecho cuando: las pruebas pasan.
 
-- [ ] **3.2 `crear_plato` y `actualizar_plato`** — Archivos: `Backend/src/productos/platos/services.py`, `Backend/src/productos/services.py` (auxiliares compartidos: asignación de campos comunes y traducción de `IntegrityError`), `Backend/tests/productos/platos/test_servicios.py`. Depende de 3.1.
+- [x] **3.2 `crear_plato` y `actualizar_plato`** — Archivos: `Backend/src/productos/platos/services.py`, `Backend/src/productos/services.py` (auxiliares compartidos: asignación de campos comunes y traducción de `IntegrityError`), `Backend/tests/productos/platos/test_servicios.py`. Depende de 3.1.
   - RED: crear persiste con `nombre_normalizado` calculado y devuelve id (CAT-07 S); nombre duplicado (exacto, mayúsculas, espacios) → `NombreDuplicado` (CAT-21..23 S); `IntegrityError` del índice parcial se traduce a `NombreDuplicado`; actualizar con el mismo nombre OK (CAT-26 S); actualizar id desconocido → `ProductoNoEncontrado` (CAT-11 S); actualizar es reemplazo completo: omitir `descripcion`/`imagen` los deja en `None` (CAT-13 S); `dado_de_baja` omitido conserva el estado (CAT-12 S, con el plato dado de baja y `dado_de_baja=None`; el cambio de estado explícito se cablea en 4.3).
   - GREEN: funciones mínimas con commit y rollback.
   - Escenarios (S): CAT-07, CAT-11, CAT-12, CAT-13, CAT-21..26 (para Plato).
   - Hecho cuando: las pruebas pasan.
 
-- [ ] **3.3 `crear_bebida` / `actualizar_bebida` y `crear_postre` / `actualizar_postre`** — Archivos: `Backend/src/productos/bebidas/services.py`, `Backend/src/productos/postres/services.py`, `Backend/tests/productos/bebidas/test_servicios.py`, `Backend/tests/productos/postres/test_servicios.py`. Depende de 3.2.
+- [x] **3.3 `crear_bebida` / `actualizar_bebida` y `crear_postre` / `actualizar_postre`** — Archivos: `Backend/src/productos/bebidas/services.py`, `Backend/src/productos/postres/services.py`, `Backend/tests/productos/bebidas/test_servicios.py`, `Backend/tests/productos/postres/test_servicios.py`. Depende de 3.2.
   - RED: crear/actualizar de cada uno (campos específicos `es_alcoholica`; Postre sin campos extra); duplicado de nombre entre subtipos distintos (un Plato "Milanesa" activo bloquea a una Bebida "Milanesa": CAT-21 S, unicidad global entre todos los productos); id de otro subtipo → `ProductoNoEncontrado` (CAT-08 S, CAT-11 S); reemplazo completo (CAT-13 S).
   - GREEN: reutilizar el patrón de 3.2 sin duplicar (los auxiliares compartidos de `productos/services.py`; REFACTOR de 3.2 si es útil).
   - Escenarios (S): CAT-07, CAT-08, CAT-11, CAT-13, CAT-21 (para Bebida y Postre).
