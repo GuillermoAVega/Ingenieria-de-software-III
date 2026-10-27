@@ -9,6 +9,7 @@ from src.productos.exceptions import (
 )
 from src.productos.models import Producto
 from src.productos.platos.models import Plato
+from src.productos.platos.schemas import PlatoActualizar
 
 
 def _persistir(sesion, *objetos):
@@ -149,3 +150,23 @@ def test_ld_10_ld_23_dar_de_baja_bloqueado_no_cambia_el_estado(
     sesion.expire_all()
     assert sesion.get(Plato, plato.id).dado_de_baja is False
     assert sesion.get(Producto, menu.id).dado_de_baja is False
+
+
+def test_actualizar_producto_revierte_la_sesion_si_el_gancho_de_reactivacion_falla(
+    sesion, crear_plato, HOY
+):
+    plato = crear_plato(dado_de_baja=True)
+    _persistir(sesion, plato)
+    datos = PlatoActualizar(
+        nombre="Milanesa", precio="1500.00", cant_personas=2, dado_de_baja=False
+    )
+
+    def gancho(_producto):
+        raise ComponenteInactivo([7])
+
+    with pytest.raises(ComponenteInactivo):
+        services.actualizar_producto(
+            sesion, Plato, plato.id, datos, HOY, verificar_reactivacion=gancho, cant_personas=2
+        )
+
+    assert not sesion.in_transaction()

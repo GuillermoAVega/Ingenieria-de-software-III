@@ -7,7 +7,12 @@ from sqlalchemy import select, union
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from src.productos.exceptions import BajaRestringida, NombreDuplicado, ProductoNoEncontrado
+from src.productos.exceptions import (
+    BajaRestringida,
+    ErrorDominio,
+    NombreDuplicado,
+    ProductoNoEncontrado,
+)
 from src.productos.models import Producto
 from src.productos.registro import RESTRICT_POR_TIPO, ComboPromocion, MenuEjecutivo
 from src.productos.schemas import ProductoBase
@@ -186,7 +191,8 @@ def actualizar_producto(
             verificar_reactivacion=verificar_reactivacion,
             nombre=datos.nombre,
         )
-    except (ProductoNoEncontrado, NombreDuplicado, BajaRestringida):
+    except ErrorDominio:
+        # Incluye los errores del gancho de reactivación del subtipo compuesto
         sesion.rollback()
         raise
     asignar_campos_comunes(producto, datos)

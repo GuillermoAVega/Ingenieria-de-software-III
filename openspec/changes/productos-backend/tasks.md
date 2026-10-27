@@ -195,19 +195,19 @@ Cambio: `productos-backend`. Entradas: `proposal.md`, `design.md`, `specs/produc
 
 ## Fase 6: Servicios de ComboPromocion
 
-- [ ] **6.1 Resolución de componentes de combo y creación** — Archivos: `Backend/src/productos/combos/services.py`, `Backend/tests/productos/combos/test_servicios.py`. Depende de 5.2, 2.5.
+- [x] **6.1 Resolución de componentes de combo y creación** — Archivos: `Backend/src/productos/combos/services.py`, `Backend/tests/productos/combos/test_servicios.py`. Depende de 5.2, 2.5.
   - RED: `crear_combo` válido con componentes activos y `fecha_hasta >= HOY` (CAT-34 S); un solo componente en una lista (CAT-36 S); `bebidas_ids` con un id de Plato o inexistente → `ComponenteInvalido("bebidas_ids", ids)` (CAT-38 S); Bebida dada de baja → `ComponenteInactivo` (CAT-39 S); `fecha_hasta < HOY` → `FechaHastaVencida` (CAT-40 S); `fecha_hasta == HOY` aceptada; nombre duplicado (CAT-21 S); atomicidad: ante error no queda fila parcial.
   - GREEN: `resolver_componentes_combo` y `crear_combo`.
   - Escenarios (S): CAT-21, CAT-34, CAT-36, CAT-38, CAT-39, CAT-40.
   - Hecho cuando: las pruebas pasan.
 
-- [ ] **6.2 `actualizar_combo`: revalidación de componentes y estado** — Archivos: `Backend/src/productos/combos/services.py`, `Backend/tests/productos/combos/test_servicios.py`. Depende de 6.1.
+- [x] **6.2 `actualizar_combo`: revalidación de componentes y estado** — Archivos: `Backend/src/productos/combos/services.py`, `Backend/tests/productos/combos/test_servicios.py`. Depende de 6.1.
   - RED: actualizar combo activo con componente inactivo → `ComponenteInactivo`, sin cambios (CAT-42 análogo S); combo de baja editado manteniéndolo de baja con componente inactivo → OK (CAT-43 análogo S); id de componente inexistente con combo de baja → `ComponenteInvalido` (CAT-44 análogo S); reactivar combo no vencido con componentes activos → activo (LD-20 S); reactivar con componente inactivo → `ComponenteInactivo`; reactivar con nombre en conflicto → `NombreDuplicado`.
   - GREEN: `actualizar_combo` con el orden del diseño y `aplicar_cambio_estado` (con `verificar_reactivacion` = combo vencido → `ComboVencidoInmutable`, luego componentes activos).
   - Escenarios (S): LD-20 (completo), soporte CAT-42..44 para combos.
   - Hecho cuando: las pruebas pasan.
 
-- [ ] **6.3 Combos vencidos inmutables y baja libre de compuestos** — Archivos: `Backend/src/productos/combos/services.py`, `Backend/tests/productos/combos/test_servicios_vencido.py`. Depende de 6.2.
+- [x] **6.3 Combos vencidos inmutables y baja libre de compuestos** — Archivos: `Backend/src/productos/combos/services.py`, `Backend/tests/productos/combos/test_servicios_vencido.py`. Depende de 6.2.
   - RED: PUT con nueva `descripcion` sobre combo con `fecha_hasta` de ayer → `ComboVencidoInmutable` (CAT-45 S); reactivar combo vencido de baja → `ComboVencidoInmutable` (CAT-46 S); PUT `dado_de_baja=True` sin otros cambios sobre combo vencido activo → queda de baja (CAT-47 S); igual sobre combo vencido ya de baja → 200 sin escritura (CAT-48 S, verificar que no hay commit/cambio); `dado_de_baja=True` con nuevo `precio` → `ComboVencidoInmutable` y sin cambios (CAT-49 S); `_sin_otros_cambios` compara `nombre` recortado, `precio` como `Decimal`, `descripcion`/`imagen` incluido `None`, fechas y listas como conjuntos; `dar_de_baja` de combo vencido activo → queda de baja (LD-17 S); PUT de baja de combo no vencido con datos válidos → de baja (LD-18 S).
   - GREEN: `_sin_otros_cambios` y paso 3 del orden de validación.
   - Escenarios (S): CAT-45, CAT-46, CAT-47, CAT-48, CAT-49, LD-17, LD-18.
