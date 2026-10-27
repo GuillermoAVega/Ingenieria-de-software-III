@@ -2,7 +2,7 @@
 
 ## Intención
 
-El sistema del restaurante no tiene un catálogo de productos. Se agrega la jerarquía `Producto` (Plato, Bebida, Postre, MenuEjecutivo, ComboPromocion) con CRUD, baja lógica y reglas de integridad referencial, de modo que las funcionalidades posteriores (Seccion, pedidos) cuenten con un catálogo confiable.
+El sistema del restaurante no tiene un catálogo de productos. Se agrega la jerarquía `Producto` (Plato, Bebida, Postre, MenuEjecutivo, ComboPromocion) con ABM (alta, baja lógica y modificación) por subtipo, consulta por id por subtipo y reglas de integridad referencial, de modo que las funcionalidades posteriores (Seccion, pedidos) cuenten con un catálogo confiable.
 
 ## Alcance
 
@@ -10,8 +10,8 @@ El sistema del restaurante no tiene un catálogo de productos. Se agrega la jera
 - `Backend/src/productos/` siguiendo la convención de una carpeta por entidad (models, schemas, exceptions, constants, services, router). Por tratarse de una jerarquía, cada subtipo concreto tiene su propio subpaquete anidado con los mismos seis archivos (`productos/platos/`, `productos/bebidas/`, `productos/postres/`, `productos/menus_ejecutivos/`, `productos/combos/`); `productos/` conserva el `Producto` abstracto y la lógica compartida.
 - `Producto` abstracto con herencia de tablas unidas (joined-table inheritance), discriminador `tipo`; tablas de subtipos más `combo_plato`, `combo_bebida`, `combo_postre`.
 - `relationship()` bidireccional con `back_populates` en todos los vínculos.
-- `GET /productos`, `GET /productos/{id}` (polimórficos, solo lectura); CRUD completo para `platos`, `bebidas`, `postres`, `menus-ejecutivos`, `combos`.
-- Los listados ocultan los productos inactivos; `?incluir_bajas=true` los incluye.
+- ABM por subtipo para `platos`, `bebidas`, `postres`, `menus-ejecutivos`, `combos`: `POST /productos/<subtipo>` (alta), `PUT /productos/<subtipo>/{id}` (modificación, incluida la reactivación), `DELETE /productos/<subtipo>/{id}` (baja lógica) y `GET /productos/<subtipo>/{id}` (consulta por id; devuelve el producto aunque esté dado de baja, 404 si no existe o es de otro subtipo).
+- `POST /productos` (creación genérica) DEBE devolver 405.
 - DELETE lógico con 409 RESTRICT (lista los ids compuestos que bloquean) cuando el producto está en un menú activo o en un combo activo no vencido (`fecha_hasta >= today`).
 - Validación de componentes (existe, tipo correcto, activo) al crear, actualizar y reactivar menús/combos; verificación y escritura en una sola transacción.
 - Validaciones de campos confirmadas (nombre 1-100, único entre activos; precio > 0 `Numeric(10,2)`; etc.).
@@ -20,12 +20,13 @@ El sistema del restaurante no tiene un catálogo de productos. Se agrega la jera
 
 ### Fuera del alcance
 - Entidad Seccion, Frontend, carga binaria de imágenes, borrado físico, autenticación.
+- Reducción de alcance aprobada por el usuario: NO se implementan `GET /productos` (listado polimórfico), `GET /productos/{id}` (consulta polimórfica por id), `GET /productos/<subtipo>` (listados por subtipo) ni el parámetro `?incluir_bajas`. Los listados y la lectura polimórfica quedan para un cambio posterior.
 
 ## Capacidades
 
 ### Capacidades nuevas
-- `product-catalog`: jerarquía Producto, lecturas polimórficas, CRUD por subtipo, validaciones de campos.
-- `product-logical-delete`: baja, reglas RESTRICT, invariante de componentes activos, filtrado con `incluir_bajas`.
+- `product-catalog`: jerarquía Producto, alta, modificación y consulta por id por subtipo, validaciones de campos (sin listados ni lecturas polimórficas).
+- `product-logical-delete`: baja, reglas RESTRICT, invariante de componentes activos, reactivación.
 
 ### Capacidades modificadas
 - Ninguna
@@ -42,7 +43,8 @@ Todas las preguntas abiertas previas fueron resueltas por el usuario:
 2. **Los compuestos se dan de baja libremente**: MenuEjecutivo y ComboPromocion siempre pueden darse de baja (DELETE o PUT); no se les aplica RESTRICT.
 3. **Los combos vencidos son inmutables**: cualquier PUT sobre un combo con `fecha_hasta < today` (edición o reactivación) devuelve 409. Se permite la baja lógica de un combo vencido que sigue activo, por DELETE o por PUT con `dado_de_baja = true` sin otros cambios. Crear un combo requiere `fecha_hasta >= today` (de lo contrario, 422).
 4. **Los precios de los compuestos son manuales**: el `precio` de MenuEjecutivo/ComboPromocion lo proporciona el cliente y es independiente de los precios de los componentes; los cambios de precio de un componente nunca alteran los precios de los compuestos.
-5. **GET por id siempre devuelve el producto**, incluidos los dados de baja (`dado_de_baja` visible), tanto en `/productos/{id}` como en `/productos/<subtype>/{id}`. `?incluir_bajas=true` se aplica solo a los listados (por defecto excluye los dados de baja). `/productos/<subtype>/{id}` con un id de otro subtipo devuelve 404.
+5. **GET por id siempre devuelve el producto**, incluidos los dados de baja (`dado_de_baja` visible), en `/productos/<subtype>/{id}`. Con un id de otro subtipo o inexistente devuelve 404. Esta consulta también permite verificar el estado tras una baja o una reactivación.
+6. **Reducción de alcance (aprobada, no se reabre)**: el cambio implementa solo el ABM de cada subtipo más la consulta por id por subtipo. Quedan fuera `GET /productos`, `GET /productos/{id}`, `GET /productos/<subtipo>` y `?incluir_bajas` (con todos sus escenarios). Todas las reglas de negocio del ABM se mantienen sin cambios (validaciones de campos, unicidad de `nombre`, RESTRICT, invariante de componentes activos, reactivación, combos vencidos, baja idempotente, prioridad de errores). La unión `ProductoRespuesta` y la función `listar` dejan de ser necesarias y se eliminan.
 
 ## Áreas afectadas
 
@@ -74,7 +76,7 @@ Eliminar `Backend/src/productos/`, la línea del router en `main.py` y las nueva
 
 ## Criterios de éxito
 
-- [ ] Todos los endpoints se comportan según la especificación, incluidas las respuestas 409 RESTRICT.
+- [ ] Todos los endpoints del alcance (ABM y consulta por id por subtipo) se comportan según la especificación, incluidas las respuestas 409 RESTRICT.
 - [ ] `Producto` no puede instanciarse ni crearse directamente.
 - [ ] Ningún compuesto activo referencia un componente inactivo después de cualquier operación.
 - [ ] Los mappers se configuran sin errores; la suite de pytest pasa.

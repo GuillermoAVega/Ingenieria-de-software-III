@@ -2,6 +2,8 @@
 
 Especificación delta para el cambio `productos-backend`. Códigos de estado: 422 = validación de esquema/campos, 404 = id inexistente, 409 = conflicto de regla de negocio. Los ids de componentes referenciados en los cuerpos de menú/combo que no existen o son del tipo incorrecto devuelven **422**; los componentes que existen con el tipo correcto pero están inactivos devuelven **409**.
 
+**Alcance**: este cambio cubre únicamente el ABM (alta, baja, modificación) de cada subtipo y la consulta por id por subtipo (`GET /productos/<subtype>/{id}`). Quedan explícitamente FUERA DE ALCANCE y NO DEBEN implementarse: `GET /productos` (listado polimórfico), `GET /productos/{id}` (consulta polimórfica por id), `GET /productos/<subtype>` (listados por subtipo) y el parámetro `?incluir_bajas`.
+
 ## ADDED Requirements
 
 ### Requirement: Jerarquía abstracta Producto
@@ -22,26 +24,8 @@ Especificación delta para el cambio `productos-backend`. Códigos de estado: 42
 - CUANDO se configuran los mappers de SQLAlchemy
 - ENTONCES no se lanza ningún error (incluido `AmbiguousForeignKeysError`)
 
-### Requirement: Endpoints de lectura polimórficos
-`GET /productos` y `GET /productos/{id}` DEBEN ser de solo lectura y devolver productos de cualquier subtipo, incluido el discriminador `tipo`. `GET /productos` DEBE excluir por defecto los productos dados de baja e incluirlos cuando se use `?incluir_bajas=true`. `GET /productos/{id}` DEBE devolver el producto aunque esté dado de baja, con `dado_de_baja` visible, y 404 si el id no existe.
-
-#### Scenario: Listado mixto
-- DADO un Plato activo y una Bebida activa
-- CUANDO un cliente llama a `GET /productos`
-- ENTONCES 200 y ambos se devuelven con su `tipo`
-
-#### Scenario: Obtener por id un producto dado de baja
-- DADO un Plato dado de baja con id 7
-- CUANDO un cliente llama a `GET /productos/7`
-- ENTONCES 200 y el cuerpo tiene `dado_de_baja = true`
-
-#### Scenario: Id desconocido
-- DADO que no existe ningún producto con id 999
-- CUANDO un cliente llama a `GET /productos/999`
-- ENTONCES 404
-
-### Requirement: Rutas CRUD por subtipo
-La API DEBE exponer `/productos/platos`, `/productos/bebidas`, `/productos/postres`, `/productos/menus-ejecutivos`, `/productos/combos`, cada una con listado, obtención por id, creación (POST) y actualización (PUT). POST DEBE devolver 201. `GET /productos/<subtype>/{id}` DEBE devolver el producto aunque esté dado de baja y DEBE devolver 404 si el id no existe o pertenece a otro subtipo. `?incluir_bajas=true` DEBE aplicarse solo a los listados. El PUT DEBE ser un reemplazo completo: un campo opcional omitido DEBE interpretarse como `null`, salvo `dado_de_baja`, que, si se omite, DEBE conservar el estado actual del producto. Cuando fallen varias reglas a la vez, la prioridad de los errores DEBE ser: 422 (esquema/campos) → 404 (id inexistente) → combo vencido (409) → componentes (409) → `nombre` duplicado (409).
+### Requirement: Rutas ABM por subtipo
+La API DEBE exponer `/productos/platos`, `/productos/bebidas`, `/productos/postres`, `/productos/menus-ejecutivos`, `/productos/combos`, cada una con alta (POST), obtención por id (`GET /productos/<subtype>/{id}`), modificación (PUT) y baja lógica (DELETE, véase product-logical-delete). La API NO DEBE exponer listados (`GET /productos`, `GET /productos/<subtype>`), consulta polimórfica por id (`GET /productos/{id}`) ni el parámetro `?incluir_bajas`. POST DEBE devolver 201. `GET /productos/<subtype>/{id}` DEBE devolver el producto aunque esté dado de baja (con `dado_de_baja` visible) y DEBE devolver 404 si el id no existe o pertenece a otro subtipo. El PUT DEBE ser un reemplazo completo: un campo opcional omitido DEBE interpretarse como `null`, salvo `dado_de_baja`, que, si se omite, DEBE conservar el estado actual del producto. Cuando fallen varias reglas a la vez, la prioridad de los errores DEBE ser: 422 (esquema/campos) → 404 (id inexistente) → combo vencido (409) → componentes (409) → `nombre` duplicado (409).
 
 #### Scenario: Crear plato
 - DADO un cuerpo de Plato válido
@@ -53,13 +37,7 @@ La API DEBE exponer `/productos/platos`, `/productos/bebidas`, `/productos/postr
 - CUANDO un cliente llama a `GET /productos/platos/3`
 - ENTONCES 404
 
-#### Scenario: El listado por subtipo excluye las bajas por defecto
-- DADO un Postre activo y uno dado de baja
-- CUANDO un cliente llama a `GET /productos/postres`
-- ENTONCES solo se devuelve el Postre activo
-- Y con `?incluir_bajas=true` se devuelven ambos
-
-#### Scenario: incluir_bajas se ignora en la obtención por id
+#### Scenario: Obtener por id un producto dado de baja
 - DADO un Postre dado de baja con id 5
 - CUANDO un cliente llama a `GET /productos/postres/5`
 - ENTONCES 200 con `dado_de_baja = true`

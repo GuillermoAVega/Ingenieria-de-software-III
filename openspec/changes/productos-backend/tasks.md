@@ -1,6 +1,8 @@
 # Tareas: Productos Backend
 
-Cambio: `productos-backend`. Entradas: `proposal.md`, `design.md`, `specs/product-catalog/spec.md` (CAT, 50 escenarios), `specs/product-logical-delete/spec.md` (LD, 26 escenarios). Comando de pruebas: `cd Backend && python -m pytest`. Los identificadores de escenario (CAT-nn, LD-nn) se definen en el Anexo A.
+Cambio: `productos-backend`. Entradas: `proposal.md`, `design.md`, `specs/product-catalog/spec.md` (CAT, 46 escenarios vigentes), `specs/product-logical-delete/spec.md` (LD, 23 escenarios vigentes). Comando de pruebas: `cd Backend && python -m pytest`. Los identificadores de escenario (CAT-nn, LD-nn) se definen en el Anexo A.
+
+**Reducción de alcance (aprobada)**: el cambio implementa solo el ABM por subtipo y `GET /productos/<subtipo>/{id}`. Se eliminan los listados, la lectura polimórfica y `?incluir_bajas`: la Fase 8 queda eliminada, se quitan las partes de listado de 3.1, 7.2 y 7.4, y se agrega la tarea 2.7 (REFACTOR) para borrar la unión `ProductoRespuesta` ya implementada en 2.6. Las tareas ya marcadas `[x]` se conservan como historial con una nota; no se renumera nada.
 
 ## Convenciones
 
@@ -8,9 +10,9 @@ Cambio: `productos-backend`. Entradas: `proposal.md`, `design.md`, `specs/produc
 - **Punto de commit**: tarea marcada con `[COMMIT]` = unidad de trabajo lista para confirmar (pruebas + código, suite en verde). Se confirma con commits convencionales, sin atribución de IA.
 - Rutas relativas a la raíz del repositorio. Las pruebas viven en `Backend/tests/`.
 - Estructura (design.md, Estructura de módulos): lo compartido en `Backend/src/productos/`; cada subtipo en su subpaquete anidado `Backend/src/productos/<sub>/` (`platos`, `bebidas`, `postres`, `menus_ejecutivos`, `combos`). Las pruebas lo reflejan: `Backend/tests/productos/` (compartido) y `Backend/tests/productos/<sub>/`, cada carpeta con `__init__.py`. Las fases 0 y 1 se implementaron con la estructura plana; la tarea 1.5 las reorganiza antes de continuar.
-- Los escenarios se cubren en dos niveles: **S** = nivel servicio (excepción de dominio / efecto en BD, fases 3 a 6) y **H** = nivel HTTP con `TestClient` (código de estado y cuerpo, fases 7 y 8). El criterio de cierre global exige que todo escenario tenga su prueba H (tarea 9.2).
+- Los escenarios se cubren en dos niveles: **S** = nivel servicio (excepción de dominio / efecto en BD, fases 3 a 6) y **H** = nivel HTTP con `TestClient` (código de estado y cuerpo, fase 7). El criterio de cierre global exige que todo escenario tenga su prueba H (tarea 9.2).
 - Desviación de orden respecto del pedido: `aplicar_cambio_estado` (fase 4) se coloca antes de MenuEjecutivo y ComboPromocion porque todos los PUT (incluidos los de los subtipos simples) lo invocan. `constants.py` se crea en la fase 1 (1.1) porque los modelos usan los `TIPO_*`.
-- Orden de dependencias: Fase 0 → 1 (incluida 1.5) → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9. Dentro de cada fase el orden es secuencial salvo que se indique `||` (paralelizable).
+- Orden de dependencias: Fase 0 → 1 (incluida 1.5) → 2 (incluida 2.7, que debe cerrarse antes de iniciar la Fase 3) → 3 → 4 → 5 → 6 → 7 → 9 (la Fase 8 fue eliminada). Dentro de cada fase el orden es secuencial salvo que se indique `||` (paralelizable).
 
 ---
 
@@ -112,21 +114,28 @@ Cambio: `productos-backend`. Entradas: `proposal.md`, `design.md`, `specs/produc
   - Escenarios (S, esquema): CAT-29, CAT-35, CAT-36, CAT-37.
   - Hecho cuando: las pruebas pasan.
 
-- [x] **2.6 Unión discriminada `ProductoRespuesta`** — Archivos: `Backend/src/productos/registro.py`, `Backend/tests/productos/test_registro.py`. Depende de 2.3, 2.4, 2.5. (Se ubica en `registro.py` para evitar el ciclo `productos.schemas ↔ <sub>.schemas`.)
+- [x] **2.6 Unión discriminada `ProductoRespuesta`** — *Historial: tarea completada, pero la unión quedó obsoleta por la reducción de alcance (ningún endpoint la usa) y se elimina en la tarea 2.7.* Archivos: `Backend/src/productos/registro.py`, `Backend/tests/productos/test_registro.py`. Depende de 2.3, 2.4, 2.5. (Se ubica en `registro.py` para evitar el ciclo `productos.schemas ↔ <sub>.schemas`.)
   - RED: `TypeAdapter(ProductoRespuesta)` valida instancias ORM de los cinco subtipos y resuelve cada una al esquema correcto según `tipo`; `tipo` desconocido → error.
   - GREEN: `Annotated[Union[...], Field(discriminator="tipo")]`.
   - Escenarios (S): soporte de CAT-04, CAT-05.
   - Hecho cuando: las pruebas pasan.
-  - `[COMMIT]` (Fase 2 completa: excepciones y esquemas; 2.4–2.6 pueden ir en un commit aparte).
+  - `[COMMIT]` (excepciones y esquemas; 2.4–2.6 pueden ir en un commit aparte).
+
+- [ ] **2.7 REFACTOR: eliminar la unión `ProductoRespuesta` obsoleta** — Archivos: `Backend/src/productos/registro.py`, `Backend/tests/productos/test_registro.py`. Depende de 2.6. Debe completarse antes de continuar con la Fase 3.
+  - Motivo: la reducción de alcance elimina la lectura polimórfica; ningún requisito usa `ProductoRespuesta`.
+  - REFACTOR (sin RED nuevo; la suite permanece en verde): borrar `ProductoRespuesta` y los imports de `<sub>.schemas` que solo ella usaba de `registro.py` (que queda importando solo los `models`); borrar de `test_registro.py` las pruebas de la unión (`TypeAdapter(ProductoRespuesta)`, resolución por `tipo`, `tipo` desconocido). Se conservan `MODELOS_POR_TIPO`, `RESTRICT_POR_TIPO` (aún no creado; llega en 4.1), la reexportación de las tablas de asociación y las pruebas de `MODELOS_POR_TIPO` y `configure_mappers()`. Las clases `Respuesta` de cada subtipo (2.3–2.5) no se tocan.
+  - Escenarios: ninguno nuevo; CAT-04 y CAT-05 (soporte de 2.6) quedan eliminados con el alcance.
+  - Hecho cuando: `cd Backend && python -m pytest` pasa, `rg ProductoRespuesta Backend` no devuelve resultados salvo `ProductoRespuestaBase`, y `registro.py` ya no importa ningún `schemas`.
+  - `[COMMIT]` (refactor: elimina la unión polimórfica de respuesta; Fase 2 completa).
 
 ---
 
 ## Fase 3: Servicios de subtipos simples (Plato, Bebida, Postre)
 
-- [ ] **3.1 Servicios de lectura genéricos + unicidad de nombre** — Archivos: `Backend/src/productos/services.py`, `Backend/tests/productos/test_servicios_lectura.py`. Depende de 1.5, 2.1.
-  - RED: `listar(db, modelo, incluir_bajas)` excluye dados de baja por defecto e incluye con `True` (CAT-09 S, LD-24 S, LD-25 S); `obtener(db, modelo, id)` devuelve dados de baja (CAT-10 S) y lanza `ProductoNoEncontrado` si el id no existe o es de otro subtipo (CAT-08 S); `listar` sobre `Producto` devuelve instancias de distintos subtipos (CAT-04 S); `obtener(db, Producto, id)` con id desconocido → `ProductoNoEncontrado` (CAT-06 S); `obtener(db, Producto, id)` devuelve un dado de baja (CAT-05 S); `normalizar_nombre()` = `strip().casefold()` y distingue tildes; `verificar_nombre_unico(db, nombre, excluir_id)` lanza `NombreDuplicado` frente a activo (CAT-21, CAT-22, CAT-23 S) e ignora dados de baja (CAT-25 S), tildes distintas OK (CAT-24 S), excluye el propio id (CAT-26 S); `obtener_hoy()` devuelve `date.today()`.
-  - GREEN: `obtener_hoy`, `listar`, `obtener`, `normalizar_nombre`, `verificar_nombre_unico`, uso de `selectin_polymorphic` (subtipos tomados de `registro.MODELOS_POR_TIPO`; `services.py` no importa subpaquetes)/`selectinload`.
-  - Escenarios (S): CAT-04, CAT-05, CAT-06, CAT-08, CAT-09, CAT-10, CAT-21..26, LD-24, LD-25.
+- [ ] **3.1 Obtención por id genérica + unicidad de nombre** — Archivos: `Backend/src/productos/services.py`, `Backend/tests/productos/test_servicios_lectura.py`. Depende de 2.7, 1.5, 2.1. (Sin `listar` ni lectura polimórfica: fuera de alcance.)
+  - RED: `obtener(db, modelo, id)` con `modelo` subtipo concreto devuelve dados de baja (CAT-10 S) y lanza `ProductoNoEncontrado` si el id no existe o es de otro subtipo (CAT-08 S); `normalizar_nombre()` = `strip().casefold()` y distingue tildes; `verificar_nombre_unico(db, nombre, excluir_id)` lanza `NombreDuplicado` frente a activo (CAT-21, CAT-22, CAT-23 S) e ignora dados de baja (CAT-25 S), tildes distintas OK (CAT-24 S), excluye el propio id (CAT-26 S); `obtener_hoy()` devuelve `date.today()`.
+  - GREEN: `obtener_hoy`, `obtener`, `normalizar_nombre`, `verificar_nombre_unico`. `services.py` no importa subpaquetes.
+  - Escenarios (S): CAT-08, CAT-10, CAT-21..26.
   - Hecho cuando: las pruebas pasan.
 
 - [ ] **3.2 `crear_plato` y `actualizar_plato`** — Archivos: `Backend/src/productos/platos/services.py`, `Backend/src/productos/services.py` (auxiliares compartidos: asignación de campos comunes y traducción de `IntegrityError`), `Backend/tests/productos/platos/test_servicios.py`. Depende de 3.1.
@@ -209,16 +218,16 @@ Cambio: `productos-backend`. Entradas: `proposal.md`, `design.md`, `specs/produc
 
 ## Fase 7: Router, manejadores de excepciones y `main.py` (pruebas HTTP)
 
-- [ ] **7.1 Router base, composición de subrouters, manejadores y registro en `main.py`** — Archivos: `Backend/src/productos/router.py`, `Backend/src/productos/{platos,bebidas,postres,menus_ejecutivos,combos}/router.py` (`APIRouter(prefix=PREFIJO)` sin rutas aún), `Backend/src/productos/{platos,bebidas,postres,menus_ejecutivos,combos}/constants.py` (`PREFIJO`), `Backend/src/main.py`, `Backend/tests/conftest.py` (override de `obtener_hoy`), `Backend/tests/productos/test_manejadores.py`. Depende de Fase 6.
-  - RED: `POST /productos` → 405 (CAT-01 H) y no crea nada; manejadores traducen `ProductoNoEncontrado` → 404 `{"detail"}`, `ComponenteInvalido`/`FechaHastaVencida` → 422 con la forma de Pydantic (`loc`, `msg`, `type`, `ids`), `ErrorConflicto` → 409 (incluido `ComboVencidoInmutable`, por MRO), `ComponenteInactivo` agrega `ids`, `BajaRestringida` agrega `bloqueantes` ordenados; rutas con `{producto_id:int}`; `GET /productos/platos` no se interpreta como id; los `PREFIJO` valen `/platos`, `/bebidas`, `/postres`, `/menus-ejecutivos`, `/combos`; `main.py` importa `src.productos.registro` antes de `create_all` y registra el router y los `MANEJADORES_EXCEPCIONES`.
-  - GREEN: `APIRouter(prefix="/productos")` con `include_router` de los cinco subrouters, `MANEJADORES_EXCEPCIONES` (importa `FechaHastaVencida` de `combos/exceptions.py`), ruta GET mínima de prueba o exposición de endpoints en 7.2; cambios en `main.py`. La dependencia `obtener_hoy` ya existe en `productos/services.py` (3.1).
+- [ ] **7.1 Router base (`POST /productos` → 405), composición de subrouters, manejadores y registro en `main.py`** — Archivos: `Backend/src/productos/router.py`, `Backend/src/productos/{platos,bebidas,postres,menus_ejecutivos,combos}/router.py` (`APIRouter(prefix=PREFIJO)` sin rutas aún), `Backend/src/productos/{platos,bebidas,postres,menus_ejecutivos,combos}/constants.py` (`PREFIJO`), `Backend/src/main.py`, `Backend/tests/conftest.py` (override de `obtener_hoy`), `Backend/tests/productos/test_manejadores.py`. Depende de Fase 6.
+  - RED: `POST /productos` → 405 (CAT-01 H) y no crea nada; manejadores traducen `ProductoNoEncontrado` → 404 `{"detail"}`, `ComponenteInvalido`/`FechaHastaVencida` → 422 con la forma de Pydantic (`loc`, `msg`, `type`, `ids`), `ErrorConflicto` → 409 (incluido `ComboVencidoInmutable`, por MRO), `ComponenteInactivo` agrega `ids`, `BajaRestringida` agrega `bloqueantes` ordenados; no existe ninguna ruta GET en `/productos` (`GET /productos` y `GET /productos/{id}` no están definidas); las rutas por id de los subpaquetes usan `{producto_id:int}`; los `PREFIJO` valen `/platos`, `/bebidas`, `/postres`, `/menus-ejecutivos`, `/combos`; `main.py` importa `src.productos.registro` antes de `create_all` y registra el router y los `MANEJADORES_EXCEPCIONES`.
+  - GREEN: `APIRouter(prefix="/productos")` con `include_router` de los cinco subrouters, `MANEJADORES_EXCEPCIONES` (importa `FechaHastaVencida` de `combos/exceptions.py`), ruta explícita `POST ""` que responde 405 (design.md, decisión 7); cambios en `main.py`. La dependencia `obtener_hoy` ya existe en `productos/services.py` (3.1).
   - Escenarios (H): CAT-01.
   - Hecho cuando: las pruebas pasan y la app arranca con el router registrado.
 
-- [ ] **7.2 Endpoints de Plato, Bebida y Postre (lista, id, POST, PUT)** — Archivos: `Backend/src/productos/platos/router.py`, `Backend/src/productos/bebidas/router.py`, `Backend/src/productos/postres/router.py`, `Backend/tests/productos/platos/test_router.py`, `Backend/tests/productos/bebidas/test_router.py`, `Backend/tests/productos/postres/test_router.py`. Depende de 7.1.
-  - RED (HTTP): crear plato → 201 con id (CAT-07); `GET /productos/platos/{id}` con id de una Bebida → 404 (CAT-08); listado por subtipo excluye bajas por defecto y con `?incluir_bajas=true` incluye ambos (CAT-09); `GET /productos/postres/{id}` dado de baja → 200 con `dado_de_baja=true` y `incluir_bajas` ignorado (CAT-10); PUT id desconocido → 404 (CAT-11); PUT sin `dado_de_baja` conserva estado (CAT-12); PUT reemplazo completo (CAT-13); `precio=0` en PUT a id 999 → 422 antes que 404 (CAT-14); validaciones de campos vía HTTP para POST de plato/bebida/postre: nombre `""` (CAT-15), `"   "` (CAT-16), recorte (CAT-17), 101 caracteres (CAT-18), `precio=0` (CAT-19), descripcion 501 (CAT-20); duplicados exacto/mayúsculas/espacios → 409 (CAT-21, CAT-22, CAT-23); tildes → 201 (CAT-24); reutilización tras baja → 201 (CAT-25); PUT con el mismo nombre → 200 (CAT-26); Bebida sin `es_alcoholica` → 422 (CAT-27); `cant_personas=0` → 422 (CAT-28).
-  - GREEN: endpoints GET lista, GET id, POST, PUT por subtipo con respuestas desde el esquema, declarados en el cuerpo de cada `<sub>/router.py`.
-  - Escenarios (H): CAT-07..28 (excepto los de menú/combo); LD-24, LD-25, LD-26 en `/bebidas`: excluye por defecto, incluir bajas, valor inválido `?incluir_bajas=maybe` → 422.
+- [ ] **7.2 Endpoints de Plato, Bebida y Postre (GET por id, POST, PUT)** — Archivos: `Backend/src/productos/platos/router.py`, `Backend/src/productos/bebidas/router.py`, `Backend/src/productos/postres/router.py`, `Backend/tests/productos/platos/test_router.py`, `Backend/tests/productos/bebidas/test_router.py`, `Backend/tests/productos/postres/test_router.py`. Depende de 7.1.
+  - RED (HTTP): crear plato → 201 con id (CAT-07); `GET /productos/platos/{id}` con id de una Bebida → 404 (CAT-08); `GET /productos/postres/{id}` dado de baja → 200 con `dado_de_baja=true` (CAT-10); PUT id desconocido → 404 (CAT-11); PUT sin `dado_de_baja` conserva estado (CAT-12); PUT reemplazo completo (CAT-13); `precio=0` en PUT a id 999 → 422 antes que 404 (CAT-14); validaciones de campos vía HTTP para POST de plato/bebida/postre: nombre `""` (CAT-15), `"   "` (CAT-16), recorte (CAT-17), 101 caracteres (CAT-18), `precio=0` (CAT-19), descripcion 501 (CAT-20); duplicados exacto/mayúsculas/espacios → 409 (CAT-21, CAT-22, CAT-23); tildes → 201 (CAT-24); reutilización tras baja → 201 (CAT-25); PUT con el mismo nombre → 200 (CAT-26); Bebida sin `es_alcoholica` → 422 (CAT-27); `cant_personas=0` → 422 (CAT-28).
+  - GREEN: endpoints GET por id, POST, PUT por subtipo con respuestas desde el esquema, declarados en el cuerpo de cada `<sub>/router.py`. No se implementa ningún listado.
+  - Escenarios (H): CAT-07, CAT-08, CAT-10..28 (excepto los de menú/combo; CAT-09 fue eliminado).
   - Hecho cuando: las pruebas pasan.
   - `[COMMIT]` (endpoints simples).
 
@@ -230,42 +239,37 @@ Cambio: `productos-backend`. Entradas: `proposal.md`, `design.md`, `specs/produc
   - `[COMMIT]` (baja lógica HTTP de subtipos simples).
 
 - [ ] **7.4 Endpoints de MenuEjecutivo** — Archivos: `Backend/src/productos/menus_ejecutivos/router.py`, `Backend/tests/productos/menus_ejecutivos/test_router.py`. Depende de 7.3, 5.2.
-  - RED (HTTP): menú válido → 201 (CAT-30); `plato_id` de una Bebida → 422 con `loc ["body","plato_id"]` (CAT-31); `postre_id=999` → 422 (CAT-32); Plato inactivo → 409 (CAT-33); cambio de precio de Plato no altera el del menú (CAT-41); PUT con Postre inactivo → 409 y menú sin cambios (CAT-42); PUT de menú de baja con Plato inactivo manteniéndolo de baja, con `dado_de_baja=true` y sin el campo → 200 (CAT-43); PUT de menú de baja con `postre_id=999` → 422 (CAT-44); DELETE de menú → 204 y componentes sin cambios (LD-16); reactivar menú con Plato inactivo → 409 y sigue de baja (LD-19); `GET /productos/menus-ejecutivos` (lista, id, `incluir_bajas`).
-  - GREEN: endpoints GET/POST/PUT/DELETE de `/productos/menus-ejecutivos`.
+  - RED (HTTP): menú válido → 201 (CAT-30); `plato_id` de una Bebida → 422 con `loc ["body","plato_id"]` (CAT-31); `postre_id=999` → 422 (CAT-32); Plato inactivo → 409 (CAT-33); cambio de precio de Plato no altera el del menú (CAT-41); PUT con Postre inactivo → 409 y menú sin cambios (CAT-42); PUT de menú de baja con Plato inactivo manteniéndolo de baja, con `dado_de_baja=true` y sin el campo → 200 (CAT-43); PUT de menú de baja con `postre_id=999` → 422 (CAT-44); DELETE de menú → 204 y componentes sin cambios (LD-16); reactivar menú con Plato inactivo → 409 y sigue de baja (LD-19); `GET /productos/menus-ejecutivos/{id}` verifica el estado (sin listado).
+  - GREEN: endpoints GET por id/POST/PUT/DELETE de `/productos/menus-ejecutivos`.
   - Escenarios (H): CAT-30..33, CAT-41..44, LD-16, LD-19.
   - Hecho cuando: las pruebas pasan.
   - `[COMMIT]`.
 
 - [ ] **7.5 Endpoints de ComboPromocion** — Archivos: `Backend/src/productos/combos/router.py`, `Backend/tests/productos/combos/test_router.py`. Depende de 7.4, 6.3.
   - RED (HTTP): combo válido → 201 (CAT-34); listas vacías → 422 (CAT-35); un único componente → 201 (CAT-36); ids duplicados → 422 (CAT-37); `bebidas_ids` con id de Plato o inexistente → 422 con `ids` (CAT-38); Bebida inactiva → 409 con `ids` (CAT-39); `fecha_hasta` anterior a hoy → 422 con `loc ["body","fecha_hasta"]` (CAT-40); `fecha_desde > fecha_hasta` → 422 (CAT-29); editar combo vencido → 409 (CAT-45); reactivar vencido → 409 (CAT-46); baja vía PUT de combo vencido activo → 200 de baja (CAT-47); repetida → 200 sin cambios (CAT-48); baja con nuevo `precio` → 409 sin cambios (CAT-49); DELETE de combo vencido → 204 (LD-17); baja de combo no vencido vía PUT → 200 (LD-18); reactivar combo con componentes activos → 200 (LD-20).
-  - GREEN: endpoints GET/POST/PUT/DELETE de `/productos/combos`.
+  - GREEN: endpoints GET por id/POST/PUT/DELETE de `/productos/combos` (sin listado).
   - Escenarios (H): CAT-29, CAT-34..40, CAT-45..49, LD-17, LD-18, LD-20.
   - Hecho cuando: las pruebas pasan.
   - `[COMMIT]`.
 
 ---
 
-## Fase 8: Lectura polimórfica
+## Fase 8: ELIMINADA (fuera de alcance)
 
-- [ ] **8.1 `GET /productos` y `GET /productos/{producto_id:int}`** — Archivos: `Backend/src/productos/router.py`, `Backend/tests/productos/test_lecturas.py`. Depende de 7.5 y 2.6.
-  - RED (HTTP): listado mixto Plato + Bebida con su `tipo` (CAT-04); GET por id de un Plato dado de baja → 200 con `dado_de_baja=true` (CAT-05); id 999 → 404 (CAT-06); listado de los cinco subtipos devuelve la forma de respuesta correcta por `tipo`; `incluir_bajas` en `GET /productos` (excluye por defecto, incluye con `true`, `maybe` → 422: LD-24, LD-25, LD-26 a nivel polimórfico); sin N+1 (conteo de consultas acotado, si es viable); `GET /productos/platos` no se captura como id.
-  - GREEN: dos endpoints GET en `productos/router.py` con `ProductoRespuesta` (de `registro.py`) y `selectin_polymorphic`.
-  - Escenarios (H): CAT-04, CAT-05, CAT-06; LD-24..26 (variante polimórfica).
-  - Hecho cuando: las pruebas pasan.
-  - `[COMMIT]` (lecturas completas).
+~~8.1 `GET /productos` y `GET /productos/{producto_id:int}` (lectura polimórfica)~~ — eliminada por la reducción de alcance aprobada. Los listados, la lectura polimórfica y `?incluir_bajas` no se implementan. Escenarios eliminados: CAT-04, CAT-05, CAT-06, CAT-09, LD-24, LD-25, LD-26 (véase Anexo A). La numeración de fases no se altera: la Fase 9 conserva su número.
 
 ---
 
 ## Fase 9: Cierre
 
-- [ ] **9.1 Suite completa y verificación de la invariante** — Archivos: `Backend/tests/productos/test_invariante.py` (si hace falta prueba adicional). Depende de la Fase 8.
+- [ ] **9.1 Suite completa y verificación de la invariante** — Archivos: `Backend/tests/productos/test_invariante.py` (si hace falta prueba adicional). Depende de la Fase 7 (la Fase 8 fue eliminada).
   - RED: prueba de propiedad ligera: tras una secuencia de operaciones (altas, bajas bloqueadas y permitidas, reactivaciones, ediciones, combos vencidos) ningún menú activo ni combo activo con `fecha_hasta >= HOY` referencia un componente inactivo (LD-23, invariante general; respaldo de LD-10..15).
   - GREEN: ajustes mínimos si la invariante falla; ejecutar `cd Backend && python -m pytest` completo en verde; comprobar que `Producto` no se puede crear por HTTP ni instanciar.
   - Escenarios: LD-23 (completo), criterios de éxito de la propuesta.
   - Hecho cuando: suite completa en verde, sin advertencias nuevas relevantes (la advertencia de `Numeric` en SQLite es aceptada) y sin tocar el archivo SQLite real.
 
 - [ ] **9.2 Verificación de trazabilidad de escenarios** — Archivos: ninguno (revisión; solo se corrige añadiendo pruebas en los archivos de pruebas existentes). Depende de 9.1.
-  - Revisar el Anexo A: para cada uno de los 76 escenarios debe existir al menos una prueba H (o S/unidad para CAT-02, CAT-03, CAT-50) con el nombre del escenario en el nombre o docstring de la prueba. Listar cualquier escenario sin prueba; cada hueco se cierra con RED → GREEN o se registra como riesgo.
+  - Revisar el Anexo A: para cada uno de los 69 escenarios vigentes (46 CAT + 23 LD; los 7 marcados "eliminado" no se verifican) debe existir al menos una prueba H (o S/unidad para CAT-02, CAT-03, CAT-50) con el nombre del escenario en el nombre o docstring de la prueba. Listar cualquier escenario sin prueba; cada hueco se cierra con RED → GREEN o se registra como riesgo.
   - Hecho cuando: el listado de escenarios sin cobertura está vacío (o documentado) y `python -m pytest` pasa.
   - `[COMMIT]` final del cambio (verify queda para la fase `sdd-verify`).
 
@@ -277,16 +281,16 @@ Cambio: `productos-backend`. Entradas: `proposal.md`, `design.md`, `specs/produc
 |------|--------|-------------------|
 | 0 Infraestructura | 0.1, 0.2, 0.3 | tras 0.2 y tras 0.3 |
 | 1 Constantes y modelos | 1.1–1.5 | tras 1.2 (opcional), tras 1.4 y tras 1.5 (refactor a subpaquetes) |
-| 2 Excepciones y esquemas | 2.1–2.6 | tras 2.3 y tras 2.6 |
+| 2 Excepciones y esquemas | 2.1–2.7 | tras 2.3, tras 2.6 y tras 2.7 (refactor) |
 | 3 Servicios simples | 3.1–3.3 | tras 3.3 |
 | 4 Estado y RESTRICT | 4.1–4.3 | tras 4.3 |
 | 5 MenuEjecutivo (servicio) | 5.1–5.2 | tras 5.2 |
 | 6 ComboPromocion (servicio) | 6.1–6.3 | tras 6.3 |
 | 7 Router y HTTP | 7.1–7.5 | tras 7.2, 7.3, 7.4, 7.5 |
-| 8 Lectura polimórfica | 8.1 | tras 8.1 |
+| 8 Lectura polimórfica | ~~8.1~~ (eliminada) | — |
 | 9 Cierre | 9.1–9.2 | tras 9.2 |
 
-Total: 10 fases, 33 tareas.
+Total: 9 fases activas (la Fase 8 está eliminada), 33 tareas (se eliminó 8.1 y se agregó 2.7).
 
 Paralelismo: 2.1 `||` 2.2; 2.3, 2.4 y 2.5 `||` entre sí tras 2.2 (escriben en subpaquetes distintos). El resto es secuencial porque cada tarea depende de servicios previos o modifica archivos compartidos (`productos/services.py`, `productos/router.py`, `productos/registro.py`; un solo escritor).
 
@@ -294,20 +298,22 @@ Paralelismo: 2.1 `||` 2.2; 2.3, 2.4 y 2.5 `||` entre sí tras 2.2 (escriben en s
 
 ## Anexo A: Numeración de escenarios
 
-### product-catalog (CAT, 50)
+Criterio de numeración: los ids se mantienen estables (no se renumera). Los escenarios que dejan de existir por la reducción de alcance se conservan en la tabla marcados como "eliminado (fuera de alcance)", sin tarea asignada y sin prueba requerida; los ids eliminados no se reutilizan.
+
+### product-catalog (CAT, 46 vigentes + 4 eliminados = 50 ids)
 
 | ID | Escenario | Tarea(s) |
 |----|-----------|----------|
 | CAT-01 | La creación genérica no es posible | 7.1 |
 | CAT-02 | Instanciación directa rechazada | 1.2 |
 | CAT-03 | Los mappers se configuran | 1.3, 1.4 |
-| CAT-04 | Listado mixto | 3.1, 8.1 |
-| CAT-05 | Obtener por id un producto dado de baja | 3.1, 8.1 |
-| CAT-06 | Id desconocido | 3.1, 8.1 |
+| CAT-04 | ~~Listado mixto~~ — eliminado (fuera de alcance) | — |
+| CAT-05 | ~~Obtener por id un producto dado de baja (polimórfico)~~ — eliminado (fuera de alcance) | — |
+| CAT-06 | ~~Id desconocido (polimórfico)~~ — eliminado (fuera de alcance) | — |
 | CAT-07 | Crear plato | 3.2, 7.2 |
 | CAT-08 | Id de subtipo incorrecto | 3.1, 3.3, 7.2 |
-| CAT-09 | El listado por subtipo excluye las bajas por defecto | 3.1, 7.2 |
-| CAT-10 | incluir_bajas se ignora en la obtención por id | 3.1, 7.2 |
+| CAT-09 | ~~El listado por subtipo excluye las bajas por defecto~~ — eliminado (fuera de alcance) | — |
+| CAT-10 | Obtener por id un producto dado de baja (reformulado: sin `incluir_bajas`, por subtipo) | 3.1, 7.2 |
 | CAT-11 | Actualizar un id desconocido | 3.2, 3.3, 7.2 |
 | CAT-12 | PUT sin dado_de_baja conserva el estado actual | 3.2, 4.3, 7.2 |
 | CAT-13 | PUT como reemplazo completo | 3.2, 3.3, 7.2 |
@@ -349,7 +355,7 @@ Paralelismo: 2.1 `||` 2.2; 2.3, 2.4 y 2.5 `||` entre sí tras 2.2 (escriben en s
 | CAT-49 | Dar de baja un combo vencido vía PUT modificando otros campos | 6.3, 7.5 |
 | CAT-50 | La suite se ejecuta de forma aislada | 0.1, 0.2, 0.3 |
 
-### product-logical-delete (LD, 26)
+### product-logical-delete (LD, 23 vigentes + 3 eliminados = 26 ids)
 
 | ID | Escenario | Tarea(s) |
 |----|-----------|----------|
@@ -377,12 +383,12 @@ Paralelismo: 2.1 `||` 2.2; 2.3, 2.4 y 2.5 `||` entre sí tras 2.2 (escriben en s
 | LD-21 | Conflicto de nombre en la reactivación | 4.3, 7.3 |
 | LD-22 | Reactivar un componente | 4.3, 7.3 |
 | LD-23 | Invariante tras una baja bloqueada | 4.2, 7.3, 9.1 |
-| LD-24 | Excluye por defecto | 3.1, 7.2, 8.1 |
-| LD-25 | Incluir bajas | 3.1, 7.2, 8.1 |
-| LD-26 | Valor de bandera inválido | 7.2, 8.1 |
+| LD-24 | ~~Excluye por defecto~~ — eliminado (fuera de alcance) | — |
+| LD-25 | ~~Incluir bajas~~ — eliminado (fuera de alcance) | — |
+| LD-26 | ~~Valor de bandera inválido~~ — eliminado (fuera de alcance) | — |
 
 Nota: LD-09 (Reactivar vía PUT) también se cubre en 4.3 (S). El Anexo A es la numeración normativa; los nombres de prueba deben usar el nombre del escenario tal como figura aquí.
 
 ## Escenarios sin tarea asignada
 
-Ninguno: los 76 escenarios (50 CAT + 26 LD) están mapeados en el Anexo A. La tarea 9.2 verifica que cada uno tenga una prueba con su nombre.
+Ninguno: los 69 escenarios vigentes (46 CAT + 23 LD) están mapeados en el Anexo A; los 7 ids eliminados (CAT-04, CAT-05, CAT-06, CAT-09, LD-24, LD-25, LD-26) no requieren tarea. La tarea 9.2 verifica que cada escenario vigente tenga una prueba con su nombre.

@@ -1,6 +1,6 @@
 # Especificación de la Baja Lógica de Productos
 
-Especificación delta para el cambio `productos-backend`. Los cambios de estado se realizan mediante DELETE lógico o mediante PUT con `dado_de_baja`; no existe un endpoint de estado dedicado. Nota no funcional: la lógica de baja/reactivación se comparte en una única función de servicio, sin duplicarse por subtipo.
+Especificación delta para el cambio `productos-backend`. Los cambios de estado se realizan mediante DELETE lógico o mediante PUT con `dado_de_baja`; no existe un endpoint de estado dedicado. Los listados, la lectura polimórfica y el parámetro `?incluir_bajas` están fuera de alcance (véase product-catalog); el estado de un producto se verifica con `GET /productos/<subtype>/{id}`, que siempre devuelve el producto con `dado_de_baja` visible. Nota no funcional: la lógica de baja/reactivación se comparte en una única función de servicio, sin duplicarse por subtipo.
 
 ## ADDED Requirements
 
@@ -136,21 +136,3 @@ Después de cualquier operación, ningún MenuEjecutivo activo ni ComboPromocion
 - DADO un Plato en un menú activo
 - CUANDO la baja se rechaza con 409
 - ENTONCES el Plato y el menú siguen ambos activos
-
-### Requirement: Filtrado con incluir_bajas
-Los listados (`GET /productos` y cada `GET /productos/<subtype>`) DEBEN excluir por defecto los productos dados de baja e incluirlos con `?incluir_bajas=true`. El parámetro NO DEBE afectar la obtención por id, que siempre devuelve el producto con `dado_de_baja` visible.
-
-#### Scenario: Excluye por defecto
-- DADO una Bebida activa y una dada de baja
-- CUANDO `GET /productos/bebidas`
-- ENTONCES solo la activa
-
-#### Scenario: Incluir bajas
-- DADO los mismos datos
-- CUANDO `GET /productos/bebidas?incluir_bajas=true`
-- ENTONCES ambas, cada una con su valor de `dado_de_baja`
-
-#### Scenario: Valor de bandera inválido
-- DADO `?incluir_bajas=maybe`
-- CUANDO se lista
-- ENTONCES 422
