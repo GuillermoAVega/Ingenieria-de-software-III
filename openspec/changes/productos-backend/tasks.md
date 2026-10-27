@@ -121,7 +121,7 @@ Cambio: `productos-backend`. Entradas: `proposal.md`, `design.md`, `specs/produc
   - Hecho cuando: las pruebas pasan.
   - `[COMMIT]` (excepciones y esquemas; 2.4–2.6 pueden ir en un commit aparte).
 
-- [ ] **2.7 REFACTOR: eliminar la unión `ProductoRespuesta` obsoleta** — Archivos: `Backend/src/productos/registro.py`, `Backend/tests/productos/test_registro.py`. Depende de 2.6. Debe completarse antes de continuar con la Fase 3.
+- [x] **2.7 REFACTOR: eliminar la unión `ProductoRespuesta` obsoleta** — Archivos: `Backend/src/productos/registro.py`, `Backend/tests/productos/test_registro.py`. Depende de 2.6. Debe completarse antes de continuar con la Fase 3.
   - Motivo: la reducción de alcance elimina la lectura polimórfica; ningún requisito usa `ProductoRespuesta`.
   - REFACTOR (sin RED nuevo; la suite permanece en verde): borrar `ProductoRespuesta` y los imports de `<sub>.schemas` que solo ella usaba de `registro.py` (que queda importando solo los `models`); borrar de `test_registro.py` las pruebas de la unión (`TypeAdapter(ProductoRespuesta)`, resolución por `tipo`, `tipo` desconocido). Se conservan `MODELOS_POR_TIPO`, `RESTRICT_POR_TIPO` (aún no creado; llega en 4.1), la reexportación de las tablas de asociación y las pruebas de `MODELOS_POR_TIPO` y `configure_mappers()`. Las clases `Respuesta` de cada subtipo (2.3–2.5) no se tocan.
   - Escenarios: ninguno nuevo; CAT-04 y CAT-05 (soporte de 2.6) quedan eliminados con el alcance.
