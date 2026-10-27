@@ -81,38 +81,38 @@ Cambio: `productos-backend`. Entradas: `proposal.md`, `design.md`, `specs/produc
 
 ## Fase 2: Excepciones y esquemas
 
-- [ ] **2.1 Excepciones compartidas y de combos** — Archivos: `Backend/src/productos/exceptions.py`, `Backend/src/productos/combos/exceptions.py`, `Backend/tests/productos/test_excepciones.py`, `Backend/tests/productos/combos/test_excepciones.py`. Depende de 1.5. `||` con 2.2.
+- [x] **2.1 Excepciones compartidas y de combos** — Archivos: `Backend/src/productos/exceptions.py`, `Backend/src/productos/combos/exceptions.py`, `Backend/tests/productos/test_excepciones.py`, `Backend/tests/productos/combos/test_excepciones.py`. Depende de 1.5. `||` con 2.2.
   - RED: pruebas de la jerarquía compartida (`ErrorConflicto` base de `NombreDuplicado`, `ComponenteInactivo(ids)`, `BajaRestringida(bloqueantes)` con lista ordenada; `ProductoNoEncontrado`; `ComponenteInvalido(campo, ids)`) y de la de combos (`ComboVencidoInmutable` hereda de `ErrorConflicto`; `FechaHastaVencida` hereda de `ErrorDominio`); ningún módulo importa FastAPI (comprobar `sys.modules` o inspección de imports).
   - GREEN: crear las clases según el contrato de errores (design.md indica la ubicación de cada una); el borrador no confirmado de `productos/exceptions.py` se reparte entre ambos archivos.
   - Escenarios: soporte del contrato 404/409/422 (todas las pruebas H de las fases 7 y 8).
   - Hecho cuando: las pruebas pasan.
 
-- [ ] **2.2 `ProductoBase`: validación de campos comunes** — Archivos: `Backend/src/productos/schemas.py`, `Backend/tests/productos/test_schemas.py`. Depende de 1.5. `||` con 2.1.
+- [x] **2.2 `ProductoBase`: validación de campos comunes** — Archivos: `Backend/src/productos/schemas.py`, `Backend/tests/productos/test_schemas.py`. Depende de 1.5. `||` con 2.1.
   - RED (unidad Pydantic): nombre `""` → error (CAT-15); `"   "` → error (CAT-16); `"  Milanesa "` → `"Milanesa"` (CAT-17); 101 caracteres → error (CAT-18); `precio=0` → error (CAT-19); precio negativo, más de 2 decimales y más de 10 dígitos → error; `descripcion` de 501 → error (CAT-20); `descripcion`/`imagen` opcionales (`None`).
   - GREEN: `ProductoBase` con `field_validator("nombre", mode="before")` (strip), `condecimal(gt=0, max_digits=10, decimal_places=2)`, longitudes; `ProductoRespuestaBase` (`id`, `dado_de_baja`, `from_attributes`).
   - Escenarios (S, nivel esquema): CAT-15, CAT-16, CAT-17, CAT-18, CAT-19, CAT-20.
   - Hecho cuando: las pruebas pasan.
 
-- [ ] **2.3 Esquemas Plato, Bebida, Postre** — Archivos: `Backend/src/productos/platos/schemas.py`, `Backend/src/productos/bebidas/schemas.py`, `Backend/src/productos/postres/schemas.py`, `Backend/tests/productos/platos/test_schemas.py`, `Backend/tests/productos/bebidas/test_schemas.py`, `Backend/tests/productos/postres/test_schemas.py`. Depende de 2.2.
+- [x] **2.3 Esquemas Plato, Bebida, Postre** — Archivos: `Backend/src/productos/platos/schemas.py`, `Backend/src/productos/bebidas/schemas.py`, `Backend/src/productos/postres/schemas.py`, `Backend/tests/productos/platos/test_schemas.py`, `Backend/tests/productos/bebidas/test_schemas.py`, `Backend/tests/productos/postres/test_schemas.py`. Depende de 2.2.
   - RED: `PlatoCrear` con `cant_personas=0` → error (CAT-28) y ausente → error; `BebidaCrear` sin `es_alcoholica` → error (CAT-27); `PostreCrear` acepta solo campos comunes; `*Actualizar` = Crear + `dado_de_baja: bool | None = None` (omitido → `None`); `*Respuesta` con `id`, `tipo: Literal`, `dado_de_baja` y `from_attributes`.
   - GREEN: esquemas Crear/Actualizar/Respuesta de los tres subtipos.
   - Escenarios (S): CAT-27, CAT-28; soporte de CAT-12 (`dado_de_baja` opcional).
   - Hecho cuando: las pruebas pasan.
   - `[COMMIT]` junto con 2.1 y 2.2 (excepciones + base de esquemas).
 
-- [ ] **2.4 Esquemas MenuEjecutivo** — Archivos: `Backend/src/productos/menus_ejecutivos/schemas.py`, `Backend/tests/productos/menus_ejecutivos/test_schemas.py`. Depende de 2.2.
+- [x] **2.4 Esquemas MenuEjecutivo** — Archivos: `Backend/src/productos/menus_ejecutivos/schemas.py`, `Backend/tests/productos/menus_ejecutivos/test_schemas.py`. Depende de 2.2.
   - RED: `MenuCrear` exige `plato_id` y `postre_id`; `MenuActualizar` agrega `dado_de_baja`; `MenuRespuesta` con `tipo="menu_ejecutivo"`.
   - GREEN: esquemas del menú.
   - Escenarios (S): soporte de CAT-30..33, CAT-42..44.
   - Hecho cuando: las pruebas pasan.
 
-- [ ] **2.5 Esquemas ComboPromocion** — Archivos: `Backend/src/productos/combos/schemas.py`, `Backend/tests/productos/combos/test_schemas.py`. Depende de 2.2.
+- [x] **2.5 Esquemas ComboPromocion** — Archivos: `Backend/src/productos/combos/schemas.py`, `Backend/tests/productos/combos/test_schemas.py`. Depende de 2.2.
   - RED: `ComboCrear` con tres listas vacías → error (CAT-35); un solo id en una lista → válido (CAT-36); ids repetidos en una lista → error (CAT-37); `fecha_desde > fecha_hasta` → error (CAT-29); falta de fechas o de una lista → error; `ComboRespuesta` expone `platos_ids/bebidas_ids/postres_ids` desde atributos del modelo.
   - GREEN: `ComboCrear` con `model_validator`; `ComboActualizar`; `ComboRespuesta`.
   - Escenarios (S, esquema): CAT-29, CAT-35, CAT-36, CAT-37.
   - Hecho cuando: las pruebas pasan.
 
-- [ ] **2.6 Unión discriminada `ProductoRespuesta`** — Archivos: `Backend/src/productos/registro.py`, `Backend/tests/productos/test_registro.py`. Depende de 2.3, 2.4, 2.5. (Se ubica en `registro.py` para evitar el ciclo `productos.schemas ↔ <sub>.schemas`.)
+- [x] **2.6 Unión discriminada `ProductoRespuesta`** — Archivos: `Backend/src/productos/registro.py`, `Backend/tests/productos/test_registro.py`. Depende de 2.3, 2.4, 2.5. (Se ubica en `registro.py` para evitar el ciclo `productos.schemas ↔ <sub>.schemas`.)
   - RED: `TypeAdapter(ProductoRespuesta)` valida instancias ORM de los cinco subtipos y resuelve cada una al esquema correcto según `tipo`; `tipo` desconocido → error.
   - GREEN: `Annotated[Union[...], Field(discriminator="tipo")]`.
   - Escenarios (S): soporte de CAT-04, CAT-05.
