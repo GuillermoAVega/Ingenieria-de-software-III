@@ -46,10 +46,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-<<<<<<< HEAD
-=======
-
->>>>>>> 22c273e (Relacion entre mesa-sector incluida)
 # asociamos los routers a nuestra app
 app.include_router(mozo_router)
 app.include_router(sector_router)
