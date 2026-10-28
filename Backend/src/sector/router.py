@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from src.database import get_db
+from src.mesa import schemas as mesa_schemas
 from src.sector import schema, services
 
 router = APIRouter(prefix="/sectores", tags=["sectores"])
@@ -17,6 +18,11 @@ def read_sectores(
     db: Session = Depends(get_db),
 ):
     return services.listar_sectores(db, nombre=nombre)
+
+
+@router.get("/{sector_id}/mesas", response_model=list[mesa_schemas.Mesa])
+def read_mesas_sector(sector_id: int, db: Session = Depends(get_db)):
+    return services.listar_mesas_sector(db, sector_id)
 
 
 @router.get("/{sector_id}", response_model=schema.Sector)

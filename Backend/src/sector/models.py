@@ -6,6 +6,7 @@ from src.models import ModeloBase
 
 if TYPE_CHECKING:
     from src.atencion.models import Atencion
+    from src.mesa.models import Mesa
 
 
 class Sector(ModeloBase):
@@ -18,5 +19,4 @@ class Sector(ModeloBase):
     estado: Mapped[bool] = mapped_column(Boolean, default=True)
 
     atenciones: Mapped[list["Atencion"]] = relationship(back_populates="sector")
-
-    # [TODO] incorporar relacion de sector con mesa
+    mesas: Mapped[list["Mesa"]] = relationship(back_populates="sector")

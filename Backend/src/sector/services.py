@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
+from src.mesa.models import Mesa
 from src.sector.models import Sector
 from src.atencion.models import Atencion  # noqa: F401 — registra Atencion para Sector.atenciones
 from src.sector import schema, exceptions
@@ -44,6 +45,15 @@ def listar_sectores(db: Session, nombre: Optional[str] = None) -> List[schema.Se
     query = select(Sector)
     if nombre:
         query = query.where(Sector.nombre.ilike(f"%{nombre}%"))
+    return db.scalars(query).all()
+
+
+def listar_mesas_sector(db: Session, sector_id: int) -> list[Mesa]:
+    leer_sector(db, sector_id)
+    query = select(Mesa).where(
+        Mesa.sector_id == sector_id,
+        Mesa.estado.is_(True),
+    )
     return db.scalars(query).all()
 
 
@@ -90,6 +100,14 @@ def eliminar_sector(db: Session, sector_id: int) -> schema.Sector:
         raise exceptions.SectorYaInactivo()
     if any(a.estado and a.fecha_hasta is None for a in db_sector.atenciones):
         raise exceptions.SectorConAtencionesAbiertas()
+    mesa_activa = db.scalar(
+        select(Mesa.id).where(
+            Mesa.sector_id == sector_id,
+            Mesa.estado.is_(True),
+        ).limit(1)
+    )
+    if mesa_activa is not None:
+        raise exceptions.SectorConMesasActivas()
     db_sector.estado = False
     db.commit()
     db.refresh(db_sector)
