@@ -1,1 +1,4 @@
-"""Constantes de postres (el prefijo de rutas se agrega en la tarea 7.1)."""
+"""Constantes de postres."""
+
+# Prefijo de las rutas de postres dentro de /productos
+PREFIJO = "/postres"

@@ -1,1 +1,4 @@
-"""Constantes de bebidas (el prefijo de rutas se agrega en la tarea 7.1)."""
+"""Constantes de bebidas."""
+
+# Prefijo de las rutas de bebidas dentro de /productos
+PREFIJO = "/bebidas"

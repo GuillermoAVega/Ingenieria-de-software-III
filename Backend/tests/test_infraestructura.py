@@ -1,5 +1,6 @@
 from src.database import get_db
 from src.main import app
+from src.productos.services import obtener_hoy
 
 
 def test_motor_en_memoria(motor):
@@ -12,11 +13,10 @@ def test_get_db_sobrescrito(cliente, sesion):
     assert next(app.dependency_overrides[get_db]()) is not None
 
 
-def test_hoy_fijo(HOY):
-    # obtener_hoy nace en la tarea 7.1; por ahora solo se verifica la constante
-    from datetime import date
-
-    assert isinstance(HOY, date)
+def test_hoy_fijo(cliente, HOY):
+    # Las pruebas HTTP no dependen de la fecha real
+    assert obtener_hoy in app.dependency_overrides
+    assert app.dependency_overrides[obtener_hoy]() == HOY
 
 
 def test_entorno_de_prueba():

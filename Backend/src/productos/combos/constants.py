@@ -1,1 +1,4 @@
-"""Constantes de combos de promoción (el prefijo de rutas se agrega en la tarea 7.1)."""
+"""Constantes de combos de promoción."""
+
+# Prefijo de las rutas de combos dentro de /productos
+PREFIJO = "/combos"
