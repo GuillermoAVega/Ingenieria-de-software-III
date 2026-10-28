@@ -65,12 +65,12 @@ Chain strategy: pending
 
 ## Fase 2: Esquemas
 
-- [ ] **2.1 Esquemas de sección** — Archivos: `Backend/src/secciones/schemas.py`, `Backend/tests/secciones/test_schemas.py`. Depende de 1.2.
+- [x] **2.1 Esquemas de sección** — Archivos: `Backend/src/secciones/schemas.py`, `Backend/tests/secciones/test_schemas.py`. Depende de 1.2.
   - RED (E): `nombre` `""` (SEC-03), `"   "` (SEC-04) y ausente (SEC-05) → error; `"  Entradas "` → `"Entradas"` (SEC-06); 100 caracteres válido (SEC-07); 101 → error (SEC-08); `subtitulo` de 200 válido (SEC-09); de 201 → error (SEC-10); `"  Para comenzar "` → `"Para comenzar"` (SEC-39); `""` → `None` (SEC-40); `"   "` → `None` (SEC-41); 200 caracteres rodeados de espacios → válido y de 200 (SEC-42); 201 rodeados de espacios → error (SEC-43); `subtitulo` omitido → `None`; `SeccionActualizar` equivale a `SeccionCrear`; `SeccionRespuesta` solo expone `id`, `nombre`, `subtitulo` (SEC-02, parcial) y valida desde atributos.
   - GREEN: `SeccionCrear` con `field_validator(..., mode="before")` que recorta `nombre` y `subtitulo` (este último devuelve `None` si queda vacío) y `Field(min_length=1, max_length=NOMBRE_MAX)` / `Field(max_length=SUBTITULO_MAX)`; `SeccionActualizar = SeccionCrear`; `SeccionRespuesta`.
   - Escenarios (E): SEC-02 (parcial), SEC-03..10, SEC-39..43.
 
-- [ ] **2.2 `seccion_id` en los esquemas comunes de producto** — Archivos: `Backend/src/productos/schemas.py`, `Backend/tests/productos/test_schemas.py`. Depende de 1.3. `||` con 2.1.
+- [x] **2.2 `seccion_id` en los esquemas comunes de producto** — Archivos: `Backend/src/productos/schemas.py`, `Backend/tests/productos/test_schemas.py`. Depende de 1.3. `||` con 2.1.
   - RED (E): `ProductoBase` sin `seccion_id` → `None` (CAT-S-02); con entero válido se conserva; `"abc"` → error de validación (CAT-S-13); `ProductoRespuestaBase` expone `seccion_id` (`None` o entero) y los cinco `*Crear`/`*Actualizar`/`*Respuesta` lo heredan (parametrizado por subtipo).
   - GREEN: `ProductoBase.seccion_id: int | None = None`; `ProductoRespuestaBase.seccion_id: int | None`.
   - Escenarios (E): CAT-S-02, CAT-S-13.
