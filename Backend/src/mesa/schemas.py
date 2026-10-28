@@ -4,6 +4,7 @@ from pydantic import BaseModel
 class MesaBase(BaseModel):
     capacidad: int
     disponible: bool
+    sector_id: int
 
 
 class MesaCreate(MesaBase):

@@ -1,9 +1,21 @@
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from src.mesa import models, schemas
+from src.mesa.exceptions import SectorMesaInactivo, SectorMesaNoEncontrado
+from src.sector.models import Sector
+
+
+def _validar_sector_activo(db: Session, sector_id: int) -> None:
+    sector = db.scalar(select(Sector).where(Sector.id == sector_id))
+    if sector is None:
+        raise SectorMesaNoEncontrado()
+    if not sector.estado:
+        raise SectorMesaInactivo()
 
 
 def crear_mesa(db: Session, mesa: schemas.MesaCreate) -> models.Mesa:
+    _validar_sector_activo(db, mesa.sector_id)
     mesa_db = models.Mesa(**mesa.model_dump())
     db.add(mesa_db)
     db.commit()
@@ -58,8 +70,10 @@ def modificar_mesa(
     if not mesa_db:
         raise ValueError("La mesa no existe")
 
+    _validar_sector_activo(db, nuevos_datos.sector_id)
     mesa_db.capacidad = nuevos_datos.capacidad
     mesa_db.disponible = nuevos_datos.disponible
+    mesa_db.sector_id = nuevos_datos.sector_id
 
     db.commit()
     db.refresh(mesa_db)

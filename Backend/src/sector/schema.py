@@ -22,6 +22,8 @@ class SectorCreate(SectorBase):
 
 
 class SectorUpdate(BaseModel):
+    model_config = {"extra": "forbid"}
+
     nombre: Optional[str] = Field(default=None, max_length=50)
     apto_fumadores: Optional[bool] = None
     piso: Optional[int] = None
