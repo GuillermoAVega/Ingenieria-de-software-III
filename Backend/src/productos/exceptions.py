@@ -25,6 +25,15 @@ class ComponenteInvalido(ErrorDominio):
         self.ids = ids
 
 
+class SeccionInexistente(ErrorDominio):
+    """El `seccion_id` indicado no corresponde a ninguna sección."""
+    MENSAJE = "La sección indicada no existe"
+
+    def __init__(self, seccion_id: int, mensaje: str | None = None) -> None:
+        super().__init__(mensaje)
+        self.seccion_id = seccion_id
+
+
 class ErrorConflicto(ErrorDominio):
     """Base de los errores que se responden como conflicto (409)."""
     MENSAJE = "Conflicto con el estado actual del producto"

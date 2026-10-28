@@ -50,13 +50,19 @@ def resolver_componentes_combo(
 
 
 def crear_combo(sesion: Session, datos: ComboCrear, hoy: date) -> ComboPromocion:
-    """Alta de un combo activo: vigencia (422) → componentes (422/409) → nombre (409) → commit."""
+    """Alta de un combo activo.
+
+    Orden: vigencia (422) → existencia de componentes (422) → sección (422) →
+    componentes activos (409) → nombre (409) → commit.
+    """
     try:
         if datos.fecha_hasta < hoy:
             raise FechaHastaVencida()
         platos, bebidas, postres = resolver_componentes_combo(
-            sesion, datos.platos_ids, datos.bebidas_ids, datos.postres_ids, exigir_activos=True
+            sesion, datos.platos_ids, datos.bebidas_ids, datos.postres_ids, exigir_activos=False
         )
+        services.verificar_seccion(sesion, datos.seccion_id)
+        verificar_componentes_activos(platos, bebidas, postres)
     except ErrorDominio:
         sesion.rollback()
         raise
@@ -76,13 +82,14 @@ def _sin_otros_cambios(combo: ComboPromocion, datos: ComboActualizar) -> bool:
     """Indica si el payload (sin `dado_de_baja`) coincide con lo persistido.
 
     `nombre` ya viene recortado; `precio` se compara como `Decimal`;
-    `descripcion` e `imagen` incluyen `None`; las listas de ids, como conjuntos.
+    `descripcion`, `imagen` y `seccion_id` incluyen `None`; las listas de ids, como conjuntos.
     """
     return (
         datos.nombre == combo.nombre
         and Decimal(datos.precio) == combo.precio
         and datos.descripcion == combo.descripcion
         and datos.imagen == combo.imagen
+        and datos.seccion_id == combo.seccion_id
         and datos.fecha_desde == combo.fecha_desde
         and datos.fecha_hasta == combo.fecha_hasta
         and set(datos.platos_ids) == set(combo.platos_ids)
@@ -108,8 +115,8 @@ def actualizar_combo(
     """Reemplazo completo del combo, incluidas las listas de componentes.
 
     Orden: carga (404) → combo vencido (409; solo admite la baja sin otros cambios) →
-    componentes: existencia y tipo siempre (422), que estén activos solo si el combo
-    queda activo (409) → nombre y estado (compartidos) → commit.
+    existencia y tipo de componentes (422) → sección (422) → componentes activos solo si
+    el combo queda activo (409) → nombre y estado (compartidos) → commit.
     """
     try:
         combo = services.obtener(sesion, ComboPromocion, combo_id)
@@ -125,8 +132,11 @@ def actualizar_combo(
             datos.platos_ids,
             datos.bebidas_ids,
             datos.postres_ids,
-            exigir_activos=queda_activo,
+            exigir_activos=False,
         )
+        services.verificar_seccion(sesion, datos.seccion_id)
+        if queda_activo:
+            verificar_componentes_activos(platos, bebidas, postres)
     except ErrorDominio:
         sesion.rollback()
         raise

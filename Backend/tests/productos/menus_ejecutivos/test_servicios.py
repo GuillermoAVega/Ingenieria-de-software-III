@@ -9,6 +9,7 @@ from src.productos.exceptions import (
     ComponenteInvalido,
     NombreDuplicado,
     ProductoNoEncontrado,
+    SeccionInexistente,
 )
 from src.productos.menus_ejecutivos import services as servicios_menus
 from src.productos.menus_ejecutivos.models import MenuEjecutivo
@@ -384,3 +385,156 @@ def test_actualizar_menu_activo_a_baja_no_exige_componentes_activos(
     )
 
     assert actualizado.dado_de_baja is True
+
+
+# --- Integración de `seccion_id` y orden de validación (secciones-backend) ---
+
+
+def _datos_menu(plato, postre, clase=MenuCrear, **cambios):
+    datos = {
+        "nombre": "Menú A",
+        "precio": Decimal("2000.00"),
+        "plato_id": plato.id,
+        "postre_id": postre.id,
+    }
+    datos.update(cambios)
+    return clase(**datos)
+
+
+def _crear_seccion(sesion, crear_seccion):
+    seccion = crear_seccion()
+    sesion.add(seccion)
+    sesion.commit()
+    return seccion
+
+
+def test_cat_s_04_crear_menu_con_seccion_guarda_seccion_id(
+    sesion, crear_plato, crear_bebida, crear_postre, crear_seccion
+):
+    plato, _, postre = _crear_componentes(sesion, crear_plato, crear_bebida, crear_postre)
+    seccion = _crear_seccion(sesion, crear_seccion)
+
+    menu = servicios_menus.crear_menu(sesion, _datos_menu(plato, postre, seccion_id=seccion.id))
+
+    assert sesion.get(MenuEjecutivo, menu.id).seccion_id == seccion.id
+
+
+def test_cat_s_05_crear_menu_con_seccion_inexistente_no_persiste(
+    sesion, crear_plato, crear_bebida, crear_postre
+):
+    plato, _, postre = _crear_componentes(sesion, crear_plato, crear_bebida, crear_postre)
+
+    with pytest.raises(SeccionInexistente):
+        servicios_menus.crear_menu(sesion, _datos_menu(plato, postre, seccion_id=999))
+
+    assert sesion.scalars(select(MenuEjecutivo)).all() == []
+
+
+def test_cat_s_09_actualizar_menu_acepta_y_rechaza_seccion_id(
+    sesion, crear_plato, crear_bebida, crear_postre, crear_menu, crear_seccion, HOY
+):
+    plato, _, postre = _crear_componentes(sesion, crear_plato, crear_bebida, crear_postre)
+    seccion = _crear_seccion(sesion, crear_seccion)
+    menu = crear_menu(plato, postre)
+    sesion.add(menu)
+    sesion.commit()
+
+    servicios_menus.actualizar_menu(
+        sesion,
+        menu.id,
+        _datos_menu(plato, postre, MenuActualizar, nombre="Menú del día", seccion_id=seccion.id),
+        HOY,
+    )
+    assert menu.seccion_id == seccion.id
+
+    with pytest.raises(SeccionInexistente):
+        servicios_menus.actualizar_menu(
+            sesion,
+            menu.id,
+            _datos_menu(plato, postre, MenuActualizar, nombre="Menú del día", seccion_id=999),
+            HOY,
+        )
+    sesion.expire_all()
+    assert sesion.get(MenuEjecutivo, menu.id).seccion_id == seccion.id
+
+
+def test_cat_s_17_seccion_inexistente_tiene_prioridad_sobre_componente_inactivo(
+    sesion, crear_plato, crear_bebida, crear_postre, crear_menu, HOY
+):
+    plato, _, postre = _crear_componentes(sesion, crear_plato, crear_bebida, crear_postre)
+    menu = crear_menu(plato, postre)
+    sesion.add(menu)
+    sesion.commit()
+    postre.dado_de_baja = True
+    sesion.commit()
+
+    with pytest.raises(SeccionInexistente):
+        servicios_menus.actualizar_menu(
+            sesion,
+            menu.id,
+            _datos_menu(plato, postre, MenuActualizar, nombre="Menú del día", seccion_id=999),
+            HOY,
+        )
+    with pytest.raises(SeccionInexistente):
+        servicios_menus.crear_menu(
+            sesion, _datos_menu(plato, postre, nombre="Otro", seccion_id=999)
+        )
+
+
+def test_componente_inexistente_tiene_prioridad_sobre_seccion_inexistente(
+    sesion, crear_plato, crear_bebida, crear_postre
+):
+    plato, _, _ = _crear_componentes(sesion, crear_plato, crear_bebida, crear_postre)
+    datos = MenuCrear(
+        nombre="Menú A", precio=Decimal("2000.00"), plato_id=plato.id, postre_id=999,
+        seccion_id=999,
+    )
+
+    with pytest.raises(ComponenteInvalido):
+        servicios_menus.crear_menu(sesion, datos)
+
+
+def test_cat_s_19_componente_inactivo_tiene_prioridad_sobre_nombre_duplicado(
+    sesion, crear_plato, crear_bebida, crear_postre, crear_menu, HOY
+):
+    plato, _, postre = _crear_componentes(sesion, crear_plato, crear_bebida, crear_postre)
+    otro_plato = crear_plato(nombre="Pizza")
+    sesion.add_all([otro_plato, crear_menu(plato, postre, nombre="Menú B")])
+    menu_a = crear_menu(otro_plato, postre, nombre="Menú A")
+    sesion.add(menu_a)
+    sesion.commit()
+    postre.dado_de_baja = True
+    sesion.commit()
+
+    with pytest.raises(ComponenteInactivo):
+        servicios_menus.actualizar_menu(
+            sesion,
+            menu_a.id,
+            _datos_menu(otro_plato, postre, MenuActualizar, nombre="Menú B"),
+            HOY,
+        )
+
+
+def test_cat_43_menu_que_queda_de_baja_no_exige_componentes_activos_con_seccion(
+    sesion, crear_plato, crear_bebida, crear_postre, crear_menu, crear_seccion, HOY
+):
+    plato, _, postre = _crear_componentes(sesion, crear_plato, crear_bebida, crear_postre)
+    seccion = _crear_seccion(sesion, crear_seccion)
+    menu = crear_menu(plato, postre)
+    sesion.add(menu)
+    sesion.commit()
+    postre.dado_de_baja = True
+    sesion.commit()
+
+    servicios_menus.actualizar_menu(
+        sesion,
+        menu.id,
+        _datos_menu(
+            plato, postre, MenuActualizar, nombre="Menú del día",
+            seccion_id=seccion.id, dado_de_baja=True,
+        ),
+        HOY,
+    )
+
+    assert menu.dado_de_baja is True
+    assert menu.seccion_id == seccion.id

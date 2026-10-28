@@ -13,6 +13,7 @@ from src.productos.exceptions import (
     ComponenteInvalido,
     NombreDuplicado,
     ProductoNoEncontrado,
+    SeccionInexistente,
 )
 from src.productos.models import Producto
 
@@ -346,4 +347,109 @@ def test_cat_21_actualizar_combo_activo_con_nombre_de_otro_producto_duplicado(
             combo_persistido.id,
             _datos_actualizar(HOY, nombre="cerveza", **_ids_actuales(componentes)),
             HOY,
+        )
+
+
+# --- `seccion_id` en combos (secciones-backend) ---
+
+
+@pytest.fixture
+def seccion(sesion, crear_seccion):
+    seccion = crear_seccion()
+    sesion.add(seccion)
+    sesion.commit()
+    return seccion
+
+
+def test_cat_s_04_crear_combo_con_seccion_guarda_seccion_id(sesion, componentes, seccion, HOY):
+    plato, _, _ = componentes
+
+    combo = servicios_combos.crear_combo(
+        sesion, _datos(HOY, platos_ids=[plato.id], seccion_id=seccion.id), HOY
+    )
+
+    assert sesion.get(ComboPromocion, combo.id).seccion_id == seccion.id
+
+
+def test_cat_s_05_crear_combo_con_seccion_inexistente_no_persiste(sesion, componentes, HOY):
+    plato, _, _ = componentes
+
+    with pytest.raises(SeccionInexistente):
+        servicios_combos.crear_combo(
+            sesion, _datos(HOY, platos_ids=[plato.id], seccion_id=999), HOY
+        )
+
+    assert sesion.scalars(select(ComboPromocion)).all() == []
+
+
+def test_cat_s_09_28_combo_vigente_cambia_de_seccion_y_rechaza_inexistente(
+    sesion, combo_persistido, seccion, HOY
+):
+    combo = combo_persistido
+    base = {
+        "platos_ids": combo.platos_ids,
+        "bebidas_ids": combo.bebidas_ids,
+        "postres_ids": combo.postres_ids,
+    }
+
+    servicios_combos.actualizar_combo(
+        sesion, combo.id, _datos_actualizar(HOY, seccion_id=seccion.id, **base), HOY
+    )
+    assert combo.seccion_id == seccion.id
+
+    with pytest.raises(SeccionInexistente):
+        servicios_combos.actualizar_combo(
+            sesion, combo.id, _datos_actualizar(HOY, seccion_id=999, **base), HOY
+        )
+    sesion.expire_all()
+    assert sesion.get(ComboPromocion, combo.id).seccion_id == seccion.id
+
+
+def test_cat_s_20_referencia_inexistente_tiene_prioridad_sobre_componente_inactivo(
+    sesion, componentes, HOY
+):
+    plato, bebida, _ = componentes
+    bebida.dado_de_baja = True
+    sesion.commit()
+
+    with pytest.raises(ComponenteInvalido) as error:
+        servicios_combos.crear_combo(
+            sesion,
+            _datos(HOY, platos_ids=[plato.id, 999], bebidas_ids=[bebida.id]),
+            HOY,
+        )
+
+    assert error.value.campo == "platos_ids"
+
+
+def test_seccion_inexistente_tiene_prioridad_sobre_componente_inactivo_en_el_alta(
+    sesion, componentes, HOY
+):
+    plato, bebida, _ = componentes
+    bebida.dado_de_baja = True
+    sesion.commit()
+
+    with pytest.raises(SeccionInexistente):
+        servicios_combos.crear_combo(
+            sesion,
+            _datos(HOY, platos_ids=[plato.id], bebidas_ids=[bebida.id], seccion_id=999),
+            HOY,
+        )
+
+
+def test_seccion_inexistente_tiene_prioridad_sobre_componente_inactivo_en_el_put(
+    sesion, combo_persistido, HOY
+):
+    combo = combo_persistido
+    ids = {
+        "platos_ids": combo.platos_ids,
+        "bebidas_ids": combo.bebidas_ids,
+        "postres_ids": combo.postres_ids,
+    }
+    combo.bebidas[0].dado_de_baja = True
+    sesion.commit()
+
+    with pytest.raises(SeccionInexistente):
+        servicios_combos.actualizar_combo(
+            sesion, combo.id, _datos_actualizar(HOY, seccion_id=999, **ids), HOY
         )

@@ -105,22 +105,22 @@ Chain strategy: pending
 
 ## Fase 4: Integración en productos
 
-- [ ] **4.1 `SeccionInexistente`** — Archivos: `Backend/src/productos/exceptions.py`, `Backend/tests/productos/test_excepciones.py`. Depende de 1.3.
+- [x] **4.1 `SeccionInexistente`** — Archivos: `Backend/src/productos/exceptions.py`, `Backend/tests/productos/test_excepciones.py`. Depende de 1.3.
   - RED: `SeccionInexistente(seccion_id)` hereda de `ErrorDominio`, guarda `seccion_id`, tiene mensaje y no importa FastAPI.
   - GREEN: agregar la clase.
   - Escenarios: soporte de CAT-S-03.
 
-- [ ] **4.2 `verificar_seccion`, campos comunes y orden en alta/modificación (Plato, Bebida, Postre)** — Archivos: `Backend/src/productos/services.py`, `Backend/tests/productos/test_seccion_producto.py`. Depende de 4.1, 2.2.
+- [x] **4.2 `verificar_seccion`, campos comunes y orden en alta/modificación (Plato, Bebida, Postre)** — Archivos: `Backend/src/productos/services.py`, `Backend/tests/productos/test_seccion_producto.py`. Depende de 4.1, 2.2.
   - RED (S, vía `crear_plato`/`actualizar_plato`, `bebida`, `postre`): alta con sección existente guarda `seccion_id` (CAT-S-01); `seccion_id` inexistente → `SeccionInexistente` sin producto nuevo (CAT-S-03); `None` no consulta; cambiar sección (CAT-S-06); PUT sin `seccion_id` → `None` (CAT-S-07); PUT con inexistente → `SeccionInexistente` y el Plato conserva la sección (CAT-S-08); asignar a producto dado de baja (CAT-S-11); nombre duplicado en otra sección → `NombreDuplicado` (CAT-S-12, caracterización); PUT de id inexistente con sección inexistente → `ProductoNoEncontrado` (CAT-S-14, caracterización); `SeccionInexistente` antes que `NombreDuplicado` (CAT-S-18); rollback en `crear_producto` ante cualquier `ErrorDominio`.
   - GREEN: `verificar_seccion(sesion, seccion_id)`; `asignar_campos_comunes` copia `seccion_id`; `crear_producto`: sección → nombre; `actualizar_producto`: `obtener` → sección → nombre → estado; capturar `ErrorDominio` para el rollback.
   - Escenarios (S): CAT-S-01, 03, 06, 07, 08, 11, 12, 14, 18; soporte de CAT-S-04, 05, 09.
 
-- [ ] **4.3 Menú: separar existencia y actividad de componentes** — Archivos: `Backend/src/productos/menus_ejecutivos/services.py`, `Backend/tests/productos/menus_ejecutivos/test_servicios.py`. Depende de 4.2.
+- [x] **4.3 Menú: separar existencia y actividad de componentes** — Archivos: `Backend/src/productos/menus_ejecutivos/services.py`, `Backend/tests/productos/menus_ejecutivos/test_servicios.py`. Depende de 4.2.
   - RED (S): alta y PUT con `seccion_id` válido (CAT-S-04, CAT-S-09 a nivel servicio); `seccion_id` inexistente → `SeccionInexistente` (CAT-S-05); `postre_id` dado de baja más `seccion_id` inexistente en menú activo → `SeccionInexistente` y no `ComponenteInactivo` (CAT-S-17); componente inexistente y sección inexistente → `ComponenteInvalido` primero; componente inactivo con nombre duplicado → `ComponenteInactivo` (CAT-S-19, caracterización); un menú que queda dado de baja no exige componentes activos (regresión CAT-43/CAT-44 del cambio previo).
   - GREEN: `resolver_componentes_menu(..., exigir_activos=False)` → `verificar_seccion` → `verificar_componentes_activos_menu(...)` si el menú queda activo (siempre en el alta); `crear_menu`/`actualizar_menu` capturan `ErrorDominio`.
   - Escenarios (S): CAT-S-04, 05, 09, 17, 19.
 
-- [ ] **4.4 Combo: separar validación, `seccion_id` en `_sin_otros_cambios`** — Archivos: `Backend/src/productos/combos/services.py`, `Backend/tests/productos/combos/test_servicios.py`, `Backend/tests/productos/combos/test_servicios_vencido.py`. Depende de 4.3.
+- [x] **4.4 Combo: separar validación, `seccion_id` en `_sin_otros_cambios`** — Archivos: `Backend/src/productos/combos/services.py`, `Backend/tests/productos/combos/test_servicios.py`, `Backend/tests/productos/combos/test_servicios_vencido.py`. Depende de 4.3.
   - RED (S): alta con sección (CAT-S-04) e inexistente → `SeccionInexistente` (CAT-S-05); vigente cambia de sección (CAT-S-28) y rechaza inexistente (CAT-S-09); vencido más sección inexistente → `ComboVencidoInmutable` (CAT-S-16); vencido con otra sección (CAT-S-22) o asignada a uno sin sección (CAT-S-23) → `ComboVencidoInmutable` sin cambios; baja con mismo `seccion_id` → OK (CAT-S-24); baja omitiendo `seccion_id` con combo con sección → `ComboVencidoInmutable` (CAT-S-25); baja de combo sin sección (CAT-S-26); `dar_de_baja` (DELETE) no altera `seccion_id` (CAT-S-27); id inexistente en `platos_ids` más Bebida inactiva → `ComponenteInvalido` (CAT-S-20).
   - GREEN: `resolver_componentes_combo(..., exigir_activos=False)` → `verificar_seccion` → `verificar_componentes_activos_combo(...)`; alta: `FechaHastaVencida` → existencia → sección → actividad → nombre; `_sin_otros_cambios` agrega `datos.seccion_id == combo.seccion_id`.
   - Escenarios (S): CAT-S-04, 05, 09, 16, 20, 22..28.

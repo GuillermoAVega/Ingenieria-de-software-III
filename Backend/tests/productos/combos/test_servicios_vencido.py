@@ -181,3 +181,127 @@ def test_ld_18_baja_via_put_de_un_combo_no_vencido(sesion, crear_plato, crear_co
 
     assert actualizado.dado_de_baja is True
     assert actualizado.descripcion == "Cambia"
+
+
+# --- `seccion_id` en combos vencidos (secciones-backend) ---
+
+
+@pytest.fixture
+def seccion(sesion, crear_seccion):
+    seccion = crear_seccion()
+    sesion.add(seccion)
+    sesion.commit()
+    return seccion
+
+
+def test_cat_s_16_vencido_tiene_prioridad_sobre_seccion_inexistente(
+    sesion, combo_vencido, HOY
+):
+    datos = _datos(combo_vencido, dado_de_baja=True, seccion_id=999)
+
+    with pytest.raises(ComboVencidoInmutable):
+        servicios_combos.actualizar_combo(sesion, combo_vencido.id, datos, HOY)
+
+
+def test_cat_s_22_cambiar_la_seccion_de_un_combo_vencido_es_inmutable(
+    sesion, combo_vencido, seccion, crear_seccion, HOY
+):
+    otra = crear_seccion(nombre="Postres")
+    sesion.add(otra)
+    combo_vencido.seccion_id = seccion.id
+    sesion.commit()
+
+    with pytest.raises(ComboVencidoInmutable):
+        servicios_combos.actualizar_combo(
+            sesion, combo_vencido.id, _datos(combo_vencido, dado_de_baja=True, seccion_id=otra.id), HOY
+        )
+
+    sesion.expire_all()
+    guardado = sesion.get(ComboPromocion, combo_vencido.id)
+    assert guardado.seccion_id == seccion.id
+    assert guardado.dado_de_baja is False
+
+
+def test_cat_s_23_asignar_seccion_a_un_combo_vencido_sin_seccion_es_inmutable(
+    sesion, combo_vencido, seccion, HOY
+):
+    with pytest.raises(ComboVencidoInmutable):
+        servicios_combos.actualizar_combo(
+            sesion, combo_vencido.id, _datos(combo_vencido, dado_de_baja=True, seccion_id=seccion.id), HOY
+        )
+
+    sesion.expire_all()
+    guardado = sesion.get(ComboPromocion, combo_vencido.id)
+    assert guardado.seccion_id is None
+    assert guardado.dado_de_baja is False
+
+
+def test_cat_s_24_baja_de_combo_vencido_conservando_su_seccion(
+    sesion, combo_vencido, seccion, HOY
+):
+    combo_vencido.seccion_id = seccion.id
+    sesion.commit()
+
+    servicios_combos.actualizar_combo(
+        sesion,
+        combo_vencido.id,
+        _datos(combo_vencido, dado_de_baja=True, seccion_id=seccion.id),
+        HOY,
+    )
+
+    sesion.expire_all()
+    guardado = sesion.get(ComboPromocion, combo_vencido.id)
+    assert guardado.dado_de_baja is True
+    assert guardado.seccion_id == seccion.id
+
+
+def test_cat_s_25_baja_de_combo_vencido_omitiendo_seccion_id_es_inmutable(
+    sesion, combo_vencido, seccion, HOY
+):
+    combo_vencido.seccion_id = seccion.id
+    sesion.commit()
+
+    with pytest.raises(ComboVencidoInmutable):
+        servicios_combos.actualizar_combo(
+            sesion, combo_vencido.id, _datos(combo_vencido, dado_de_baja=True), HOY
+        )
+
+    sesion.expire_all()
+    guardado = sesion.get(ComboPromocion, combo_vencido.id)
+    assert guardado.seccion_id == seccion.id
+    assert guardado.dado_de_baja is False
+
+
+def test_cat_s_26_baja_de_combo_vencido_sin_seccion(sesion, combo_vencido, HOY):
+    servicios_combos.actualizar_combo(
+        sesion, combo_vencido.id, _datos(combo_vencido, dado_de_baja=True), HOY
+    )
+
+    sesion.expire_all()
+    guardado = sesion.get(ComboPromocion, combo_vencido.id)
+    assert guardado.dado_de_baja is True
+    assert guardado.seccion_id is None
+
+
+def test_cat_s_27_dar_de_baja_un_combo_vencido_no_altera_la_seccion(
+    sesion, combo_vencido, seccion, HOY
+):
+    combo_vencido.seccion_id = seccion.id
+    sesion.commit()
+
+    services.dar_de_baja(sesion, ComboPromocion, combo_vencido.id, HOY)
+
+    sesion.expire_all()
+    guardado = sesion.get(ComboPromocion, combo_vencido.id)
+    assert guardado.dado_de_baja is True
+    assert guardado.seccion_id == seccion.id
+
+
+def test_sin_otros_cambios_detecta_seccion_id(sesion, combo_vencido, seccion):
+    assert servicios_combos._sin_otros_cambios(combo_vencido, _datos(combo_vencido)) is True
+    assert (
+        servicios_combos._sin_otros_cambios(
+            combo_vencido, _datos(combo_vencido, seccion_id=seccion.id)
+        )
+        is False
+    )
