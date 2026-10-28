@@ -13,6 +13,8 @@ def datos_combo(**cambios):
         "fecha_desde": date(2026, 6, 1),
         "fecha_hasta": date(2026, 6, 30),
         "platos_ids": [1],
+        "bebidas_ids": [],
+        "postres_ids": [],
     }
     datos.update(cambios)
     return datos
@@ -26,6 +28,13 @@ def test_combo_sin_componentes_se_rechaza():
 def test_combo_con_listas_omitidas_se_rechaza():
     datos = datos_combo()
     del datos["platos_ids"]
+    with pytest.raises(ValidationError):
+        ComboCrear(**datos)
+
+
+def test_combo_con_una_lista_omitida_se_rechaza_aunque_otra_tenga_ids():
+    datos = datos_combo(platos_ids=[1], bebidas_ids=[2], postres_ids=[3])
+    del datos["bebidas_ids"]
     with pytest.raises(ValidationError):
         ComboCrear(**datos)
 

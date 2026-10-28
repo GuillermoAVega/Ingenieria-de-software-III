@@ -10,9 +10,9 @@ from src.productos.schemas import ProductoBase, ProductoRespuestaBase
 class ComboCrear(ProductoBase):
     fecha_desde: date
     fecha_hasta: date
-    platos_ids: list[int] = []
-    bebidas_ids: list[int] = []
-    postres_ids: list[int] = []
+    platos_ids: list[int]
+    bebidas_ids: list[int]
+    postres_ids: list[int]
 
     @model_validator(mode="after")
     def validar_combo(self):
