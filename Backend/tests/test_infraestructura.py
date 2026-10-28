@@ -3,7 +3,7 @@ from src.main import app
 from src.productos.services import obtener_hoy
 
 
-def test_motor_en_memoria(motor):
+def test_cat_50_motor_en_memoria_sin_tocar_el_archivo_sqlite_real(motor):
     # La suite nunca debe tocar el archivo SQLite real
     assert str(motor.url) == "sqlite://"
 
@@ -19,7 +19,7 @@ def test_hoy_fijo(cliente, HOY):
     assert app.dependency_overrides[obtener_hoy]() == HOY
 
 
-def test_entorno_de_prueba():
+def test_cat_50_entorno_de_prueba_aislado_de_variables_externas():
     import os
 
     assert os.environ["ENV"] == "test"

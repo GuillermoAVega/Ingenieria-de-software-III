@@ -19,7 +19,7 @@ from src.productos.platos.models import Plato
 from src.productos.postres.models import Postre
 
 
-def test_instanciacion_directa_rechazada():
+def test_cat_02_instanciacion_directa_rechazada():
     with pytest.raises(TypeError):
         Producto(nombre="X", nombre_normalizado="x", precio=Decimal("1.00"))
 
@@ -98,7 +98,7 @@ def test_reutilizacion_del_nombre_tras_la_baja_permitida(sesion, crear_plato):
     assert cantidad == 2
 
 
-def test_los_mappers_se_configuran_con_los_cinco_subtipos():
+def test_cat_03_los_mappers_se_configuran_con_los_cinco_subtipos():
     configure_mappers()
 
     for subtipo in (Plato, Bebida, Postre, MenuEjecutivo, ComboPromocion):

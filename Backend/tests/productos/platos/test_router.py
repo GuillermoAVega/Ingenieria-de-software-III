@@ -91,7 +91,7 @@ def test_cat_14_precio_invalido_en_put_a_id_desconocido_responde_422_antes_que_4
 @pytest.mark.parametrize(
     "nombre", ["", "   "], ids=["cat_15_vacio", "cat_16_solo_espacios"]
 )
-def test_cat_15_16_nombre_vacio_o_de_espacios_responde_422(cliente, prefijo, nombre):
+def test_cat_15_y_cat_16_nombre_vacio_o_de_espacios_responde_422(cliente, prefijo, nombre):
     respuesta = cliente.post(prefijo, json=_cuerpo(prefijo, nombre=nombre))
 
     assert respuesta.status_code == 422

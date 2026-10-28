@@ -262,13 +262,13 @@ Cambio: `productos-backend`. Entradas: `proposal.md`, `design.md`, `specs/produc
 
 ## Fase 9: Cierre
 
-- [ ] **9.1 Suite completa y verificación de la invariante** — Archivos: `Backend/tests/productos/test_invariante.py` (si hace falta prueba adicional). Depende de la Fase 7 (la Fase 8 fue eliminada).
+- [x] **9.1 Suite completa y verificación de la invariante** — Archivos: `Backend/tests/productos/test_invariante.py` (si hace falta prueba adicional). Depende de la Fase 7 (la Fase 8 fue eliminada).
   - RED: prueba de propiedad ligera: tras una secuencia de operaciones (altas, bajas bloqueadas y permitidas, reactivaciones, ediciones, combos vencidos) ningún menú activo ni combo activo con `fecha_hasta >= HOY` referencia un componente inactivo (LD-23, invariante general; respaldo de LD-10..15).
   - GREEN: ajustes mínimos si la invariante falla; ejecutar `cd Backend && python -m pytest` completo en verde; comprobar que `Producto` no se puede crear por HTTP ni instanciar.
   - Escenarios: LD-23 (completo), criterios de éxito de la propuesta.
   - Hecho cuando: suite completa en verde, sin advertencias nuevas relevantes (la advertencia de `Numeric` en SQLite es aceptada) y sin tocar el archivo SQLite real.
 
-- [ ] **9.2 Verificación de trazabilidad de escenarios** — Archivos: ninguno (revisión; solo se corrige añadiendo pruebas en los archivos de pruebas existentes). Depende de 9.1.
+- [x] **9.2 Verificación de trazabilidad de escenarios** — Archivos: ninguno (revisión; solo se corrige añadiendo pruebas en los archivos de pruebas existentes). Depende de 9.1.
   - Revisar el Anexo A: para cada uno de los 69 escenarios vigentes (46 CAT + 23 LD; los 7 marcados "eliminado" no se verifican) debe existir al menos una prueba H (o S/unidad para CAT-02, CAT-03, CAT-50) con el nombre del escenario en el nombre o docstring de la prueba. Listar cualquier escenario sin prueba; cada hueco se cierra con RED → GREEN o se registra como riesgo.
   - Hecho cuando: el listado de escenarios sin cobertura está vacío (o documentado) y `python -m pytest` pasa.
   - `[COMMIT]` final del cambio (verify queda para la fase `sdd-verify`).
