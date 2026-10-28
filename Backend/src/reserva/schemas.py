@@ -11,12 +11,11 @@ class ReservaBase(BaseModel):
     cant_comensales: int
     observaciones: str | None = None
     cliente_id: int
-    mesa_ids: list[int]
-    detalles: list[DetalleReservaCreate] = Field(default_factory=list)
 
 
 class ReservaCreate(ReservaBase):
-    pass
+    mesa_ids: list[int] = Field(default_factory=list)
+    detalles: list[DetalleReservaCreate] = Field(default_factory=list)
 
 
 class ReservaUpdate(ReservaBase):
@@ -26,8 +25,13 @@ class ReservaUpdate(ReservaBase):
 class Reserva(ReservaBase):
     id: int
     estado: bool
+    mesa_ids: list[int]
     detalles: list[DetalleReserva]
 
     model_config = {
         "from_attributes": True
     }
+
+
+class ReservaMesaCreate(BaseModel):
+    mesa_id: int
