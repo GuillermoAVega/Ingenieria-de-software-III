@@ -16,6 +16,7 @@ from src.main import app
 from src.models import ModeloBase
 from src.productos import registro  # noqa: F401  (carga los mappers de todos los subtipos)
 from src.productos.services import obtener_hoy
+from src.secciones.models import Seccion
 
 # Fecha fija para las pruebas (el fixture `cliente` sobrescribe obtener_hoy con ella)
 HOY_FIJO = date(2026, 6, 15)
@@ -62,3 +63,34 @@ def cliente(motor):
     app.dependency_overrides[obtener_hoy] = lambda: HOY_FIJO
     yield TestClient(app)
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def persistir(sesion):
+    """Guarda objetos ORM y cierra la sesión de prueba; devuelve sus ids.
+
+    El motor de pruebas comparte una única conexión: la sesión del test no debe
+    dejar una transacción abierta mientras el cliente HTTP atiende la petición.
+    """
+
+    def _persistir(*objetos):
+        sesion.add_all(objetos)
+        sesion.flush()
+        ids = [objeto.id for objeto in objetos]
+        sesion.commit()
+        sesion.close()
+        return ids[0] if len(ids) == 1 else ids
+
+    return _persistir
+
+
+@pytest.fixture
+def crear_seccion():
+    def _crear(nombre="Entradas", subtitulo=None):
+        return Seccion(
+            nombre=nombre,
+            nombre_normalizado=nombre.strip().casefold(),
+            subtitulo=subtitulo,
+        )
+
+    return _crear

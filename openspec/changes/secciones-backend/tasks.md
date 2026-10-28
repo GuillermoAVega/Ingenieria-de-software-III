@@ -40,23 +40,23 @@ Chain strategy: pending
 
 ## Fase 1: Texto compartido, modelo y clave foránea
 
-- [ ] **1.1 `normalizar_nombre` compartido** — Archivos: `Backend/src/texto.py`, `Backend/src/productos/services.py`, `Backend/tests/test_texto.py`.
+- [x] **1.1 `normalizar_nombre` compartido** — Archivos: `Backend/src/texto.py`, `Backend/src/productos/services.py`, `Backend/tests/test_texto.py`.
   - RED: `test_texto_normalizar_nombre_recorta_y_casefold` (`"  Entrádas "` → `"entrádas"`), distingue tildes, y `from src.productos.services import normalizar_nombre` sigue disponible y es el mismo objeto que `src.texto.normalizar_nombre`.
   - GREEN: crear `texto.py`; `productos/services.py` la importa desde ahí y elimina su definición local. La suite de productos existente permanece en verde.
   - Escenarios: soporte de SEC-11..14.
 
-- [ ] **1.2 Constantes de secciones** — Archivos: `Backend/src/secciones/__init__.py`, `Backend/src/secciones/constants.py`, `Backend/tests/secciones/__init__.py`, `Backend/tests/secciones/test_constantes.py`. `||` con 1.1.
+- [x] **1.2 Constantes de secciones** — Archivos: `Backend/src/secciones/__init__.py`, `Backend/src/secciones/constants.py`, `Backend/tests/secciones/__init__.py`, `Backend/tests/secciones/test_constantes.py`. `||` con 1.1.
   - RED: `test_constantes_valores` (`NOMBRE_MAX == 100`, `SUBTITULO_MAX == 200`, `PREFIJO == "/secciones"`).
   - GREEN: crear paquete y `constants.py`.
   - Escenarios: soporte de SEC-07..10.
 
-- [ ] **1.3 Modelo `Seccion`, FK `producto.seccion_id` y relación bidireccional** — Archivos: `Backend/src/secciones/models.py`, `Backend/src/productos/models.py`, `Backend/src/productos/registro.py`, `Backend/tests/secciones/test_modelos.py`, `Backend/tests/productos/test_registro.py`. Depende de 1.1, 1.2.
+- [x] **1.3 Modelo `Seccion`, FK `producto.seccion_id` y relación bidireccional** — Archivos: `Backend/src/secciones/models.py`, `Backend/src/productos/models.py`, `Backend/src/productos/registro.py`, `Backend/tests/secciones/test_modelos.py`, `Backend/tests/productos/test_registro.py`. Depende de 1.1, 1.2.
   - RED: `test_sec_01_mappers_se_configuran_con_la_nueva_entidad` (`configure_mappers()` tras importar solo `src.productos.registro`, sin error); tabla `seccion` con columnas y `subtitulo` nulo; índice `ux_seccion_nombre_normalizado` rechaza con `IntegrityError` dos filas con igual `nombre_normalizado`; `producto.seccion_id` existe, es anulable y tiene FK a `seccion.id` con `ON DELETE SET NULL`; `Seccion.productos` y `Producto.seccion` son bidireccionales (asignar de un lado y leer del otro) con un Plato; `registro.py` expone `Seccion`.
   - GREEN: `Seccion(ModeloBase)` con `relationship("Producto", back_populates="seccion", passive_deletes=True)` sin importar `productos`; en `Producto`: `seccion_id` (FK, `nullable=True`, `index=True`) y `relationship("Seccion", back_populates="productos")`; `registro.py` agrega `from src.secciones.models import Seccion`.
   - Escenarios: SEC-01.
   - Hecho cuando: suite completa en verde; ningún módulo de `src/secciones` importa `src.productos`.
 
-- [ ] **1.4 Fixtures: `persistir` compartido y fábrica `crear_seccion`** — Archivos: `Backend/tests/conftest.py`, `Backend/tests/productos/conftest.py`, `Backend/tests/secciones/test_fabrica.py`. Depende de 1.3.
+- [x] **1.4 Fixtures: `persistir` compartido y fábrica `crear_seccion`** — Archivos: `Backend/tests/conftest.py`, `Backend/tests/productos/conftest.py`, `Backend/tests/secciones/test_fabrica.py`. Depende de 1.3.
   - RED: `test_fabrica_crear_seccion_persiste_y_calcula_nombre_normalizado` (fábrica ausente → falla); la fábrica acepta `nombre` y `subtitulo` opcional.
   - GREEN: mover `persistir` a `Backend/tests/conftest.py` (REFACTOR sin cambiar aserciones) y agregar la fábrica `crear_seccion`.
   - `[COMMIT]` (Fase 1 completa: texto + modelo + FK).

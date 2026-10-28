@@ -78,22 +78,3 @@ def crear_combo():
         )
 
     return _crear
-
-
-@pytest.fixture
-def persistir(sesion):
-    """Guarda objetos ORM y cierra la sesión de prueba; devuelve sus ids.
-
-    El motor de pruebas comparte una única conexión: la sesión del test no debe
-    dejar una transacción abierta mientras el cliente HTTP atiende la petición.
-    """
-
-    def _persistir(*objetos):
-        sesion.add_all(objetos)
-        sesion.flush()
-        ids = [objeto.id for objeto in objetos]
-        sesion.commit()
-        sesion.close()
-        return ids[0] if len(ids) == 1 else ids
-
-    return _persistir

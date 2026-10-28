@@ -1,5 +1,5 @@
-from sqlalchemy import Boolean, CheckConstraint, Index, Integer, Numeric, String, false, text
-from sqlalchemy.orm import mapped_column
+from sqlalchemy import Boolean, CheckConstraint, ForeignKey, Index, Integer, Numeric, String, false, text
+from sqlalchemy.orm import mapped_column, relationship
 
 from src.models import ModeloBase
 from src.productos.constants import (
@@ -38,6 +38,12 @@ class Producto(ModeloBase):
     dado_de_baja = mapped_column(
         Boolean, nullable=False, default=False, server_default=false()
     )
+    seccion_id = mapped_column(
+        ForeignKey("seccion.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+
+    # Referencia a Seccion solo por cadena; `registro` carga su modelo
+    seccion = relationship("Seccion", back_populates="productos")
 
     def __new__(cls, *args, **kw):
         # Se valida en __new__ porque la instrumentación de SQLAlchemy envuelve

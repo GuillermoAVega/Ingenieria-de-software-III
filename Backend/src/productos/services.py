@@ -16,16 +16,12 @@ from src.productos.exceptions import (
 from src.productos.models import Producto
 from src.productos.registro import RESTRICT_POR_TIPO, ComboPromocion, MenuEjecutivo
 from src.productos.schemas import ProductoBase
+from src.texto import normalizar_nombre
 
 
 def obtener_hoy() -> date:
     """Fecha actual; los routers la inyectan para poder sobrescribirla en las pruebas."""
     return date.today()
-
-
-def normalizar_nombre(nombre: str) -> str:
-    """Clave de unicidad: sin espacios sobrantes y sin distinguir mayúsculas (sí tildes)."""
-    return nombre.strip().casefold()
 
 
 def obtener(sesion: Session, modelo: type[Producto], producto_id: int) -> Producto:

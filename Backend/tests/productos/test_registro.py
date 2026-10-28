@@ -27,3 +27,10 @@ def test_cada_clase_tiene_su_identidad_polimorfica():
 
 def test_configure_mappers_no_falla_tras_importar_solo_el_registro():
     configure_mappers()
+
+
+def test_sec_01_mappers_se_configuran_con_la_nueva_entidad():
+    from src.productos.registro import Seccion
+
+    configure_mappers()
+    assert class_mapper(Seccion).relationships["productos"].mapper.class_.__name__ == "Producto"

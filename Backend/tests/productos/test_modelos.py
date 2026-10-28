@@ -32,7 +32,7 @@ def test_create_all_crea_tablas_con_columnas_del_diseno(motor):
     columnas_producto = {c["name"]: c for c in inspector.get_columns("producto")}
     assert set(columnas_producto) == {
         "id", "tipo", "nombre", "nombre_normalizado", "precio",
-        "descripcion", "imagen", "dado_de_baja",
+        "descripcion", "imagen", "dado_de_baja", "seccion_id",
     }
     for obligatoria in ("tipo", "nombre", "nombre_normalizado", "precio", "dado_de_baja"):
         assert columnas_producto[obligatoria]["nullable"] is False
