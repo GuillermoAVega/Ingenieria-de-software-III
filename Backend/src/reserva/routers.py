@@ -5,7 +5,7 @@ from src.database import get_db
 from src.reserva import exceptions, schemas, services
 
 
-router = APIRouter(prefix="/api/reservas", tags=["RESERVAS"])
+router = APIRouter(prefix="/reservas", tags=["RESERVAS"])
 
 
 @router.get("", response_model=list[schemas.Reserva])

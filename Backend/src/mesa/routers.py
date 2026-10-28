@@ -5,7 +5,7 @@ from src.database import get_db
 from src.mesa import schemas, services
 
 
-router = APIRouter(prefix="/api/mesas", tags=["MESAS"])
+router = APIRouter(prefix="/mesas", tags=["MESAS"])
 
 
 @router.get("", response_model=list[schemas.Mesa])

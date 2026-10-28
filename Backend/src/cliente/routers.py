@@ -5,7 +5,7 @@ from src.cliente import schemas, services
 from src.database import get_db
 
 
-router = APIRouter(prefix="/api/clientes", tags=["CLIENTES"])
+router = APIRouter(prefix="/clientes", tags=["CLIENTES"])
 
 
 @router.get("", response_model=list[schemas.Cliente])
