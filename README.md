@@ -25,10 +25,17 @@ Sistema de gestión para un restaurante.
     ├── package.json
     ├── vite.config.ts
     ├── index.html
+    ├── README.md              # Guía de la base visual y de trabajo por equipos
     └── src/
+        ├── ui/                # Kit compartido (ui.tsx + ui.css)
+        ├── app/               # Rutas y navegación por hash
+        ├── layout/            # Shell de la aplicación
+        ├── features/          # Una carpeta por funcionalidad/equipo
         ├── main.tsx
         └── App.tsx
 ```
+
+La base del frontend, las rutas, los componentes vacíos y las convenciones para completarlos están documentados en [`Frontend/README.md`](Frontend/README.md).
 
 ## Requisitos
 
