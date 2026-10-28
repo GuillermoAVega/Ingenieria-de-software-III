@@ -80,22 +80,22 @@ Chain strategy: pending
 
 ## Fase 3: Servicios de secciones
 
-- [ ] **3.1 Excepciones y `obtener_seccion`** — Archivos: `Backend/src/secciones/exceptions.py`, `Backend/src/secciones/services.py`, `Backend/tests/secciones/test_excepciones.py`, `Backend/tests/secciones/test_servicios.py`. Depende de 1.4.
+- [x] **3.1 Excepciones y `obtener_seccion`** — Archivos: `Backend/src/secciones/exceptions.py`, `Backend/src/secciones/services.py`, `Backend/tests/secciones/test_excepciones.py`, `Backend/tests/secciones/test_servicios.py`. Depende de 1.4.
   - RED: `ErrorSeccion` base de `SeccionNoEncontrada` y `NombreSeccionDuplicado`; jerarquía disjunta de `productos.ErrorDominio`; ningún módulo importa FastAPI ni `src.productos`; `test_sec_22_obtener_seccion_existente_devuelve_la_fila`; `test_sec_23_obtener_seccion_inexistente_lanza_no_encontrada`.
   - GREEN: excepciones y `obtener_seccion(sesion, id)`.
   - Escenarios (S): SEC-22, SEC-23.
 
-- [ ] **3.2 `crear_seccion` y `_confirmar`** — Archivos: `Backend/src/secciones/services.py`, `Backend/tests/secciones/test_servicios.py`. Depende de 3.1.
+- [x] **3.2 `crear_seccion` y `_confirmar`** — Archivos: `Backend/src/secciones/services.py`, `Backend/tests/secciones/test_servicios.py`. Depende de 3.1.
   - RED (S): crea con todos los campos y devuelve `id` (SEC-19); sin `subtitulo` queda `None` (SEC-20); persiste `nombre_normalizado`; duplicado exacto (SEC-11), por mayúsculas (SEC-12) y con espacios (SEC-13) → `NombreSeccionDuplicado` sin fila nueva y con rollback; tildes distintas → crea (SEC-14); un `IntegrityError` ajeno a `nombre_normalizado` se propaga sin traducir.
   - GREEN: `crear_seccion` y `_confirmar` (traduce el `IntegrityError` cuyo `orig` menciona `nombre_normalizado`; rollback en todo error).
   - Escenarios (S): SEC-11..14, SEC-19, SEC-20.
 
-- [ ] **3.3 `actualizar_seccion`** — Archivos: `Backend/src/secciones/services.py`, `Backend/tests/secciones/test_servicios.py`. Depende de 3.2.
+- [x] **3.3 `actualizar_seccion`** — Archivos: `Backend/src/secciones/services.py`, `Backend/tests/secciones/test_servicios.py`. Depende de 3.2.
   - RED (S): reemplazo (SEC-25); `subtitulo` omitido → `None` (SEC-26); id inexistente → `SeccionNoEncontrada` (SEC-27); 404 antes que 409 con nombre duplicado e id inexistente (SEC-29); duplicado en modificación → `NombreSeccionDuplicado` y la sección no cambia (SEC-15); conserva el propio nombre (SEC-16); cambio solo de mayúsculas (SEC-17) recalcula `nombre_normalizado`; `subtitulo` ya normalizado a `None` por el esquema se persiste como `null` (SEC-44, nivel servicio); un Plato asignado conserva `seccion_id` (SEC-30).
   - GREEN: `actualizar_seccion` (`obtener` → asignar → `_confirmar`).
   - Escenarios (S): SEC-15..17, SEC-25..27, SEC-29, SEC-30, SEC-44.
 
-- [ ] **3.4 `eliminar_seccion`** — Archivos: `Backend/src/secciones/services.py`, `Backend/tests/secciones/test_servicios.py`. Depende de 3.3.
+- [x] **3.4 `eliminar_seccion`** — Archivos: `Backend/src/secciones/services.py`, `Backend/tests/secciones/test_servicios.py`. Depende de 3.3.
   - RED (S): borra la fila (SEC-31, nivel servicio); id inexistente → `SeccionNoEncontrada` (SEC-32); repetir → `SeccionNoEncontrada` (SEC-33); reutilizar el nombre tras borrar (SEC-18); el borrado no carga `Seccion.productos` (captura de sentencias SQL: un solo `DELETE`, sin `SELECT` sobre `producto`).
   - GREEN: `eliminar_seccion` (`obtener` → `sesion.delete` → commit; rollback en error).
   - Escenarios (S): SEC-18, SEC-31..33.
