@@ -1,0 +1,33 @@
+from datetime import date, time
+
+from pydantic import BaseModel, Field
+
+from src.detalleReserva.schemas import DetalleReserva, DetalleReservaCreate
+
+
+class ReservaBase(BaseModel):
+    fecha: date
+    hora: time
+    cant_comensales: int
+    observaciones: str | None = None
+    cliente_id: int
+    mesa_ids: list[int]
+    detalles: list[DetalleReservaCreate] = Field(default_factory=list)
+
+
+class ReservaCreate(ReservaBase):
+    pass
+
+
+class ReservaUpdate(ReservaBase):
+    pass
+
+
+class Reserva(ReservaBase):
+    id: int
+    estado: bool
+    detalles: list[DetalleReserva]
+
+    model_config = {
+        "from_attributes": True
+    }
