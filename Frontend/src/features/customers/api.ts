@@ -47,6 +47,7 @@ function toCustomer(response: CustomerResponse): Customer {
     dni: response.dni,
     name: `${response.nombre} ${response.apellido}`,
     phone: response.telefono,
+    estado: response.estado,
     ...fakeVisits,
   }
 }
@@ -78,4 +79,8 @@ export async function updateCustomer(dni: string, customer: CustomerPayload): Pr
 
 export async function deleteCustomer(dni: string): Promise<void> {
   await request(`/clientes/${encodeURIComponent(dni)}`, { method: 'DELETE' })
+}
+
+export async function reactivateCustomer(dni: string): Promise<void> {
+  await request(`/clientes/${encodeURIComponent(dni)}/reactivar`, { method: 'PATCH' })
 }

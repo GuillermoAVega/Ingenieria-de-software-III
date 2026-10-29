@@ -3,6 +3,7 @@ export type Customer = {
   dni: string
   name: string
   phone: string
+  estado: boolean
   visits: number
   lastVisit: string
 }

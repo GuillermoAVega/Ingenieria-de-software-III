@@ -72,3 +72,14 @@ def eliminar_cliente(cliente_dni: str, db: Session = Depends(get_db)):
         ) from error
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.patch("/{cliente_dni}/reactivar", response_model=schemas.Cliente)
+def reactivar_cliente(cliente_dni: str, db: Session = Depends(get_db)):
+    try:
+        return services.restaurar_cliente(db, cliente_dni)
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(error),
+        ) from error

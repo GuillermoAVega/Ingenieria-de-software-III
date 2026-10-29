@@ -29,7 +29,7 @@ def eliminar_cliente(db: Session, cliente_dni: str) -> str:
 
     return "Cliente dado de baja correctamente"
 
-def restaurar_cliente(db: Session, cliente_dni: str) -> str:
+def restaurar_cliente(db: Session, cliente_dni: str) -> schemas.Cliente:
     cliente_db = db.query(models.Cliente).filter(
         models.Cliente.dni == cliente_dni
     ).first()
@@ -42,8 +42,9 @@ def restaurar_cliente(db: Session, cliente_dni: str) -> str:
 
     cliente_db.estado = True
     db.commit()
+    db.refresh(cliente_db)
 
-    return "Cliente restaurado correctamente"
+    return cliente_db
 
 def modificar_cliente(
     db: Session,
@@ -83,7 +84,6 @@ def obtener_cliente(db: Session, cliente_dni: str):
 
     cliente_db = db.query(models.Cliente).filter(
         models.Cliente.dni == cliente_dni,
-        models.Cliente.estado.is_(True),
     ).first()
 
     if not cliente_db:
@@ -94,4 +94,4 @@ def obtener_cliente(db: Session, cliente_dni: str):
 def listar_clientes(
     db: Session
 ):
-    return db.query(models.Cliente).filter(models.Cliente.estado.is_(True))
+    return db.query(models.Cliente)

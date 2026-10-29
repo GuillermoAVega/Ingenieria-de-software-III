@@ -266,7 +266,9 @@ export function ReservationFormPage({ id }: { id?: string }) {
                       required
                     >
                       <option value="">Seleccioná un cliente</option>
-                      {customers.map((customer) => (
+                      {customers
+                        .filter((customer) => customer.estado || String(customer.id) === customerSelection)
+                        .map((customer) => (
                         <option key={customer.id} value={customer.id}>
                           {customer.nombre} {customer.apellido} · {customer.telefono}
                         </option>
@@ -358,8 +360,8 @@ export function ReservationFormPage({ id }: { id?: string }) {
                     <Select value={tableToAdd} onChange={(event) => setTableToAdd(event.target.value)}>
                       <option value="">Seleccioná una mesa</option>
                       {tables.filter((table) => table.estado && !selectedTableIds.includes(table.id)).map((table) => (
-                        <option key={table.id} value={table.id} disabled={!table.disponible}>
-                          Mesa {table.id} · {table.capacidad} personas{table.disponible ? '' : ' · No disponible'}
+                        <option key={table.id} value={table.id}>
+                          Mesa {table.id} · {table.capacidad} personas
                         </option>
                       ))}
                     </Select>
@@ -379,7 +381,6 @@ export function ReservationFormPage({ id }: { id?: string }) {
                         <div className="row" key={tableId}>
                           <span>
                             Mesa {tableId} · {table?.capacidad ?? '—'} personas
-                            {table && !table.disponible ? ' · No disponible actualmente' : ''}
                           </span>
                           <Button
                             type="button"
