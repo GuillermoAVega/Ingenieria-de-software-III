@@ -166,11 +166,7 @@ def test_sec_30_el_put_de_la_seccion_no_altera_los_productos_asignados(cliente):
     modificada = cliente.put(f"/secciones/{seccion['id']}", json={"nombre": "Aperitivos"})
     assert modificada.status_code == 200
 
-    # Un PUT del plato que no toca la sección (la reenvía) la conserva
-    reenviado = cliente.put(
-        f"/productos/platos/{plato['id']}", json=_plato(seccion_id=seccion["id"])
-    )
-    assert reenviado.status_code == 200
+    # El plato sigue asignado sin que nadie lo vuelva a enviar
     assert cliente.get(f"/productos/platos/{plato['id']}").json()["seccion_id"] == seccion["id"]
 
 
