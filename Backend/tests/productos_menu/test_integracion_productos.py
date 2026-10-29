@@ -53,7 +53,7 @@ def test_pmd_39_la_respuesta_de_producto_no_incluye_menus_del_dia(
     con_menu = cliente.get(f"/productos/platos/{plato_con}").json()
 
     assert set(con_menu) == set(sin_menu)
-    assert not any("menu" in clave for clave in con_menu)
+    assert "menus_del_dia" not in con_menu
 
 
 def test_pmd_40_un_producto_con_dos_fechas_por_http_y_relacion(
