@@ -1,28 +1,33 @@
 # Especificación de la Gestión de Secciones
 
-Especificación delta para el cambio `secciones-backend`. Códigos de estado: 422 = validación de esquema/campos, 404 = id inexistente, 409 = conflicto de regla de negocio.
+Especificación principal de la capacidad, consolidada a partir de los cambios `secciones-backend`, `secciones-posicion` y `secciones-productos-ids`. Códigos de estado: 422 = validación de esquema/campos, 404 = id inexistente, 409 = conflicto de regla de negocio.
 
-**Alcance**: este cambio cubre únicamente el alta, la consulta por id, la modificación y el borrado físico de secciones. Quedan explícitamente FUERA DE ALCANCE y NO DEBEN implementarse: listados de secciones, listados de productos por sección, ordenamiento, baja lógica de secciones (`dado_de_baja`) y reactivación. La respuesta de una sección NO DEBE incluir la lista de sus productos.
+**Alcance**: esta capacidad cubre únicamente el alta, la consulta por id, la modificación y el borrado físico de secciones. Quedan explícitamente FUERA DE ALCANCE y NO DEBEN implementarse: listados de secciones, listados de productos por sección, endpoints de ordenamiento o reordenamiento (el orden de renderizado lo determina `posicion`), baja lógica de secciones (`dado_de_baja`) y reactivación. La respuesta de una sección PUEDE y DEBE incluir únicamente los ids de sus productos activos (`productos_ids`), y NO DEBE incluir objetos de producto embebidos.
 
 ## ADDED Requirements
 
 ### Requirement: Entidad Seccion
-Una `Seccion` DEBE tener `id`, `nombre` (obligatorio), `subtitulo` (opcional) y `posicion` (entero obligatorio, único entre todas las secciones). La relación entre `Seccion` y `Producto` DEBE ser bidireccional (`Seccion.productos` / `Producto.seccion`, con `back_populates`) y todos los mappers DEBEN configurarse sin errores. La respuesta de una sección DEBE exponer `id`, `nombre`, `subtitulo` y `posicion`, y NO DEBE exponer una lista de productos ni `dado_de_baja`.
+Una `Seccion` DEBE tener `id`, `nombre` (obligatorio), `subtitulo` (opcional) y `posicion` (entero obligatorio, único entre todas las secciones). La relación entre `Seccion` y `Producto` DEBE ser bidireccional (`Seccion.productos` / `Producto.seccion`, con `back_populates`) y todos los mappers DEBEN configurarse sin errores. La respuesta de una sección DEBE exponer `id`, `nombre`, `subtitulo`, `posicion` y `productos_ids`. `productos_ids` DEBE ser una lista de enteros (ids de producto) y NO DEBE contener objetos de producto. La respuesta NO DEBE exponer `dado_de_baja` ni ningún otro dato de los productos.
 
 #### Scenario: SEC-01 Los mappers se configuran con la nueva entidad
 - DADO que los modelos de sección y de producto están importados
 - CUANDO se configuran los mappers de SQLAlchemy
 - ENTONCES no se lanza ningún error
 
-#### Scenario: SEC-02 La respuesta no incluye productos ni estado de baja
-- DADO una sección con productos asignados
+#### Scenario: SEC-02 La respuesta incluye los ids de productos y no el estado de baja
+- DADO una sección con un Plato activo asignado
 - CUANDO un cliente llama a `GET /secciones/{id}`
-- ENTONCES la respuesta contiene `id`, `nombre` y `subtitulo`, y no contiene una lista de productos ni `dado_de_baja`
+- ENTONCES la respuesta contiene `id`, `nombre`, `subtitulo` y `productos_ids` con el id del Plato, y no contiene `dado_de_baja` ni objetos de producto
 
 #### Scenario: POS-01 La respuesta de consulta incluye posicion
 - DADO una sección con `posicion = 4`
 - CUANDO un cliente llama a `GET /secciones/{id}`
 - ENTONCES 200 y la respuesta contiene `posicion = 4` junto con `id`, `nombre` y `subtitulo`
+
+#### Scenario: IDS-01 productos_ids es una lista de enteros
+- DADO una sección con dos productos activos asignados
+- CUANDO un cliente llama a `GET /secciones/{id}`
+- ENTONCES `productos_ids` es una lista cuyos elementos son enteros, y la respuesta no contiene claves de producto como `nombre` de producto, `precio` ni `dado_de_baja`
 
 ### Requirement: Validación de campos de la sección
 `nombre` es obligatorio. DEBE recortarse (trim) de espacios iniciales y finales antes de validarlo, almacenarlo y comprobar su unicidad. Tras el recorte DEBE tener de 1 a 100 caracteres; un `nombre` ausente, vacío o compuesto solo de espacios DEBE devolver 422, y uno de más de 100 caracteres DEBE devolver 422. `subtitulo` es opcional y DEBE recortarse (trim) de espacios iniciales y finales antes de validarlo y almacenarlo. Un `subtitulo` vacío o compuesto solo de espacios, una vez recortado, DEBE almacenarse como `null`. Tras el recorte DEBE tener como máximo 200 caracteres (de lo contrario, 422).
@@ -141,7 +146,7 @@ El `nombre` de una sección DEBE ser único entre TODAS las secciones, sin disti
 - ENTONCES 201
 
 ### Requirement: Alta de sección
-`POST /secciones` DEBE crear la sección y devolver 201 con la sección creada, incluido su `id` y su `posicion`. Cuando falle más de una regla a la vez, la prioridad de los errores DEBE ser: 422 (esquema/campos) → 409 por `nombre` duplicado → 409 por `posicion` duplicada. Si colisionan `nombre` y `posicion` a la vez, DEBE devolverse un único 409 correspondiente al `nombre`; esta prioridad es determinista. Una solicitud rechazada NO DEBE crear ninguna sección.
+`POST /secciones` DEBE crear la sección y devolver 201 con la sección creada, incluido su `id`, su `posicion` y `productos_ids`. Una sección recién creada DEBE devolver `productos_ids = []`. Cuando falle más de una regla a la vez, la prioridad de los errores DEBE ser: 422 (esquema/campos) → 409 por `nombre` duplicado → 409 por `posicion` duplicada. Si colisionan `nombre` y `posicion` a la vez, DEBE devolverse un único 409 correspondiente al `nombre`; esta prioridad es determinista. Una solicitud rechazada NO DEBE crear ninguna sección.
 
 #### Scenario: SEC-19 Crear sección con todos los campos
 - DADO un cuerpo con `nombre = "Entradas"` y `subtitulo = "Para comenzar"`
@@ -173,13 +178,18 @@ El `nombre` de una sección DEBE ser único entre TODAS las secciones, sin disti
 - CUANDO un cliente llama a `POST /secciones` con `posicion = 1` y un `subtitulo` de 201 caracteres
 - ENTONCES 422
 
+#### Scenario: IDS-02 El alta devuelve productos_ids vacío
+- DADO un cuerpo válido con `nombre = "Entradas"` y `posicion = 1`, aunque existan productos con `seccion_id = null` o asignados a otras secciones
+- CUANDO un cliente llama a `POST /secciones`
+- ENTONCES 201 y la respuesta contiene `productos_ids = []`
+
 ### Requirement: Consulta de sección por id
-`GET /secciones/{id}` DEBE devolver 200 con la sección y 404 si el id no existe. NO DEBE existir `GET /secciones` (listado).
+`GET /secciones/{id}` DEBE devolver 200 con la sección, incluido `productos_ids`, y 404 si el id no existe. NO DEBE existir `GET /secciones` (listado).
 
 #### Scenario: SEC-22 Obtener una sección existente
 - DADO una sección con id 3
 - CUANDO un cliente llama a `GET /secciones/3`
-- ENTONCES 200 con `id`, `nombre` y `subtitulo` de la sección
+- ENTONCES 200 con `id`, `nombre`, `subtitulo` y `productos_ids` de la sección
 
 #### Scenario: SEC-23 Obtener una sección inexistente
 - DADO que no existe ninguna sección con id 999
@@ -191,8 +201,13 @@ El `nombre` de una sección DEBE ser único entre TODAS las secciones, sin disti
 - CUANDO un cliente llama a `GET /secciones`
 - ENTONCES la respuesta es 405 Method Not Allowed
 
+#### Scenario: IDS-03 La consulta devuelve los ids de los productos activos
+- DADO una sección con id 3 y un Plato activo con id 10 asignado a ella
+- CUANDO un cliente llama a `GET /secciones/3`
+- ENTONCES 200 y `productos_ids = [10]`
+
 ### Requirement: Modificación de sección
-`PUT /secciones/{id}` DEBE ser un reemplazo completo: un `subtitulo` omitido DEBE interpretarse como `null` y `posicion` es obligatoria. DEBE devolver 200 con la sección modificada, incluida su `posicion`, y 404 si el id no existe. Cuando fallen varias reglas a la vez, la prioridad de los errores DEBE ser: 422 (esquema/campos) → 404 (id inexistente) → 409 por `nombre` duplicado → 409 por `posicion` duplicada. Si colisionan `nombre` y `posicion` a la vez, DEBE devolverse un único 409 correspondiente al `nombre`; esta prioridad es determinista. Una solicitud rechazada NO DEBE modificar ninguna sección.
+`PUT /secciones/{id}` DEBE ser un reemplazo completo: un `subtitulo` omitido DEBE interpretarse como `null` y `posicion` es obligatoria. DEBE devolver 200 con la sección modificada, incluida su `posicion` y `productos_ids`, y 404 si el id no existe. La modificación NO DEBE alterar la asignación de productos a la sección, y `productos_ids` en la respuesta DEBE reflejar el estado persistido de dicha asignación. `productos_ids` es de solo lectura: un cliente NO DEBE poder asignar ni desasignar productos enviándolo en el cuerpo, y un valor enviado no tiene efecto sobre la asignación. Cuando fallen varias reglas a la vez, la prioridad de los errores DEBE ser: 422 (esquema/campos) → 404 (id inexistente) → 409 por `nombre` duplicado → 409 por `posicion` duplicada. Si colisionan `nombre` y `posicion` a la vez, DEBE devolverse un único 409 correspondiente al `nombre`; esta prioridad es determinista. Una solicitud rechazada NO DEBE modificar ninguna sección.
 
 #### Scenario: SEC-25 Modificar una sección
 - DADO una sección "Entradas" con `subtitulo = "Para comenzar"`
@@ -222,7 +237,7 @@ El `nombre` de una sección DEBE ser único entre TODAS las secciones, sin disti
 #### Scenario: SEC-30 La modificación no altera los productos asignados
 - DADO una sección con un Plato asignado
 - CUANDO un cliente modifica la sección
-- ENTONCES el Plato conserva su `seccion_id`
+- ENTONCES el Plato conserva su `seccion_id` y su id sigue figurando en `productos_ids` de la respuesta
 
 #### Scenario: POS-25 La modificación devuelve la nueva posicion
 - DADO una sección "Entradas" con `posicion = 1` y ninguna sección con `posicion = 7`
@@ -243,6 +258,17 @@ El `nombre` de una sección DEBE ser único entre TODAS las secciones, sin disti
 - DADO las secciones A con `posicion = 1` y B con `posicion = 2`
 - CUANDO un cliente hace PUT de B con `posicion = 1` y un `subtitulo` de 201 caracteres
 - ENTONCES 422 y B conserva `posicion = 2`
+
+#### Scenario: IDS-04 La respuesta del PUT refleja el estado persistido
+- DADO una sección con un Plato activo (id 10) y un Postre dado de baja (id 11) asignados
+- CUANDO un cliente le hace PUT con un cuerpo válido
+- ENTONCES 200, `productos_ids = [10]` en la respuesta y un `GET /secciones/{id}` posterior devuelve el mismo `productos_ids`
+
+#### Scenario: IDS-05 Enviar productos_ids en el PUT no cambia la asignación
+- DADO una sección con un Plato activo (id 10) asignado y un Postre activo (id 11) sin sección
+- CUANDO un cliente le hace PUT con un cuerpo válido que además incluye `productos_ids = [11]`
+- ENTONCES 200, `productos_ids = [10]` en la respuesta, el Plato conserva su `seccion_id` y el Postre conserva `seccion_id = null`
+
 ### Requirement: Borrado físico de sección
 `DELETE /secciones/{id}` DEBE eliminar físicamente la fila de la sección, devolver 204 sin cuerpo y devolver 404 si el id no existe. Una vez borrada, `GET /secciones/{id}` DEBE devolver 404. El borrado NO DEBE ser idempotente: repetir el DELETE sobre un id ya borrado DEBE devolver 404.
 
@@ -405,3 +431,65 @@ El sistema NO DEBE ofrecer una operación de intercambio atómico. Intercambiar 
 - CUANDO un cliente hace PUT de A con `posicion = 2`
 - ENTONCES 409 y A conserva `posicion = 1` y B conserva `posicion = 2`
 
+### Requirement: Ids de productos activos en la respuesta de la sección
+La respuesta de toda sección (`POST /secciones`, `GET /secciones/{id}` y `PUT /secciones/{id}`) DEBE incluir `productos_ids`: la lista de ids de los productos cuyo `seccion_id` es el de la sección y cuyo `dado_de_baja` es `false`. Los productos dados de baja (`dado_de_baja = true`) NO DEBEN figurar, aunque sigan asignados a la sección. La lista DEBE estar en orden ascendente de id, sin repetidos, y DEBE ser `[]` cuando la sección no tiene productos activos. DEBEN contar los cinco subtipos de producto (Plato, Bebida, Postre, MenuEjecutivo y ComboPromocion). Un combo cuya vigencia (`fecha_hasta`) ya venció pero que no está dado de baja DEBE figurar, porque solo `dado_de_baja` define si un producto está activo. `productos_ids` DEBE calcularse a partir del estado persistido en cada respuesta: dar de baja o reactivar un producto, o cambiar su `seccion_id`, DEBE reflejarse en la siguiente respuesta sin ninguna acción sobre la sección. Esta capacidad NO DEBE agregar endpoints ni listados de productos por sección, y NO DEBE modificar la asignación de productos.
+
+#### Scenario: IDS-06 Solo figuran los productos activos cuando hay activos y dados de baja
+- DADO una sección con un Plato activo (id 10), una Bebida dada de baja (id 11) y un Postre activo (id 12) asignados
+- CUANDO un cliente llama a `GET /secciones/{id}`
+- ENTONCES `productos_ids = [10, 12]`
+
+#### Scenario: IDS-07 Una sección con solo productos dados de baja devuelve lista vacía
+- DADO una sección con un Plato dado de baja asignado
+- CUANDO un cliente llama a `GET /secciones/{id}`
+- ENTONCES `productos_ids = []`
+
+#### Scenario: IDS-08 Los ids se devuelven en orden ascendente
+- DADO tres productos activos con ids 10, 11 y 12, asignados a la sección en el orden 12, 10 y 11
+- CUANDO un cliente llama a `GET /secciones/{id}`
+- ENTONCES `productos_ids = [10, 11, 12]`
+
+#### Scenario: IDS-09 Cuentan los cinco subtipos
+- DADO una sección con un Plato, una Bebida, un Postre, un MenuEjecutivo y un ComboPromocion activos asignados
+- CUANDO un cliente llama a `GET /secciones/{id}`
+- ENTONCES `productos_ids` contiene los ids de los cinco productos, en orden ascendente
+
+#### Scenario: IDS-10 Un combo vencido pero activo figura
+- DADO un ComboPromocion con `fecha_hasta` de ayer y `dado_de_baja = false` asignado a una sección
+- CUANDO un cliente llama a `GET /secciones/{id}`
+- ENTONCES `productos_ids` contiene el id del combo
+
+#### Scenario: IDS-11 Dar de baja un producto lo hace desaparecer
+- DADO una sección con un Plato activo (id 10) y una Bebida activa (id 11) asignados
+- CUANDO un cliente da de baja el Plato y luego llama a `GET /secciones/{id}`
+- ENTONCES `productos_ids = [11]` y el Plato conserva su `seccion_id`
+
+#### Scenario: IDS-12 Reactivar un producto lo hace reaparecer
+- DADO una sección con un Plato dado de baja (id 10) y una Bebida activa (id 11) asignados
+- CUANDO un cliente reactiva el Plato y luego llama a `GET /secciones/{id}`
+- ENTONCES `productos_ids = [10, 11]`
+
+#### Scenario: IDS-13 Cambiar la sección de un producto lo mueve entre secciones
+- DADO las secciones A y B, y un Plato activo (id 10) asignado a A
+- CUANDO un cliente cambia el `seccion_id` del Plato a la sección B
+- ENTONCES `GET` de A devuelve `productos_ids = []` y `GET` de B devuelve `productos_ids = [10]`
+
+#### Scenario: IDS-14 Desasignar un producto lo quita de la sección
+- DADO una sección con un Plato activo (id 10) asignado
+- CUANDO un cliente deja el `seccion_id` del Plato en `null`
+- ENTONCES `GET /secciones/{id}` devuelve `productos_ids = []`
+
+#### Scenario: IDS-15 No figuran productos de otras secciones ni sin sección
+- DADO las secciones A y B, un Plato activo (id 10) en A, un Postre activo (id 11) en B y una Bebida activa (id 12) sin sección
+- CUANDO un cliente llama a `GET` de A
+- ENTONCES `productos_ids = [10]`
+
+#### Scenario: IDS-16 No quedan ids obsoletos tras borrar y crear una sección
+- DADO una sección con un Plato activo (id 10) asignado que es borrada, y luego se crea una nueva sección
+- CUANDO un cliente llama a `GET` de la nueva sección
+- ENTONCES `productos_ids = []` y el Plato sigue existiendo con `seccion_id = null`
+
+#### Scenario: IDS-17 No existe un listado de productos por sección
+- DADO una sección con productos activos asignados
+- CUANDO un cliente llama a `GET /secciones/{id}/productos`
+- ENTONCES la respuesta es 404 porque la ruta no existe
