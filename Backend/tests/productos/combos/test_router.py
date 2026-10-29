@@ -301,3 +301,180 @@ def test_put_de_combo_activo_con_componente_inactivo_responde_409_con_ids(
 
     assert respuesta.status_code == 409
     assert respuesta.json()["ids"] == [bebida_id]
+
+
+def test_cat_s_04_crear_combo_con_seccion(cliente, componentes, crear_seccion, persistir):
+    plato_id, *_ = componentes
+    seccion_id = persistir(crear_seccion())
+
+    respuesta = cliente.post(PREFIJO, json=_cuerpo(platos_ids=[plato_id], seccion_id=seccion_id))
+
+    assert respuesta.status_code == 201
+    assert respuesta.json()["seccion_id"] == seccion_id
+
+
+def test_cat_s_05_crear_combo_con_seccion_inexistente_responde_422(cliente, componentes):
+    plato_id, *_ = componentes
+
+    respuesta = cliente.post(PREFIJO, json=_cuerpo(platos_ids=[plato_id], seccion_id=999))
+
+    assert respuesta.status_code == 422
+    assert respuesta.json()["detail"][0]["type"] == "seccion_inexistente"
+
+
+def test_cat_s_09_put_de_combo_vigente_acepta_y_rechaza_seccion_id(
+    cliente, componentes, crear_seccion, persistir
+):
+    plato_id, *_ = componentes
+    seccion_id = persistir(crear_seccion())
+    combo = cliente.post(PREFIJO, json=_cuerpo(platos_ids=[plato_id])).json()
+
+    valido = cliente.put(
+        f"{PREFIJO}/{combo['id']}", json=_cuerpo(platos_ids=[plato_id], seccion_id=seccion_id)
+    )
+    invalido = cliente.put(
+        f"{PREFIJO}/{combo['id']}", json=_cuerpo(platos_ids=[plato_id], seccion_id=999)
+    )
+
+    assert valido.status_code == 200
+    assert valido.json()["seccion_id"] == seccion_id
+    assert invalido.status_code == 422
+
+
+def test_cat_s_28_un_combo_vigente_puede_cambiar_de_seccion(
+    cliente, componentes, crear_seccion, persistir
+):
+    plato_id, *_ = componentes
+    dos, tres = persistir(crear_seccion("Dos"), crear_seccion("Tres"))
+    combo = cliente.post(PREFIJO, json=_cuerpo(platos_ids=[plato_id], seccion_id=dos)).json()
+
+    respuesta = cliente.put(
+        f"{PREFIJO}/{combo['id']}", json=_cuerpo(platos_ids=[plato_id], seccion_id=tres)
+    )
+
+    assert respuesta.status_code == 200
+    assert respuesta.json()["seccion_id"] == tres
+
+
+def test_cat_s_16_el_combo_vencido_409_tiene_prioridad_sobre_la_seccion_inexistente(
+    cliente, crear_plato, crear_combo, persistir
+):
+    plato = crear_plato()
+    plato_id, combo_id = persistir(plato, _combo_vencido(crear_combo, plato))
+
+    respuesta = cliente.put(f"{PREFIJO}/{combo_id}", json=_cuerpo_vencido(plato_id, seccion_id=999))
+
+    assert respuesta.status_code == 409
+
+
+def test_cat_s_20_las_referencias_inexistentes_tienen_prioridad_sobre_componentes_inactivos(
+    cliente, crear_plato, crear_bebida, crear_combo, persistir
+):
+    plato, bebida = crear_plato(), crear_bebida()
+    bebida.dado_de_baja = True
+    plato_id, bebida_id, combo_id = persistir(plato, bebida, crear_combo(platos=[plato]))
+
+    respuesta = cliente.put(
+        f"{PREFIJO}/{combo_id}",
+        json=_cuerpo(platos_ids=[plato_id, 999], bebidas_ids=[bebida_id]),
+    )
+
+    assert respuesta.status_code == 422
+    assert respuesta.json()["detail"][0]["type"] == "componente_invalido"
+
+
+@pytest.fixture
+def combo_vencido_con_seccion(crear_plato, crear_combo, crear_seccion, persistir):
+    """Combo vencido activo asignado a la sección 'Dos'; hay otra sección 'Tres'."""
+    plato = crear_plato()
+    dos, tres = persistir(crear_seccion("Dos"), crear_seccion("Tres"))
+    combo = _combo_vencido(crear_combo, plato, seccion_id=dos)
+    plato_id, combo_id = persistir(plato, combo)
+    return plato_id, combo_id, dos, tres
+
+
+def test_cat_s_22_cambiar_seccion_en_un_combo_vencido_responde_409(
+    cliente, combo_vencido_con_seccion
+):
+    plato_id, combo_id, dos, tres = combo_vencido_con_seccion
+
+    respuesta = cliente.put(
+        f"{PREFIJO}/{combo_id}", json=_cuerpo_vencido(plato_id, seccion_id=tres)
+    )
+
+    assert respuesta.status_code == 409
+    assert cliente.get(f"{PREFIJO}/{combo_id}").json()["seccion_id"] == dos
+
+
+def test_cat_s_23_asignar_seccion_a_un_combo_vencido_sin_seccion_responde_409(
+    cliente, crear_plato, crear_combo, crear_seccion, persistir
+):
+    plato = crear_plato()
+    plato_id, combo_id, seccion_id = persistir(
+        plato, _combo_vencido(crear_combo, plato), crear_seccion()
+    )
+
+    respuesta = cliente.put(
+        f"{PREFIJO}/{combo_id}", json=_cuerpo_vencido(plato_id, seccion_id=seccion_id)
+    )
+
+    assert respuesta.status_code == 409
+    assert cliente.get(f"{PREFIJO}/{combo_id}").json()["seccion_id"] is None
+
+
+def test_cat_s_24_baja_de_combo_vencido_conservando_su_seccion_responde_200(
+    cliente, combo_vencido_con_seccion
+):
+    plato_id, combo_id, dos, _ = combo_vencido_con_seccion
+
+    respuesta = cliente.put(
+        f"{PREFIJO}/{combo_id}",
+        json=_cuerpo_vencido(plato_id, dado_de_baja=True, seccion_id=dos),
+    )
+
+    assert respuesta.status_code == 200
+    assert respuesta.json()["dado_de_baja"] is True
+    assert respuesta.json()["seccion_id"] == dos
+
+
+def test_cat_s_25_baja_de_combo_vencido_omitiendo_la_seccion_responde_409(
+    cliente, combo_vencido_con_seccion
+):
+    plato_id, combo_id, dos, _ = combo_vencido_con_seccion
+
+    respuesta = cliente.put(
+        f"{PREFIJO}/{combo_id}", json=_cuerpo_vencido(plato_id, dado_de_baja=True)
+    )
+
+    assert respuesta.status_code == 409
+    actual = cliente.get(f"{PREFIJO}/{combo_id}").json()
+    assert actual["dado_de_baja"] is False
+    assert actual["seccion_id"] == dos
+
+
+def test_cat_s_26_baja_de_combo_vencido_sin_seccion_responde_200(
+    cliente, crear_plato, crear_combo, persistir
+):
+    plato = crear_plato()
+    plato_id, combo_id = persistir(plato, _combo_vencido(crear_combo, plato))
+
+    respuesta = cliente.put(
+        f"{PREFIJO}/{combo_id}", json=_cuerpo_vencido(plato_id, dado_de_baja=True)
+    )
+
+    assert respuesta.status_code == 200
+    assert respuesta.json()["dado_de_baja"] is True
+    assert respuesta.json()["seccion_id"] is None
+
+
+def test_cat_s_27_delete_de_combo_vencido_no_altera_la_seccion(
+    cliente, combo_vencido_con_seccion
+):
+    _, combo_id, dos, _ = combo_vencido_con_seccion
+
+    respuesta = cliente.delete(f"{PREFIJO}/{combo_id}")
+
+    assert respuesta.status_code == 204
+    actual = cliente.get(f"{PREFIJO}/{combo_id}").json()
+    assert actual["dado_de_baja"] is True
+    assert actual["seccion_id"] == dos

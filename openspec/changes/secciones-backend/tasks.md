@@ -130,27 +130,27 @@ Chain strategy: pending
 
 ## Fase 5: Routers y manejadores
 
-- [ ] **5.1 Router de secciones, manejadores y `main.py`** — Archivos: `Backend/src/secciones/router.py`, `Backend/src/main.py`, `Backend/tests/secciones/test_router.py`, `Backend/tests/secciones/test_manejadores.py`. Depende de Fase 3.
+- [x] **5.1 Router de secciones, manejadores y `main.py`** — Archivos: `Backend/src/secciones/router.py`, `Backend/src/main.py`, `Backend/tests/secciones/test_router.py`, `Backend/tests/secciones/test_manejadores.py`. Depende de Fase 3.
   - RED (H): `SeccionNoEncontrada` → 404 `{"detail"}` y `NombreSeccionDuplicado` → 409 `{"detail"}`; alta con campos (SEC-19, SEC-20), recorte (SEC-06, SEC-39), límites (SEC-07..10, SEC-42, SEC-43), `nombre` inválido (SEC-03..05), `subtitulo` vacío o de espacios → `null` (SEC-40, SEC-41); duplicados (SEC-11..14), prioridad 422 sobre 409 (SEC-21); `GET /secciones/{id}` (SEC-22, SEC-23) sin lista de productos ni `dado_de_baja` (SEC-02); `GET /secciones` → 405 (SEC-24); PUT (SEC-25, SEC-26, SEC-44), 404 (SEC-27), 422 antes que 404 (SEC-28), 404 antes que 409 (SEC-29), duplicado (SEC-15), propio nombre (SEC-16, SEC-17), productos asignados intactos (SEC-30, usa el endpoint de Plato desde la tarea 5.3 o el ORM); DELETE 204 sin cuerpo y GET posterior 404 (SEC-31), 404 (SEC-32), repetido (SEC-33), reutilización del nombre (SEC-18); la ruta usa `{seccion_id:int}`.
   - GREEN: `APIRouter(prefix=PREFIJO)` con `POST ""` 201, `GET/PUT/DELETE "/{seccion_id:int}"`, `MANEJADORES_EXCEPCIONES`; `main.py` registra el router y recorre ambos diccionarios de manejadores.
   - Escenarios (H): SEC-02..33, SEC-39..44 (SEC-30 se completa en 5.3).
 
-- [ ] **5.2 Manejador de `SeccionInexistente`** — Archivos: `Backend/src/productos/router.py`, `Backend/tests/productos/test_manejadores.py`. Depende de 4.1.
+- [x] **5.2 Manejador de `SeccionInexistente`** — Archivos: `Backend/src/productos/router.py`, `Backend/tests/productos/test_manejadores.py`. Depende de 4.1.
   - RED (H): `SeccionInexistente` → 422 con `{"detail": [{"loc": ["body","seccion_id"], "msg": ..., "type": "seccion_inexistente", "ids": [id]}]}`; el manejador de `ErrorConflicto` no la captura.
   - GREEN: entrada en `MANEJADORES_EXCEPCIONES` mediante `_error_de_campo`.
   - Escenarios: soporte de CAT-S-03, 05, 08.
 
-- [ ] **5.3 HTTP de Plato, Bebida y Postre con `seccion_id`** — Archivos: `Backend/tests/productos/platos/test_router.py`, `Backend/tests/productos/bebidas/test_router.py`, `Backend/tests/productos/postres/test_router.py`, `Backend/tests/productos/test_seccion_producto_http.py`. Depende de 5.2, 4.2. Sin cambios de código esperados en los routers (los esquemas ya exponen el campo): si una prueba falla, se corrige el cuerpo del router.
+- [x] **5.3 HTTP de Plato, Bebida y Postre con `seccion_id`** — Archivos: `Backend/tests/productos/platos/test_router.py`, `Backend/tests/productos/bebidas/test_router.py`, `Backend/tests/productos/postres/test_router.py`, `Backend/tests/productos/test_seccion_producto_http.py`. Depende de 5.2, 4.2. Sin cambios de código esperados en los routers (los esquemas ya exponen el campo): si una prueba falla, se corrige el cuerpo del router.
   - RED (H): crear con sección (CAT-S-01) y sin ella (CAT-S-02); inexistente → 422 sin producto (CAT-S-03); Bebida y Postre en alta con y sin sección inexistente (CAT-S-04, CAT-S-05, CAT-S-21); PUT cambia (CAT-S-06), omite (CAT-S-07), inexistente conserva (CAT-S-08), dado de baja (CAT-S-11); GET por id expone `seccion_id` (CAT-S-10); mismo nombre en otra sección → 409 (CAT-S-12); `"abc"` → 422 (CAT-S-13); 404 sobre 422 de sección (CAT-S-14); 422 de esquema sobre 422 de sección y el Plato no cambia (CAT-S-15); sección inexistente sobre nombre duplicado (CAT-S-18); un PUT de Plato sin tocar la sección tras `PUT /secciones` conserva `seccion_id` (SEC-30, H).
   - GREEN: ajustes mínimos si algún caso falla.
   - Escenarios (H): CAT-S-01..08, 10..15, 18, 21; SEC-30.
 
-- [ ] **5.4 HTTP de MenuEjecutivo con `seccion_id`** — Archivos: `Backend/tests/productos/menus_ejecutivos/test_router.py`. Depende de 5.3, 4.3.
+- [x] **5.4 HTTP de MenuEjecutivo con `seccion_id`** — Archivos: `Backend/tests/productos/menus_ejecutivos/test_router.py`. Depende de 5.3, 4.3.
   - RED (H): alta (CAT-S-04) y rechazo (CAT-S-05); PUT 200 y luego 422 con `seccion_id = 999` (CAT-S-09); Postre dado de baja más sección inexistente → 422 (CAT-S-17); "Menú A" con "Menú B" y Postre inactivo → 409 por componente (CAT-S-19).
   - GREEN: ajustes mínimos en el router si falla algún caso.
   - Escenarios (H): CAT-S-04, 05, 09, 17, 19.
 
-- [ ] **5.5 HTTP de ComboPromocion con `seccion_id`** — Archivos: `Backend/tests/productos/combos/test_router.py`. Depende de 5.4, 4.4.
+- [x] **5.5 HTTP de ComboPromocion con `seccion_id`** — Archivos: `Backend/tests/productos/combos/test_router.py`. Depende de 5.4, 4.4.
   - RED (H): alta (CAT-S-04) y rechazo (CAT-S-05); PUT vigente 200 y luego 422 (CAT-S-09), cambio de sección (CAT-S-28); vencido más sección inexistente → 409 (CAT-S-16); `ComponenteInvalido` sobre inactivo → 422 (CAT-S-20); vencido: cambiar sección 409 (CAT-S-22), asignar 409 (CAT-S-23), baja conservando sección 200 (CAT-S-24), omitiéndola 409 (CAT-S-25), sin sección 200 (CAT-S-26), DELETE conserva sección (CAT-S-27).
   - GREEN: ajustes mínimos en el router si falla algún caso.
   - Escenarios (H): CAT-S-04, 05, 09, 16, 20, 22..28.

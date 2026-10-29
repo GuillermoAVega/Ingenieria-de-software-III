@@ -68,3 +68,22 @@ def test_cat_13_put_de_postre_es_reemplazo_completo(cliente):
     assert respuesta.json()["precio"] == "650.00"
     assert respuesta.json()["descripcion"] is None
     assert respuesta.json()["imagen"] is None
+
+
+def test_cat_s_21_el_postre_acepta_seccion_id_ademas_de_los_campos_comunes(
+    cliente, crear_seccion, persistir
+):
+    seccion_id = persistir(crear_seccion())
+
+    respuesta = cliente.post(
+        "/productos/postres",
+        json=_cuerpo(descripcion="Casero", imagen="f.png", seccion_id=seccion_id),
+    )
+
+    assert respuesta.status_code == 201
+    assert respuesta.json()["seccion_id"] == seccion_id
+    assert respuesta.json()["descripcion"] == "Casero"
+
+
+def test_cat_s_05_crear_postre_con_seccion_inexistente_responde_422(cliente):
+    assert cliente.post("/productos/postres", json=_cuerpo(seccion_id=999)).status_code == 422

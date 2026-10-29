@@ -55,3 +55,18 @@ def test_cat_27_bebida_sin_es_alcoholica_responde_422(cliente):
     respuesta = cliente.post("/productos/bebidas", json={"nombre": "Cerveza", "precio": "800.00"})
 
     assert respuesta.status_code == 422
+
+
+def test_cat_s_04_crear_bebida_con_seccion(cliente, crear_seccion, persistir):
+    seccion_id = persistir(crear_seccion())
+
+    respuesta = cliente.post("/productos/bebidas", json=_cuerpo(seccion_id=seccion_id))
+
+    assert respuesta.status_code == 201
+    assert respuesta.json()["seccion_id"] == seccion_id
+
+
+def test_cat_s_05_crear_bebida_con_seccion_inexistente_responde_422(cliente):
+    respuesta = cliente.post("/productos/bebidas", json=_cuerpo(seccion_id=999))
+
+    assert respuesta.status_code == 422

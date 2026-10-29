@@ -218,3 +218,70 @@ def test_ld_20_reactivar_menu_con_componentes_activos_responde_200(
 
     assert respuesta.status_code == 200
     assert respuesta.json()["dado_de_baja"] is False
+
+
+def test_cat_s_04_crear_menu_con_seccion(cliente, componentes, crear_seccion, persistir):
+    seccion_id = persistir(crear_seccion())
+
+    respuesta = cliente.post(PREFIJO, json=_cuerpo(*componentes, seccion_id=seccion_id))
+
+    assert respuesta.status_code == 201
+    assert respuesta.json()["seccion_id"] == seccion_id
+
+
+def test_cat_s_05_crear_menu_con_seccion_inexistente_responde_422(cliente, componentes):
+    respuesta = cliente.post(PREFIJO, json=_cuerpo(*componentes, seccion_id=999))
+
+    assert respuesta.status_code == 422
+    assert respuesta.json()["detail"][0]["loc"] == ["body", "seccion_id"]
+    assert respuesta.json()["detail"][0]["type"] == "seccion_inexistente"
+
+
+def test_cat_s_09_put_de_menu_acepta_seccion_existente_y_rechaza_inexistente(
+    cliente, componentes, crear_seccion, persistir
+):
+    seccion_id = persistir(crear_seccion())
+    menu = _crear_menu(cliente, *componentes)
+
+    valido = cliente.put(
+        f"{PREFIJO}/{menu['id']}", json=_cuerpo(*componentes, seccion_id=seccion_id)
+    )
+    invalido = cliente.put(f"{PREFIJO}/{menu['id']}", json=_cuerpo(*componentes, seccion_id=999))
+
+    assert valido.status_code == 200
+    assert valido.json()["seccion_id"] == seccion_id
+    assert invalido.status_code == 422
+    assert cliente.get(f"{PREFIJO}/{menu['id']}").json()["seccion_id"] == seccion_id
+
+
+def test_cat_s_17_la_seccion_inexistente_tiene_prioridad_sobre_el_componente_inactivo(
+    cliente, crear_plato, crear_postre, crear_menu, persistir
+):
+    plato, postre = crear_plato(), crear_postre()
+    postre.dado_de_baja = True
+    plato_id, postre_id, menu_id = persistir(plato, postre, crear_menu(plato, postre))
+
+    respuesta = cliente.put(
+        f"{PREFIJO}/{menu_id}", json=_cuerpo(plato_id, postre_id, seccion_id=999)
+    )
+
+    assert respuesta.status_code == 422
+    assert respuesta.json()["detail"][0]["type"] == "seccion_inexistente"
+
+
+def test_cat_s_19_el_componente_inactivo_tiene_prioridad_sobre_el_nombre_duplicado(
+    cliente, crear_plato, crear_postre, crear_menu, persistir
+):
+    plato, postre = crear_plato(), crear_postre()
+    postre.dado_de_baja = True
+    plato_id, postre_id, menu_id = persistir(
+        plato, postre, crear_menu(plato, postre, nombre="Menú A")
+    )
+    persistir(crear_plato(nombre="Menú B"))
+
+    respuesta = cliente.put(
+        f"{PREFIJO}/{menu_id}", json=_cuerpo(plato_id, postre_id, nombre="Menú B")
+    )
+
+    assert respuesta.status_code == 409
+    assert respuesta.json()["ids"] == [postre_id]
