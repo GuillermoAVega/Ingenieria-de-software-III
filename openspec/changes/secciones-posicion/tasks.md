@@ -124,17 +124,17 @@ Chain strategy: pending
 
 ## Fase 5: Router y manejador
 
-- [ ] **5.1 Manejador `manejar_posicion_duplicada`** — Archivos: `Backend/src/secciones/router.py`, `Backend/tests/secciones/test_manejadores.py`. Depende de 4.1.
+- [x] **5.1 Manejador `manejar_posicion_duplicada`** — Archivos: `Backend/src/secciones/router.py`, `Backend/tests/secciones/test_manejadores.py`. Depende de 4.1.
   - RED (H/E): `PosicionSeccionDuplicada` → 409 con cuerpo `{"detail": "Ya existe una sección en esa posición"}` (POS-12); la forma del cuerpo es igual a la del 409 de `NombreSeccionDuplicado` (objeto con la clave `detail`); la excepción figura en `MANEJADORES_EXCEPCIONES`; `main.py` ya recorre el diccionario, sin cambios.
   - GREEN: función `manejar_posicion_duplicada` y su entrada en `MANEJADORES_EXCEPCIONES`.
   - Escenarios: POS-12 (manejador).
 
-- [ ] **5.2 HTTP del alta: 409, cuerpo y prioridades** — Archivos: `Backend/tests/secciones/test_router.py`. Depende de 5.1, 4.2.
+- [x] **5.2 HTTP del alta: 409, cuerpo y prioridades** — Archivos: `Backend/tests/secciones/test_router.py`. Depende de 5.1, 4.2.
   - RED (H): POST de "Postres" en `posicion = 1` con "Entradas" en 1 → 409 y GET posterior sin fila nueva (POS-11); el cuerpo es un objeto con la clave `detail` (POS-12); "Sopas" en `posicion = 2` con tres secciones en 1, 2 y 3 → 409 y las tres conservan sus posiciones (POS-16); `nombre = "Entradas"` y `posicion = 1` repetidos → un único 409 cuyo `detail` es el mensaje de nombre duplicado (POS-23); `posicion = 1` repetida con `subtitulo` de 201 caracteres → 422 (POS-24, guarda de prioridad: nace verde).
   - GREEN: sin código adicional si 5.1 y 4.2 están completas.
   - Escenarios (H): POS-11, 12, 16, 23, 24.
 
-- [ ] **5.3 HTTP de la modificación: 409, 404 y prioridades** — Archivos: `Backend/tests/secciones/test_router.py`. Depende de 5.2, 4.3.
+- [x] **5.3 HTTP de la modificación: 409, 404 y prioridades** — Archivos: `Backend/tests/secciones/test_router.py`. Depende de 5.2, 4.3.
   - RED (H): PUT de "Postres" a `posicion = 1` con "Entradas" en 1 → 409 y un GET de ambas confirma nombres y posiciones intactos (POS-13); PUT directo de A a la posición de B → 409 sin cambios (POS-21); PUT de "Postres" con `nombre = "entradas"` y `posicion = 1` → un único 409 de nombre y "Postres" conserva `nombre = "Postres"` y `posicion = 2` (POS-26); PUT a `/secciones/999` con `posicion = 1` ocupada → 404 (POS-27); PUT de B a `posicion = 1` con `subtitulo` de 201 caracteres → 422 y B conserva `posicion = 2` (POS-28, guarda de prioridad: nace verde).
   - GREEN: sin código adicional si 5.1 y 4.3 están completas.
   - Escenarios (H): POS-13, 21, 26, 27, 28.
@@ -144,16 +144,17 @@ Chain strategy: pending
 
 ## Fase 6: Verificación final y trazabilidad
 
-- [ ] **6.1 Liberación, huecos e intercambio por HTTP (caracterización)** — Archivos: `Backend/tests/secciones/test_router.py`. Depende de Fase 5.
+- [x] **6.1 Liberación, huecos e intercambio por HTTP (caracterización)** — Archivos: `Backend/tests/secciones/test_router.py`. Depende de Fase 5.
   - RED (caracterización, nace verde): `DELETE /secciones/{id}` seguido de `POST` con la misma `posicion = 1` → 201 y `posicion = 1` (POS-17); borrar "Postres" deja `posicion = 1` y `3` en "Entradas" y "Bebidas" al consultarlas (POS-18); alta con `posicion = 10` sin otras secciones → 201 y 10 (POS-19); intercambio de A y B en tres PUT: los tres devuelven 200 y al final A tiene 2 y B tiene 1 (POS-20).
   - GREEN: sin código esperado.
   - Escenarios (H): POS-17, 18, 19, 20.
 
-- [ ] **6.2 Suite completa y base local** — Archivos: ninguno. Depende de 6.1.
+- [x] **6.2 Suite completa y base local** — Archivos: ninguno. Depende de 6.1.
   - Verificar `cd Backend && python -m pytest` en verde y `configure_mappers()` sin errores; `rg "from src.productos" Backend/src/secciones` sin resultados. **Borrar `Backend/app.db` local y recrearla** al iniciar la aplicación (la base existente no tiene la columna `posicion`); comprobar manualmente `POST /secciones` con `posicion`, un 409 por posición repetida y `DELETE /secciones/{id}`.
+  - Nota de ejecución (apply): la suite y `configure_mappers()` pasan y `rg "from src.productos" Backend/src/secciones` no devuelve resultados. El borrado y la recreación de `Backend/app.db` y la comprobación manual con la aplicación en marcha quedan como acción manual del usuario: `app.db` es un archivo local no versionado y no se tocó ni se creó otro.
   - Hecho cuando: suite en verde, grafo de importaciones acíclico y base local recreada.
 
-- [ ] **6.3 Trazabilidad de escenarios** — Archivos: ninguno (solo se agregan pruebas en archivos existentes). Depende de 6.2.
+- [x] **6.3 Trazabilidad de escenarios** — Archivos: ninguno (solo se agregan pruebas en archivos existentes). Depende de 6.2.
   - Revisar el Anexo A: para cada uno de los 29 escenarios POS debe existir una prueba cuyo nombre contenga `test_pos_NN`, con nivel H o BD donde aplica; confirmar que los SEC-xx modificados (SEC-01, 02, 19..21, 25..30) siguen pasando con su resultado esperado. Listar los huecos y cerrarlos con RED → GREEN o registrarlos como riesgo.
   - Hecho cuando: el listado sin cobertura está vacío y `python -m pytest` pasa.
   - `[COMMIT]` final (verify queda para `sdd-verify`).

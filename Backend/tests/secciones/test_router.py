@@ -580,3 +580,173 @@ def test_pos_25_la_modificacion_devuelve_la_nueva_posicion(cliente):
     assert respuesta.status_code == 200
     assert respuesta.json()["posicion"] == 7
     assert cliente.get(f"{RUTA}/{creada['id']}").json()["posicion"] == 7
+
+
+# --- posicion duplicada: 409, prioridades y atomicidad ---
+
+MENSAJE_POSICION = "Ya existe una sección en esa posición"
+MENSAJE_NOMBRE = "Ya existe una sección con ese nombre"
+
+
+def _crear_con(cliente, nombre, posicion, **cuerpo):
+    respuesta = cliente.post(
+        RUTA, json={"nombre": nombre, "posicion": posicion, **cuerpo}
+    )
+    assert respuesta.status_code == 201
+    return respuesta.json()
+
+
+def test_pos_11_posicion_duplicada_en_el_alta_responde_409_sin_crear_fila(cliente):
+    existente = _crear_con(cliente, "Entradas", 1)
+
+    respuesta = cliente.post(RUTA, json={"nombre": "Postres", "posicion": 1})
+
+    assert respuesta.status_code == 409
+    assert respuesta.json() == {"detail": MENSAJE_POSICION}
+    assert cliente.get(f"{RUTA}/{existente['id']}").json() == existente
+    assert cliente.get(f"{RUTA}/{existente['id'] + 1}").status_code == 404
+
+
+def test_pos_12_el_409_por_posicion_usa_el_cuerpo_estandar(cliente):
+    _crear_con(cliente, "Entradas", 1)
+
+    respuesta = cliente.post(RUTA, json={"nombre": "Postres", "posicion": 1})
+
+    assert respuesta.status_code == 409
+    assert isinstance(respuesta.json(), dict)
+    assert set(respuesta.json()) == {"detail"}
+    assert respuesta.json()["detail"] == MENSAJE_POSICION
+
+
+def test_pos_16_una_colision_no_desplaza_a_otras_secciones(cliente):
+    creadas = [
+        _crear_con(cliente, nombre, posicion)
+        for nombre, posicion in (("Entradas", 1), ("Postres", 2), ("Bebidas", 3))
+    ]
+
+    respuesta = cliente.post(RUTA, json={"nombre": "Sopas", "posicion": 2})
+
+    assert respuesta.status_code == 409
+    assert [cliente.get(f"{RUTA}/{c['id']}").json() for c in creadas] == creadas
+    assert cliente.get(f"{RUTA}/{creadas[-1]['id'] + 1}").status_code == 404
+
+
+def test_pos_23_doble_colision_en_el_alta_devuelve_el_409_de_nombre(cliente):
+    existente = _crear_con(cliente, "Entradas", 1)
+
+    respuesta = cliente.post(RUTA, json={"nombre": "Entradas", "posicion": 1})
+
+    assert respuesta.status_code == 409
+    assert respuesta.json() == {"detail": MENSAJE_NOMBRE}
+    assert cliente.get(f"{RUTA}/{existente['id']}").json() == existente
+    assert cliente.get(f"{RUTA}/{existente['id'] + 1}").status_code == 404
+
+
+def test_pos_24_prioridad_de_422_sobre_409_por_posicion_en_el_alta(cliente):
+    existente = _crear_con(cliente, "Entradas", 1)
+
+    respuesta = cliente.post(
+        RUTA, json={"nombre": "Postres", "posicion": 1, "subtitulo": "x" * 201}
+    )
+
+    assert respuesta.status_code == 422
+    assert cliente.get(f"{RUTA}/{existente['id'] + 1}").status_code == 404
+
+
+def test_pos_13_posicion_duplicada_en_la_modificacion_responde_409_sin_cambios(
+    cliente,
+):
+    a = _crear_con(cliente, "Entradas", 1)
+    b = _crear_con(cliente, "Postres", 2)
+
+    respuesta = cliente.put(f"{RUTA}/{b['id']}", json={"nombre": "Postres", "posicion": 1})
+
+    assert respuesta.status_code == 409
+    assert respuesta.json() == {"detail": MENSAJE_POSICION}
+    assert cliente.get(f"{RUTA}/{a['id']}").json() == a
+    assert cliente.get(f"{RUTA}/{b['id']}").json() == b
+
+
+def test_pos_21_el_intercambio_directo_es_rechazado(cliente):
+    a = _crear_con(cliente, "Entradas", 1)
+    b = _crear_con(cliente, "Postres", 2)
+
+    respuesta = cliente.put(f"{RUTA}/{a['id']}", json={"nombre": "Entradas", "posicion": 2})
+
+    assert respuesta.status_code == 409
+    assert cliente.get(f"{RUTA}/{a['id']}").json() == a
+    assert cliente.get(f"{RUTA}/{b['id']}").json() == b
+
+
+def test_pos_26_doble_colision_en_la_modificacion_devuelve_el_409_de_nombre(cliente):
+    a = _crear_con(cliente, "Entradas", 1)
+    b = _crear_con(cliente, "Postres", 2)
+
+    respuesta = cliente.put(f"{RUTA}/{b['id']}", json={"nombre": "entradas", "posicion": 1})
+
+    assert respuesta.status_code == 409
+    assert respuesta.json() == {"detail": MENSAJE_NOMBRE}
+    assert cliente.get(f"{RUTA}/{a['id']}").json() == a
+    assert cliente.get(f"{RUTA}/{b['id']}").json() == b
+
+
+def test_pos_27_prioridad_de_404_sobre_409_por_posicion_en_la_modificacion(cliente):
+    a = _crear_con(cliente, "Entradas", 1)
+
+    respuesta = cliente.put(f"{RUTA}/999", json={"nombre": "Postres", "posicion": 1})
+
+    assert respuesta.status_code == 404
+    assert cliente.get(f"{RUTA}/{a['id']}").json() == a
+
+
+def test_pos_28_prioridad_de_422_sobre_409_por_posicion_en_la_modificacion(cliente):
+    _crear_con(cliente, "Entradas", 1)
+    b = _crear_con(cliente, "Postres", 2)
+
+    respuesta = cliente.put(
+        f"{RUTA}/{b['id']}",
+        json={"nombre": "Postres", "posicion": 1, "subtitulo": "x" * 201},
+    )
+
+    assert respuesta.status_code == 422
+    assert cliente.get(f"{RUTA}/{b['id']}").json() == b
+
+
+# --- liberación, huecos e intercambio (caracterización) ---
+
+
+def test_pos_17_reutilizacion_de_la_posicion_tras_el_borrado(cliente):
+    a = _crear_con(cliente, "Entradas", 1)
+    assert cliente.delete(f"{RUTA}/{a['id']}").status_code == 204
+
+    respuesta = cliente.post(RUTA, json={"nombre": "Postres", "posicion": 1})
+
+    assert respuesta.status_code == 201
+    assert respuesta.json()["posicion"] == 1
+
+
+def test_pos_18_el_borrado_no_renumera_las_demas_secciones(cliente):
+    a = _crear_con(cliente, "Entradas", 1)
+    b = _crear_con(cliente, "Postres", 2)
+    c = _crear_con(cliente, "Bebidas", 3)
+
+    assert cliente.delete(f"{RUTA}/{b['id']}").status_code == 204
+
+    assert cliente.get(f"{RUTA}/{a['id']}").json()["posicion"] == 1
+    assert cliente.get(f"{RUTA}/{c['id']}").json()["posicion"] == 3
+
+
+def test_pos_20_intercambio_de_dos_secciones_en_tres_put(cliente):
+    a = _crear_con(cliente, "Entradas", 1)
+    b = _crear_con(cliente, "Postres", 2)
+
+    pasos = [
+        (a["id"], {"nombre": "Entradas", "posicion": 99}),
+        (b["id"], {"nombre": "Postres", "posicion": 1}),
+        (a["id"], {"nombre": "Entradas", "posicion": 2}),
+    ]
+    for seccion_id, cuerpo in pasos:
+        assert cliente.put(f"{RUTA}/{seccion_id}", json=cuerpo).status_code == 200
+
+    assert cliente.get(f"{RUTA}/{a['id']}").json()["posicion"] == 2
+    assert cliente.get(f"{RUTA}/{b['id']}").json()["posicion"] == 1

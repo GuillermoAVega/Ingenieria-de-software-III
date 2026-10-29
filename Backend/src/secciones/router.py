@@ -6,7 +6,11 @@ from sqlalchemy.orm import Session
 from src.database import get_db
 from src.secciones import services
 from src.secciones.constants import PREFIJO
-from src.secciones.exceptions import NombreSeccionDuplicado, SeccionNoEncontrada
+from src.secciones.exceptions import (
+    NombreSeccionDuplicado,
+    PosicionSeccionDuplicada,
+    SeccionNoEncontrada,
+)
 from src.secciones.schemas import SeccionActualizar, SeccionCrear, SeccionRespuesta
 
 router = APIRouter(prefix=PREFIJO)
@@ -45,7 +49,14 @@ def manejar_nombre_duplicado(
     return JSONResponse(status_code=409, content={"detail": error.mensaje})
 
 
+def manejar_posicion_duplicada(
+    _peticion: Request, error: PosicionSeccionDuplicada
+) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": error.mensaje})
+
+
 MANEJADORES_EXCEPCIONES = {
     SeccionNoEncontrada: manejar_no_encontrada,
     NombreSeccionDuplicado: manejar_nombre_duplicado,
+    PosicionSeccionDuplicada: manejar_posicion_duplicada,
 }
