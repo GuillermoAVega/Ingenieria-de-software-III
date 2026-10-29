@@ -49,12 +49,12 @@ Chain strategy: pending
 
 ## Fase 1: Actualización de las pruebas existentes (caracterización, verde)
 
-- [ ] **1.1 Cuerpos HTTP con `posicion`** — Archivos: `Backend/tests/secciones/test_router.py`, `Backend/tests/productos/test_seccion_producto_http.py`, y todo otro llamador de `POST/PUT /secciones` (localizar con `rg '"/secciones' Backend/tests`, p. ej. `Backend/tests/productos/menus_ejecutivos/test_router.py`). `||` con 1.2.
+- [x] **1.1 Cuerpos HTTP con `posicion`** — Archivos: `Backend/tests/secciones/test_router.py`, `Backend/tests/productos/test_seccion_producto_http.py`, y todo otro llamador de `POST/PUT /secciones` (localizar con `rg '"/secciones' Backend/tests`, p. ej. `Backend/tests/productos/menus_ejecutivos/test_router.py`). `||` con 1.2.
   - RED (caracterización): registrar la línea base verde de `cd Backend && python -m pytest tests/secciones tests/productos`.
   - GREEN: el helper `_crear` agrega una `posicion` única con un contador de módulo (`itertools.count(1001)`); los PUT de SEC-15, 16, 17, 25, 26, 27, 29 y 44 envían `posicion` explícita y distinta; SEC-30 (POST y PUT) envía `posicion`. Cuando una prueba crea varias secciones, cada una lleva una posición distinta. Sin cambios de aserciones. La suite sigue en verde (Pydantic ignora el campo extra).
   - Escenarios: soporte de los SEC-xx modificados (SEC-19..21, 25..30).
 
-- [ ] **1.2 Llamadas de servicio y helper de esquemas con `posicion`** — Archivos: `Backend/tests/secciones/test_servicios.py`, `Backend/tests/secciones/test_schemas.py`, `Backend/tests/productos/menus_ejecutivos/test_servicios.py`. `||` con 1.1.
+- [x] **1.2 Llamadas de servicio y helper de esquemas con `posicion`** — Archivos: `Backend/tests/secciones/test_servicios.py`, `Backend/tests/secciones/test_schemas.py`, `Backend/tests/productos/menus_ejecutivos/test_servicios.py`. `||` con 1.1.
   - RED (caracterización): línea base verde de `cd Backend && python -m pytest tests/secciones tests/productos`.
   - GREEN: todo `SeccionCrear(...)` y `SeccionActualizar(...)`, incluido el parametrizado de 404, recibe `posicion` explícita y distinta cuando la prueba crea más de una sección; el helper `crear` de `test_schemas.py` usa `posicion=1` por defecto. Sin cambios de aserciones.
   - Escenarios: soporte de SEC-19..21 y 25..30 a nivel servicio.
@@ -64,12 +64,12 @@ Chain strategy: pending
 
 ## Fase 2: Esquema de entrada
 
-- [ ] **2.1 `posicion` en `SeccionCrear` / `SeccionActualizar`** — Archivos: `Backend/src/secciones/schemas.py`, `Backend/tests/secciones/test_schemas.py`. Depende de 1.2.
+- [x] **2.1 `posicion` en `SeccionCrear` / `SeccionActualizar`** — Archivos: `Backend/src/secciones/schemas.py`, `Backend/tests/secciones/test_schemas.py`. Depende de 1.2.
   - RED (E): `posicion` ausente → `ValidationError` (POS-02, POS-03); `0` (POS-04, POS-06) y `-1` (POS-05) → error; `"abc"` → error (POS-07); `3.5` y `1.5` → error (POS-08); `1` válido y conservado (POS-09); modo laxo: `"3"` → `3` y `3.0` → `3`, ambos de tipo `int` (POS-29); `SeccionActualizar` equivale a `SeccionCrear`.
   - GREEN: `posicion: int = Field(ge=1)` en `SeccionCrear` (sin `strict`, decisión 2 del diseño); `SeccionActualizar = SeccionCrear` ya lo hereda. Las pruebas de otras capas siguen en verde porque la Fase 1 ya envía `posicion`.
   - Escenarios (E): POS-02..09, POS-29.
 
-- [ ] **2.2 Validación 422 de `posicion` por HTTP** — Archivos: `Backend/tests/secciones/test_router.py`. Depende de 2.1.
+- [x] **2.2 Validación 422 de `posicion` por HTTP** — Archivos: `Backend/tests/secciones/test_router.py`. Depende de 2.1.
   - RED (H): POST sin `posicion` → 422 y GET posterior sin filas nuevas (POS-02); PUT sin `posicion` → 422 (POS-03); POST con `0` (POS-04), `-1` (POS-05), `"abc"` (POS-07) y `1.5` (POS-08) → 422 sin crear sección; PUT con `0` → 422 (POS-06); PUT con `nombre = "Aperitivos"`, `subtitulo = "Para compartir"` y `posicion = -3` → 422 y un GET posterior devuelve `Entradas`, `Para comenzar` y `posicion = 1` (POS-10). Fallan hoy porque el campo se ignora y devuelve 201/200.
   - GREEN: sin código adicional si 2.1 está completa; si una prueba falla, corregir el esquema.
   - Escenarios (H): POS-02..08, POS-10.

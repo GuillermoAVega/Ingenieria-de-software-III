@@ -160,10 +160,12 @@ def test_cat_s_18_la_seccion_inexistente_tiene_prioridad_sobre_el_nombre_duplica
 
 
 def test_sec_30_el_put_de_la_seccion_no_altera_los_productos_asignados(cliente):
-    seccion = cliente.post("/secciones", json={"nombre": "Entradas"}).json()
+    seccion = cliente.post("/secciones", json={"nombre": "Entradas", "posicion": 1}).json()
     plato = _crear_plato(cliente, seccion_id=seccion["id"])
 
-    modificada = cliente.put(f"/secciones/{seccion['id']}", json={"nombre": "Aperitivos"})
+    modificada = cliente.put(
+        f"/secciones/{seccion['id']}", json={"nombre": "Aperitivos", "posicion": 2}
+    )
     assert modificada.status_code == 200
 
     # El plato sigue asignado sin que nadie lo vuelva a enviar

@@ -6,6 +6,7 @@ from src.secciones.constants import NOMBRE_MAX, SUBTITULO_MAX
 class SeccionCrear(BaseModel):
     nombre: str = Field(min_length=1, max_length=NOMBRE_MAX)
     subtitulo: str | None = Field(default=None, max_length=SUBTITULO_MAX)
+    posicion: int = Field(ge=1)
 
     # Se recorta antes de validar la longitud: vacío o solo espacios queda rechazado
     @field_validator("nombre", mode="before")

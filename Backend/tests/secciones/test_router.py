@@ -1,3 +1,4 @@
+import itertools
 from datetime import date
 from decimal import Decimal
 
@@ -11,9 +12,14 @@ from src.productos.postres.models import Postre
 
 RUTA = "/secciones"
 
+# Posiciones autoasignadas desde 1001 para no chocar con las explícitas de las pruebas
+_posiciones = itertools.count(1001)
+
 
 def _crear(cliente, **cuerpo):
-    return cliente.post(RUTA, json={"nombre": "Entradas", **cuerpo})
+    return cliente.post(
+        RUTA, json={"nombre": "Entradas", "posicion": next(_posiciones), **cuerpo}
+    )
 
 
 def test_sec_02_la_respuesta_no_incluye_productos_ni_estado_de_baja(cliente):
@@ -184,7 +190,8 @@ def test_sec_25_modificar_una_seccion(cliente):
     creada = _crear(cliente, subtitulo="Para comenzar").json()
 
     respuesta = cliente.put(
-        f"{RUTA}/{creada['id']}", json={"nombre": "Aperitivos", "subtitulo": "Para compartir"}
+        f"{RUTA}/{creada['id']}",
+        json={"nombre": "Aperitivos", "subtitulo": "Para compartir", "posicion": 1},
     )
 
     assert respuesta.status_code == 200
@@ -199,14 +206,18 @@ def test_sec_25_modificar_una_seccion(cliente):
 def test_sec_26_el_put_es_un_reemplazo_completo(cliente):
     creada = _crear(cliente, subtitulo="Para comenzar").json()
 
-    respuesta = cliente.put(f"{RUTA}/{creada['id']}", json={"nombre": "Entradas"})
+    respuesta = cliente.put(
+        f"{RUTA}/{creada['id']}", json={"nombre": "Entradas", "posicion": 1}
+    )
 
     assert respuesta.status_code == 200
     assert respuesta.json()["subtitulo"] is None
 
 
 def test_sec_27_actualizar_una_seccion_inexistente_responde_404(cliente):
-    assert cliente.put(f"{RUTA}/999", json={"nombre": "Entradas"}).status_code == 404
+    assert cliente.put(
+        f"{RUTA}/999", json={"nombre": "Entradas", "posicion": 1}
+    ).status_code == 404
 
 
 def test_sec_28_el_422_tiene_prioridad_sobre_el_404_en_la_modificacion(cliente):
@@ -216,14 +227,18 @@ def test_sec_28_el_422_tiene_prioridad_sobre_el_404_en_la_modificacion(cliente):
 def test_sec_29_el_404_tiene_prioridad_sobre_el_409_en_la_modificacion(cliente):
     _crear(cliente)
 
-    assert cliente.put(f"{RUTA}/999", json={"nombre": "Entradas"}).status_code == 404
+    assert cliente.put(
+        f"{RUTA}/999", json={"nombre": "Entradas", "posicion": 1}
+    ).status_code == 404
 
 
 def test_sec_15_nombre_duplicado_en_la_modificacion_responde_409_sin_cambios(cliente):
     _crear(cliente, nombre="Entradas")
     postres = _crear(cliente, nombre="Postres", subtitulo="Dulces").json()
 
-    respuesta = cliente.put(f"{RUTA}/{postres['id']}", json={"nombre": "entradas"})
+    respuesta = cliente.put(
+        f"{RUTA}/{postres['id']}", json={"nombre": "entradas", "posicion": 1}
+    )
 
     assert respuesta.status_code == 409
     assert cliente.get(f"{RUTA}/{postres['id']}").json() == postres
@@ -233,7 +248,8 @@ def test_sec_16_la_modificacion_conserva_el_propio_nombre(cliente):
     creada = _crear(cliente, subtitulo="Para comenzar").json()
 
     respuesta = cliente.put(
-        f"{RUTA}/{creada['id']}", json={"nombre": "Entradas", "subtitulo": "Nuevo"}
+        f"{RUTA}/{creada['id']}",
+        json={"nombre": "Entradas", "subtitulo": "Nuevo", "posicion": 1},
     )
 
     assert respuesta.status_code == 200
@@ -243,7 +259,9 @@ def test_sec_16_la_modificacion_conserva_el_propio_nombre(cliente):
 def test_sec_17_la_modificacion_puede_cambiar_solo_las_mayusculas(cliente):
     creada = _crear(cliente).json()
 
-    respuesta = cliente.put(f"{RUTA}/{creada['id']}", json={"nombre": "ENTRADAS"})
+    respuesta = cliente.put(
+        f"{RUTA}/{creada['id']}", json={"nombre": "ENTRADAS", "posicion": 1}
+    )
 
     assert respuesta.status_code == 200
     assert respuesta.json()["nombre"] == "ENTRADAS"
@@ -253,11 +271,73 @@ def test_sec_44_el_put_recorta_y_normaliza_el_subtitulo(cliente):
     creada = _crear(cliente, subtitulo="Para comenzar").json()
 
     respuesta = cliente.put(
-        f"{RUTA}/{creada['id']}", json={"nombre": "Entradas", "subtitulo": "   "}
+        f"{RUTA}/{creada['id']}",
+        json={"nombre": "Entradas", "subtitulo": "   ", "posicion": 1},
     )
 
     assert respuesta.status_code == 200
     assert respuesta.json()["subtitulo"] is None
+
+
+# --- Validación de posicion (422) ---
+
+
+def test_pos_02_posicion_ausente_en_el_alta_responde_422_sin_crear(cliente):
+    respuesta = cliente.post(RUTA, json={"nombre": "Entradas"})
+
+    assert respuesta.status_code == 422
+    assert cliente.get(f"{RUTA}/1").status_code == 404
+
+
+def test_pos_03_posicion_ausente_en_la_modificacion_responde_422(cliente):
+    creada = _crear(cliente, posicion=1).json()
+
+    respuesta = cliente.put(f"{RUTA}/{creada['id']}", json={"nombre": "Entradas"})
+
+    assert respuesta.status_code == 422
+
+
+@pytest.mark.parametrize(
+    "posicion",
+    [
+        pytest.param(0, id="pos_04_cero"),
+        pytest.param(-1, id="pos_05_negativa"),
+        pytest.param("abc", id="pos_07_texto"),
+        pytest.param(1.5, id="pos_08_decimal"),
+    ],
+)
+def test_pos_04_05_07_08_posicion_invalida_en_el_alta_responde_422_sin_crear(
+    cliente, posicion
+):
+    respuesta = _crear(cliente, posicion=posicion)
+
+    assert respuesta.status_code == 422
+    assert cliente.get(f"{RUTA}/1").status_code == 404
+
+
+def test_pos_06_posicion_cero_en_la_modificacion_responde_422(cliente):
+    creada = _crear(cliente, posicion=1).json()
+
+    respuesta = cliente.put(
+        f"{RUTA}/{creada['id']}", json={"nombre": "Entradas", "posicion": 0}
+    )
+
+    assert respuesta.status_code == 422
+
+
+def test_pos_10_una_modificacion_rechazada_por_validacion_no_cambia_la_seccion(cliente):
+    creada = _crear(cliente, subtitulo="Para comenzar", posicion=1).json()
+
+    respuesta = cliente.put(
+        f"{RUTA}/{creada['id']}",
+        json={"nombre": "Aperitivos", "subtitulo": "Para compartir", "posicion": -3},
+    )
+
+    assert respuesta.status_code == 422
+    conservada = cliente.get(f"{RUTA}/{creada['id']}").json()
+    assert conservada["nombre"] == "Entradas"
+    assert conservada["subtitulo"] == "Para comenzar"
+    # Pendiente (tarea 3.2): afirmar posicion == 1, que la respuesta aún no expone
 
 
 def test_sec_31_borrar_una_seccion_responde_204_sin_cuerpo(cliente):

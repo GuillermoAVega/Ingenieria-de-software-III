@@ -7,7 +7,7 @@ from src.secciones.schemas import SeccionActualizar, SeccionCrear, SeccionRespue
 
 
 def crear(**cambios):
-    datos = {"nombre": "Entradas"}
+    datos = {"nombre": "Entradas", "posicion": 1}
     datos.update(cambios)
     return SeccionCrear(**datos)
 
@@ -78,6 +78,65 @@ def test_sec_43_subtitulo_de_201_rodeado_de_espacios_se_rechaza():
 
 def test_subtitulo_omitido_queda_en_none():
     assert crear().subtitulo is None
+
+
+# --- posicion ---
+
+
+def sin_posicion():
+    return {"nombre": "Entradas"}
+
+
+def test_pos_02_posicion_ausente_se_rechaza_en_el_alta():
+    with pytest.raises(ValidationError):
+        SeccionCrear(**sin_posicion())
+
+
+def test_pos_03_posicion_ausente_se_rechaza_en_la_modificacion():
+    with pytest.raises(ValidationError):
+        SeccionActualizar(**sin_posicion())
+
+
+def test_pos_04_posicion_cero_se_rechaza():
+    with pytest.raises(ValidationError):
+        crear(posicion=0)
+
+
+def test_pos_05_posicion_negativa_se_rechaza():
+    with pytest.raises(ValidationError):
+        crear(posicion=-1)
+
+
+def test_pos_06_posicion_cero_se_rechaza_en_la_modificacion():
+    with pytest.raises(ValidationError):
+        SeccionActualizar(nombre="Entradas", posicion=0)
+
+
+def test_pos_07_posicion_no_numerica_se_rechaza():
+    with pytest.raises(ValidationError):
+        crear(posicion="abc")
+
+
+@pytest.mark.parametrize("posicion", [3.5, 1.5])
+def test_pos_08_posicion_decimal_con_parte_fraccionaria_se_rechaza(posicion):
+    with pytest.raises(ValidationError):
+        crear(posicion=posicion)
+
+
+def test_pos_09_posicion_en_el_limite_inferior_es_valida():
+    assert crear(posicion=1).posicion == 1
+
+
+@pytest.mark.parametrize("posicion", ["3", 3.0])
+def test_pos_29_posicion_como_texto_o_decimal_entero_se_convierte_a_int(posicion):
+    convertida = crear(posicion=posicion).posicion
+
+    assert convertida == 3
+    assert type(convertida) is int
+
+
+def test_posicion_actualizar_valida_igual_que_crear():
+    assert SeccionActualizar(nombre="Entradas", posicion=2).posicion == 2
 
 
 # --- actualizar y respuesta ---

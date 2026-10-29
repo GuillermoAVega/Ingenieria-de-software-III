@@ -42,7 +42,7 @@ def test_sec_23_obtener_seccion_inexistente_lanza_no_encontrada(sesion):
     [
         lambda sesion: obtener_seccion(sesion, 999),
         lambda sesion: servicios.actualizar_seccion(
-            sesion, 999, SeccionActualizar(nombre="Pastas")
+            sesion, 999, SeccionActualizar(nombre="Pastas", posicion=1)
         ),
         lambda sesion: servicios.eliminar_seccion(sesion, 999),
     ],
@@ -59,7 +59,7 @@ def test_seccion_inexistente_no_deja_la_transaccion_abierta(sesion, operacion):
 
 def test_sec_19_crear_seccion_con_todos_los_campos_devuelve_id(sesion):
     seccion = servicios.crear_seccion(
-        sesion, SeccionCrear(nombre="Entradas", subtitulo="Para comenzar")
+        sesion, SeccionCrear(nombre="Entradas", subtitulo="Para comenzar", posicion=1)
     )
 
     assert seccion.id is not None
@@ -69,13 +69,13 @@ def test_sec_19_crear_seccion_con_todos_los_campos_devuelve_id(sesion):
 
 
 def test_sec_20_crear_seccion_sin_subtitulo_queda_en_none(sesion):
-    seccion = servicios.crear_seccion(sesion, SeccionCrear(nombre="Entradas"))
+    seccion = servicios.crear_seccion(sesion, SeccionCrear(nombre="Entradas", posicion=1))
 
     assert seccion.subtitulo is None
 
 
 def test_crear_seccion_persiste_el_nombre_normalizado(sesion):
-    seccion = servicios.crear_seccion(sesion, SeccionCrear(nombre="  Entrádas "))
+    seccion = servicios.crear_seccion(sesion, SeccionCrear(nombre="  Entrádas ", posicion=1))
 
     assert seccion.nombre == "Entrádas"
     assert seccion.nombre_normalizado == "entrádas"
@@ -95,16 +95,16 @@ def test_sec_11_a_13_nombre_duplicado_lanza_error_sin_fila_nueva(
     persistir(crear_seccion(nombre="Entradas"))
 
     with pytest.raises(NombreSeccionDuplicado):
-        servicios.crear_seccion(sesion, SeccionCrear(nombre=nombre))
+        servicios.crear_seccion(sesion, SeccionCrear(nombre=nombre, posicion=1))
 
     assert contar_secciones(sesion) == 1
     assert not sesion.new
 
 
 def test_sec_14_tildes_distintas_crean_otra_seccion(sesion):
-    servicios.crear_seccion(sesion, SeccionCrear(nombre="Entradas"))
+    servicios.crear_seccion(sesion, SeccionCrear(nombre="Entradas", posicion=1))
 
-    seccion = servicios.crear_seccion(sesion, SeccionCrear(nombre="Entrádas"))
+    seccion = servicios.crear_seccion(sesion, SeccionCrear(nombre="Entrádas", posicion=2))
 
     assert seccion.id is not None
     assert contar_secciones(sesion) == 2
@@ -117,7 +117,7 @@ def test_integrity_error_ajeno_a_nombre_normalizado_se_propaga(sesion, monkeypat
     monkeypatch.setattr(sesion, "commit", commit_fallido)
 
     with pytest.raises(IntegrityError):
-        servicios.crear_seccion(sesion, SeccionCrear(nombre="Entradas"))
+        servicios.crear_seccion(sesion, SeccionCrear(nombre="Entradas", posicion=1))
 
 
 # --- actualizar_seccion ---
@@ -127,7 +127,9 @@ def test_sec_25_actualizar_reemplaza_nombre_y_subtitulo(sesion, crear_seccion, p
     seccion_id = persistir(crear_seccion(nombre="Entradas", subtitulo="Para comenzar"))
 
     seccion = servicios.actualizar_seccion(
-        sesion, seccion_id, SeccionActualizar(nombre="Aperitivos", subtitulo="Para compartir")
+        sesion,
+        seccion_id,
+        SeccionActualizar(nombre="Aperitivos", subtitulo="Para compartir", posicion=1),
     )
 
     assert seccion.nombre == "Aperitivos"
@@ -139,7 +141,7 @@ def test_sec_26_subtitulo_omitido_queda_en_none(sesion, crear_seccion, persistir
     seccion_id = persistir(crear_seccion(nombre="Entradas", subtitulo="Para comenzar"))
 
     seccion = servicios.actualizar_seccion(
-        sesion, seccion_id, SeccionActualizar(nombre="Entradas")
+        sesion, seccion_id, SeccionActualizar(nombre="Entradas", posicion=1)
     )
 
     assert seccion.subtitulo is None
@@ -147,7 +149,7 @@ def test_sec_26_subtitulo_omitido_queda_en_none(sesion, crear_seccion, persistir
 
 def test_sec_27_actualizar_inexistente_lanza_no_encontrada(sesion):
     with pytest.raises(SeccionNoEncontrada):
-        servicios.actualizar_seccion(sesion, 999, SeccionActualizar(nombre="Entradas"))
+        servicios.actualizar_seccion(sesion, 999, SeccionActualizar(nombre="Entradas", posicion=1))
 
 
 def test_sec_29_no_encontrada_tiene_prioridad_sobre_duplicado(
@@ -156,7 +158,7 @@ def test_sec_29_no_encontrada_tiene_prioridad_sobre_duplicado(
     persistir(crear_seccion(nombre="Entradas"))
 
     with pytest.raises(SeccionNoEncontrada):
-        servicios.actualizar_seccion(sesion, 999, SeccionActualizar(nombre="Entradas"))
+        servicios.actualizar_seccion(sesion, 999, SeccionActualizar(nombre="Entradas", posicion=1))
 
 
 def test_sec_15_duplicado_en_modificacion_no_cambia_la_seccion(
@@ -167,7 +169,7 @@ def test_sec_15_duplicado_en_modificacion_no_cambia_la_seccion(
 
     with pytest.raises(NombreSeccionDuplicado):
         servicios.actualizar_seccion(
-            sesion, postres_id, SeccionActualizar(nombre="entradas", subtitulo="Otro")
+            sesion, postres_id, SeccionActualizar(nombre="entradas", subtitulo="Otro", posicion=1)
         )
 
     seccion = sesion.get(Seccion, postres_id)
@@ -180,7 +182,7 @@ def test_sec_16_conserva_el_propio_nombre(sesion, crear_seccion, persistir):
     seccion_id = persistir(crear_seccion(nombre="Entradas", subtitulo="Para comenzar"))
 
     seccion = servicios.actualizar_seccion(
-        sesion, seccion_id, SeccionActualizar(nombre="Entradas", subtitulo="Nuevo")
+        sesion, seccion_id, SeccionActualizar(nombre="Entradas", subtitulo="Nuevo", posicion=1)
     )
 
     assert seccion.subtitulo == "Nuevo"
@@ -192,7 +194,7 @@ def test_sec_17_cambio_solo_de_mayusculas_recalcula_el_nombre_normalizado(
     seccion_id = persistir(crear_seccion(nombre="Entradas"))
 
     seccion = servicios.actualizar_seccion(
-        sesion, seccion_id, SeccionActualizar(nombre="ENTRADAS")
+        sesion, seccion_id, SeccionActualizar(nombre="ENTRADAS", posicion=1)
     )
 
     assert seccion.nombre == "ENTRADAS"
@@ -205,7 +207,7 @@ def test_sec_44_subtitulo_de_espacios_se_persiste_como_null(
     seccion_id = persistir(crear_seccion(nombre="Entradas", subtitulo="Para comenzar"))
 
     servicios.actualizar_seccion(
-        sesion, seccion_id, SeccionActualizar(nombre="Entradas", subtitulo="   ")
+        sesion, seccion_id, SeccionActualizar(nombre="Entradas", subtitulo="   ", posicion=1)
     )
 
     sesion.expire_all()
@@ -227,7 +229,7 @@ def test_sec_30_actualizar_no_altera_el_seccion_id_de_los_productos(
     )
 
     servicios.actualizar_seccion(
-        sesion, seccion_id, SeccionActualizar(nombre="Aperitivos")
+        sesion, seccion_id, SeccionActualizar(nombre="Aperitivos", posicion=1)
     )
 
     sesion.expire_all()
@@ -263,7 +265,7 @@ def test_sec_18_el_nombre_se_reutiliza_tras_el_borrado(sesion, crear_seccion, pe
     seccion_id = persistir(crear_seccion(nombre="Entradas"))
     servicios.eliminar_seccion(sesion, seccion_id)
 
-    seccion = servicios.crear_seccion(sesion, SeccionCrear(nombre="Entradas"))
+    seccion = servicios.crear_seccion(sesion, SeccionCrear(nombre="Entradas", posicion=1))
 
     assert seccion.id is not None
 
