@@ -5,7 +5,11 @@ from sqlalchemy import event, func, select
 from sqlalchemy.exc import IntegrityError
 
 from src.productos.platos.models import Plato
-from src.secciones.exceptions import NombreSeccionDuplicado, SeccionNoEncontrada
+from src.secciones.exceptions import (
+    NombreSeccionDuplicado,
+    PosicionSeccionDuplicada,
+    SeccionNoEncontrada,
+)
 from src.secciones.models import Seccion
 from src.secciones.schemas import SeccionActualizar, SeccionCrear
 from src.secciones import services as servicios
@@ -140,6 +144,94 @@ def test_integrity_error_ajeno_a_nombre_normalizado_se_propaga(sesion, monkeypat
         servicios.crear_seccion(sesion, SeccionCrear(nombre="Entradas", posicion=1))
 
 
+# --- unicidad de la posición: alta ---
+
+
+def test_pos_11_verificar_unicidad_con_posicion_repetida_lanza_error(
+    sesion, crear_seccion, persistir
+):
+    persistir(crear_seccion(nombre="Entradas", posicion=1))
+
+    with pytest.raises(PosicionSeccionDuplicada):
+        servicios._verificar_unicidad(sesion, "postres", 1)
+
+    assert not sesion.in_transaction()
+
+
+def test_posicion_verificar_unicidad_con_excluir_id_ignora_la_propia_fila(
+    sesion, crear_seccion, persistir
+):
+    seccion_id = persistir(crear_seccion(nombre="Entradas", posicion=1))
+
+    servicios._verificar_unicidad(sesion, "entradas", 1, excluir_id=seccion_id)
+
+
+def test_posicion_verificar_unicidad_con_nombre_y_posicion_libres_no_lanza(
+    sesion, crear_seccion, persistir
+):
+    persistir(crear_seccion(nombre="Entradas", posicion=1))
+
+    servicios._verificar_unicidad(sesion, "postres", 2)
+
+
+def test_pos_11_crear_con_posicion_repetida_lanza_error_sin_fila_nueva(
+    sesion, crear_seccion, persistir
+):
+    persistir(crear_seccion(nombre="Entradas", posicion=1))
+
+    with pytest.raises(PosicionSeccionDuplicada):
+        servicios.crear_seccion(sesion, SeccionCrear(nombre="Postres", posicion=1))
+
+    assert not sesion.in_transaction()
+    assert not sesion.new
+    assert contar_secciones(sesion) == 1
+
+
+def test_pos_16_una_colision_no_desplaza_a_otras_secciones(
+    sesion, crear_seccion, persistir
+):
+    persistir(
+        crear_seccion(nombre="Entradas", posicion=1),
+        crear_seccion(nombre="Vecino", posicion=2),
+        crear_seccion(nombre="Bebidas", posicion=3),
+    )
+
+    with pytest.raises(PosicionSeccionDuplicada):
+        servicios.crear_seccion(sesion, SeccionCrear(nombre="Postres", posicion=2))
+
+    posiciones = dict(sesion.execute(select(Seccion.nombre, Seccion.posicion)).all())
+    assert posiciones == {"Entradas": 1, "Vecino": 2, "Bebidas": 3}
+
+
+def test_pos_23_doble_colision_en_el_alta_lanza_el_error_de_nombre(
+    sesion, crear_seccion, persistir
+):
+    persistir(crear_seccion(nombre="Entradas", posicion=1))
+
+    with pytest.raises(NombreSeccionDuplicado):
+        servicios.crear_seccion(sesion, SeccionCrear(nombre="Entradas", posicion=1))
+
+    assert not sesion.in_transaction()
+    assert contar_secciones(sesion) == 1
+
+
+def test_pos_17_la_posicion_se_reutiliza_tras_el_borrado(
+    sesion, crear_seccion, persistir
+):
+    seccion_id = persistir(crear_seccion(nombre="Entradas", posicion=1))
+    servicios.eliminar_seccion(sesion, seccion_id)
+
+    seccion = servicios.crear_seccion(sesion, SeccionCrear(nombre="Postres", posicion=1))
+
+    assert seccion.posicion == 1
+
+
+def test_pos_19_se_permiten_huecos_en_las_posiciones(sesion):
+    seccion = servicios.crear_seccion(sesion, SeccionCrear(nombre="Entradas", posicion=10))
+
+    assert seccion.posicion == 10
+
+
 # --- actualizar_seccion ---
 
 
@@ -256,6 +348,188 @@ def test_sec_30_actualizar_no_altera_el_seccion_id_de_los_productos(
     assert sesion.get(Plato, plato_id).seccion_id == seccion_id
 
 
+# --- unicidad de la posición: modificación ---
+
+
+def posiciones_por_nombre(sesion) -> dict[str, int]:
+    sesion.expire_all()
+    return dict(sesion.execute(select(Seccion.nombre, Seccion.posicion)).all())
+
+
+def test_pos_13_posicion_repetida_en_la_modificacion_no_cambia_ninguna_seccion(
+    sesion, crear_seccion, persistir
+):
+    persistir(crear_seccion(nombre="Entradas", posicion=1))
+    postres_id = persistir(crear_seccion(nombre="Postres", posicion=2))
+
+    with pytest.raises(PosicionSeccionDuplicada):
+        servicios.actualizar_seccion(
+            sesion, postres_id, SeccionActualizar(nombre="Postres", posicion=1)
+        )
+
+    assert not sesion.in_transaction()
+    assert posiciones_por_nombre(sesion) == {"Entradas": 1, "Postres": 2}
+
+
+def test_pos_14_la_modificacion_conserva_la_propia_posicion(
+    sesion, crear_seccion, persistir
+):
+    seccion_id = persistir(crear_seccion(nombre="Entradas", posicion=3))
+
+    seccion = servicios.actualizar_seccion(
+        sesion,
+        seccion_id,
+        SeccionActualizar(nombre="Entradas", subtitulo="Nuevo", posicion=3),
+    )
+
+    assert seccion.subtitulo == "Nuevo"
+    assert seccion.posicion == 3
+
+
+def test_pos_15_mover_una_seccion_a_una_posicion_libre(
+    sesion, crear_seccion, persistir
+):
+    seccion_id = persistir(crear_seccion(nombre="Entradas", posicion=1))
+
+    seccion = servicios.actualizar_seccion(
+        sesion, seccion_id, SeccionActualizar(nombre="Entradas", posicion=5)
+    )
+
+    assert seccion.posicion == 5
+
+
+def test_pos_26_doble_colision_en_la_modificacion_lanza_el_error_de_nombre(
+    sesion, crear_seccion, persistir
+):
+    persistir(crear_seccion(nombre="Entradas", posicion=1))
+    postres_id = persistir(crear_seccion(nombre="Postres", posicion=2))
+
+    with pytest.raises(NombreSeccionDuplicado):
+        servicios.actualizar_seccion(
+            sesion, postres_id, SeccionActualizar(nombre="entradas", posicion=1)
+        )
+
+    assert not sesion.in_transaction()
+    assert posiciones_por_nombre(sesion) == {"Entradas": 1, "Postres": 2}
+
+
+def test_pos_27_no_encontrada_tiene_prioridad_sobre_posicion_duplicada(
+    sesion, crear_seccion, persistir
+):
+    # Guarda del orden 404 -> 409: nace verde porque `obtener_seccion` ya precede al resto.
+    persistir(crear_seccion(nombre="Entradas", posicion=1))
+
+    with pytest.raises(SeccionNoEncontrada):
+        servicios.actualizar_seccion(
+            sesion, 999, SeccionActualizar(nombre="Postres", posicion=1)
+        )
+
+    assert not sesion.in_transaction()
+
+
+def test_pos_21_el_intercambio_directo_es_rechazado(sesion, crear_seccion, persistir):
+    a_id = persistir(crear_seccion(nombre="A", posicion=1))
+    persistir(crear_seccion(nombre="B", posicion=2))
+
+    with pytest.raises(PosicionSeccionDuplicada):
+        servicios.actualizar_seccion(
+            sesion, a_id, SeccionActualizar(nombre="A", posicion=2)
+        )
+
+    assert not sesion.in_transaction()
+    assert posiciones_por_nombre(sesion) == {"A": 1, "B": 2}
+
+
+def test_pos_20_intercambio_de_dos_secciones_en_tres_modificaciones(
+    sesion, crear_seccion, persistir
+):
+    a_id = persistir(crear_seccion(nombre="A", posicion=1))
+    b_id = persistir(crear_seccion(nombre="B", posicion=2))
+
+    servicios.actualizar_seccion(sesion, a_id, SeccionActualizar(nombre="A", posicion=99))
+    servicios.actualizar_seccion(sesion, b_id, SeccionActualizar(nombre="B", posicion=1))
+    servicios.actualizar_seccion(sesion, a_id, SeccionActualizar(nombre="A", posicion=2))
+
+    assert posiciones_por_nombre(sesion) == {"A": 2, "B": 1}
+
+
+# --- _confirmar: traducción del IntegrityError (ruta de carrera) ---
+
+
+@pytest.fixture
+def sin_verificacion_previa(monkeypatch):
+    """Anula `_verificar_unicidad` para que la colisión llegue al índice único."""
+    monkeypatch.setattr(servicios, "_verificar_unicidad", lambda *args, **kwargs: None)
+
+
+def test_pos_11_colision_solo_de_posicion_en_el_alta_se_traduce_desde_el_indice(
+    sesion, crear_seccion, persistir, sin_verificacion_previa
+):
+    persistir(crear_seccion(nombre="Entradas", posicion=1))
+
+    with pytest.raises(PosicionSeccionDuplicada):
+        servicios.crear_seccion(sesion, SeccionCrear(nombre="Postres", posicion=1))
+
+    assert not sesion.in_transaction()
+    assert posiciones_por_nombre(sesion) == {"Entradas": 1}
+
+
+def test_pos_11_colision_solo_de_posicion_en_el_put_se_traduce_desde_el_indice(
+    sesion, crear_seccion, persistir, sin_verificacion_previa
+):
+    persistir(crear_seccion(nombre="Entradas", posicion=1))
+    postres_id = persistir(crear_seccion(nombre="Postres", posicion=2))
+
+    with pytest.raises(PosicionSeccionDuplicada):
+        servicios.actualizar_seccion(
+            sesion, postres_id, SeccionActualizar(nombre="Postres", posicion=1)
+        )
+
+    assert not sesion.in_transaction()
+    assert posiciones_por_nombre(sesion) == {"Entradas": 1, "Postres": 2}
+
+
+# Nota: SQLite informa una sola restricción ante una doble colisión real, por lo que la
+# prioridad `nombre` → `posicion` de POS-23 y POS-26 la garantiza `_verificar_unicidad`
+# (probada arriba); aquí se prueba la inspección del mensaje cuando menciona ambas.
+
+
+@pytest.mark.parametrize(
+    "mensaje",
+    [
+        "UNIQUE constraint failed: seccion.posicion, seccion.nombre_normalizado",
+        "UNIQUE constraint failed: seccion.nombre_normalizado, seccion.posicion",
+    ],
+    ids=["posicion_primero", "nombre_primero"],
+)
+def test_pos_23_pos_26_nombre_normalizado_se_inspecciona_antes_que_posicion(
+    sesion, monkeypatch, mensaje
+):
+    def commit_fallido():
+        raise IntegrityError("INSERT", {}, Exception(mensaje))
+
+    monkeypatch.setattr(sesion, "commit", commit_fallido)
+
+    with pytest.raises(NombreSeccionDuplicado):
+        servicios.crear_seccion(sesion, SeccionCrear(nombre="Entradas", posicion=1))
+
+    assert not sesion.in_transaction()
+
+
+def test_integrity_error_ajeno_deja_la_transaccion_cerrada_y_se_propaga(
+    sesion, monkeypatch
+):
+    def commit_fallido():
+        raise IntegrityError("INSERT", {}, Exception("otra restricción violada"))
+
+    monkeypatch.setattr(sesion, "commit", commit_fallido)
+
+    with pytest.raises(IntegrityError):
+        servicios.crear_seccion(sesion, SeccionCrear(nombre="Entradas", posicion=1))
+
+    assert not sesion.in_transaction()
+
+
 # --- eliminar_seccion ---
 
 
@@ -320,3 +594,29 @@ def test_eliminar_no_carga_los_productos_de_la_seccion(
     assert not any(
         sql.startswith("SELECT") and "FROM PRODUCTO" in sql for sql in sentencias
     )
+
+
+# --- liberación de posiciones tras el borrado (caracterización) ---
+
+
+def test_pos_18_el_borrado_no_renumera_las_demas_secciones(
+    sesion, crear_seccion, persistir
+):
+    persistir(crear_seccion(nombre="Entradas", posicion=1))
+    postres_id = persistir(crear_seccion(nombre="Postres", posicion=2))
+    persistir(crear_seccion(nombre="Bebidas", posicion=3))
+
+    servicios.eliminar_seccion(sesion, postres_id)
+
+    assert posiciones_por_nombre(sesion) == {"Entradas": 1, "Bebidas": 3}
+
+
+def test_pos_17_crear_en_la_posicion_liberada_por_el_borrado(
+    sesion, crear_seccion, persistir
+):
+    entradas_id = persistir(crear_seccion(nombre="Entradas", posicion=1))
+    servicios.eliminar_seccion(sesion, entradas_id)
+
+    servicios.crear_seccion(sesion, SeccionCrear(nombre="Postres", posicion=1))
+
+    assert posiciones_por_nombre(sesion) == {"Postres": 1}

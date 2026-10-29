@@ -17,3 +17,7 @@ class SeccionNoEncontrada(ErrorSeccion):
 
 class NombreSeccionDuplicado(ErrorSeccion):
     MENSAJE = "Ya existe una sección con ese nombre"
+
+
+class PosicionSeccionDuplicada(ErrorSeccion):
+    MENSAJE = "Ya existe una sección en esa posición"

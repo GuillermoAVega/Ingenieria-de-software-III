@@ -7,6 +7,7 @@ from src.secciones import exceptions as excepciones
 from src.secciones.exceptions import (
     ErrorSeccion,
     NombreSeccionDuplicado,
+    PosicionSeccionDuplicada,
     SeccionNoEncontrada,
 )
 
@@ -22,6 +23,19 @@ def test_jerarquia_disjunta_de_los_errores_de_productos():
         assert not issubclass(clase, ErrorDominio)
     assert not issubclass(ErrorDominio, ErrorSeccion)
     assert excepciones_productos.ErrorDominio is ErrorDominio
+
+
+def test_pos_11_posicion_duplicada_es_un_error_de_seccion_disjunto():
+    assert issubclass(PosicionSeccionDuplicada, ErrorSeccion)
+    assert not issubclass(PosicionSeccionDuplicada, ErrorDominio)
+    assert not issubclass(PosicionSeccionDuplicada, NombreSeccionDuplicado)
+    assert not issubclass(NombreSeccionDuplicado, PosicionSeccionDuplicada)
+
+
+def test_pos_11_posicion_duplicada_tiene_el_mensaje_estandar():
+    assert PosicionSeccionDuplicada.MENSAJE == "Ya existe una sección en esa posición"
+    assert PosicionSeccionDuplicada().mensaje == PosicionSeccionDuplicada.MENSAJE
+    assert str(PosicionSeccionDuplicada()) == "Ya existe una sección en esa posición"
 
 
 def test_error_de_seccion_guarda_el_mensaje():

@@ -94,27 +94,27 @@ Chain strategy: pending
 
 ## Fase 4: Servicios
 
-- [ ] **4.1 Excepción `PosicionSeccionDuplicada`** — Archivos: `Backend/src/secciones/exceptions.py`, `Backend/tests/secciones/test_excepciones.py`. Depende de 3.2.
+- [x] **4.1 Excepción `PosicionSeccionDuplicada`** — Archivos: `Backend/src/secciones/exceptions.py`, `Backend/tests/secciones/test_excepciones.py`. Depende de 3.2.
   - RED (E): `PosicionSeccionDuplicada` hereda de `ErrorSeccion`, es disjunta de `productos.ErrorDominio` y de `NombreSeccionDuplicado`, `MENSAJE == "Ya existe una sección en esa posición"` y `str(excepcion)` lo devuelve; el módulo no importa FastAPI ni `src.productos`.
   - GREEN: agregar la clase.
   - Escenarios: soporte de POS-11.
 
-- [ ] **4.2 `_verificar_unicidad` en el alta** — Archivos: `Backend/src/secciones/services.py`, `Backend/tests/secciones/test_servicios.py`. Depende de 4.1.
+- [x] **4.2 `_verificar_unicidad` en el alta** — Archivos: `Backend/src/secciones/services.py`, `Backend/tests/secciones/test_servicios.py`. Depende de 4.1.
   - RED (S): `_verificar_unicidad(sesion, nombre_normalizado, posicion)` con `posicion` repetida lanza `PosicionSeccionDuplicada` (POS-11 alta); con `excluir_id` ignora la propia fila; con nombre y posición libres no lanza; `crear_seccion` con posición repetida → `PosicionSeccionDuplicada` sin fila nueva, y `sesion.in_transaction()` es falso tras el error (rollback); "Postres" en `posicion = 2` con "Entradas", "Postres"-vecino y "Bebidas" en 1, 2 y 3 → 409 y las tres conservan 1, 2 y 3 (POS-16); doble colisión (`nombre` y `posicion`) → `NombreSeccionDuplicado`, no `PosicionSeccionDuplicada` (POS-23); reutilizar una posición tras borrar la sección → crea (POS-17, nivel servicio); hueco `posicion = 10` → crea (POS-19, nivel servicio).
   - GREEN: `_verificar_unicidad` con el bucle ordenado `nombre → posicion` del diseño (rollback antes de lanzar); `crear_seccion`: verificar → `add` → `_confirmar`.
   - Escenarios (S): POS-11, POS-16, POS-17, POS-19, POS-23.
 
-- [ ] **4.3 `actualizar_seccion` con verificación previa** — Archivos: `Backend/src/secciones/services.py`, `Backend/tests/secciones/test_servicios.py`. Depende de 4.2.
+- [x] **4.3 `actualizar_seccion` con verificación previa** — Archivos: `Backend/src/secciones/services.py`, `Backend/tests/secciones/test_servicios.py`. Depende de 4.2.
   - RED (S): posición repetida en el PUT → `PosicionSeccionDuplicada` y ambas secciones conservan `nombre` y `posicion` (POS-13); conservar la propia `posicion` actualiza el `subtitulo` sin conflicto (POS-14); mover a una posición libre (POS-15); doble colisión (`nombre = "entradas"` y `posicion = 1` sobre "Postres" en 2) → `NombreSeccionDuplicado` y "Postres" conserva nombre y posición (POS-26); id inexistente con posición ocupada → `SeccionNoEncontrada` (POS-27, guarda del orden: nace verde); PUT directo de A a la posición de B → `PosicionSeccionDuplicada` sin cambios (POS-21); intercambio en tres PUT (A a 99, B a 1, A a 2) termina con A en 2 y B en 1 (POS-20); sin transacción abierta tras cada error.
   - GREEN: `actualizar_seccion`: `obtener` → `_verificar_unicidad(..., excluir_id=seccion_id)` → asignar `nombre`, `nombre_normalizado`, `subtitulo`, `posicion` → `_confirmar`. La verificación precede a la asignación (la sesión usa `autoflush=False`).
   - Escenarios (S): POS-13, 14, 15, 20, 21, 26, 27.
 
-- [ ] **4.4 `_confirmar`: traducción del `IntegrityError` y prioridad determinista** — Archivos: `Backend/src/secciones/services.py`, `Backend/tests/secciones/test_servicios.py`. Depende de 4.3.
+- [x] **4.4 `_confirmar`: traducción del `IntegrityError` y prioridad determinista** — Archivos: `Backend/src/secciones/services.py`, `Backend/tests/secciones/test_servicios.py`. Depende de 4.3.
   - RED (S, con `monkeypatch` anulando `_verificar_unicidad`): una colisión solo de `posicion` llega al índice y se traduce a `PosicionSeccionDuplicada` en alta (POS-11) y en PUT; una doble colisión de `nombre` y `posicion` se traduce siempre a `NombreSeccionDuplicado` (POS-23, POS-26), porque `nombre_normalizado` se inspecciona antes que `seccion.posicion` aunque SQLite informe una sola restricción; un `IntegrityError` ajeno se propaga sin traducir; todo error deja `sesion.in_transaction()` en falso.
   - GREEN: en `_confirmar`, tras `rollback`, inspeccionar `str(error.orig)` en orden: `nombre_normalizado` → `NombreSeccionDuplicado`; `seccion.posicion` → `PosicionSeccionDuplicada`; otro → propagar.
   - Escenarios (S): POS-11, POS-23, POS-26 (ruta de carrera).
 
-- [ ] **4.5 Liberación de posiciones tras el borrado (caracterización)** — Archivos: `Backend/tests/secciones/test_servicios.py`. Depende de 4.4.
+- [x] **4.5 Liberación de posiciones tras el borrado (caracterización)** — Archivos: `Backend/tests/secciones/test_servicios.py`. Depende de 4.4.
   - RED (caracterización, nace verde): borrar "Postres" (posición 2) deja "Entradas" en 1 y "Bebidas" en 3 sin renumerar (POS-18); tras borrar "Entradas" (posición 1), crear "Postres" en 1 → crea (POS-17).
   - GREEN: sin código esperado (`eliminar_seccion` no cambia). Si alguna prueba falla, corregir el servicio.
   - Escenarios (S): POS-17, POS-18.
