@@ -34,3 +34,4 @@ class SeccionRespuesta(BaseModel):
     id: int
     nombre: str
     subtitulo: str | None
+    posicion: int

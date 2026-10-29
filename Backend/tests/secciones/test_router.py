@@ -42,6 +42,7 @@ def test_sec_02_la_respuesta_no_incluye_productos_ni_estado_de_baja(cliente):
         "id": seccion["id"],
         "nombre": "Entradas",
         "subtitulo": "Para comenzar",
+        "posicion": seccion["posicion"],
     }
 
 
@@ -199,6 +200,7 @@ def test_sec_25_modificar_una_seccion(cliente):
         "id": creada["id"],
         "nombre": "Aperitivos",
         "subtitulo": "Para compartir",
+        "posicion": 1,
     }
     assert cliente.get(f"{RUTA}/{creada['id']}").json() == respuesta.json()
 
@@ -337,7 +339,7 @@ def test_pos_10_una_modificacion_rechazada_por_validacion_no_cambia_la_seccion(c
     conservada = cliente.get(f"{RUTA}/{creada['id']}").json()
     assert conservada["nombre"] == "Entradas"
     assert conservada["subtitulo"] == "Para comenzar"
-    # Pendiente (tarea 3.2): afirmar posicion == 1, que la respuesta aún no expone
+    assert conservada["posicion"] == 1
 
 
 def test_sec_31_borrar_una_seccion_responde_204_sin_cuerpo(cliente):
@@ -492,3 +494,89 @@ def test_sec_38_borrar_la_seccion_desvincula_un_postre_dado_de_baja(
     assert respuesta.status_code == 200
     assert respuesta.json()["seccion_id"] is None
     assert respuesta.json()["dado_de_baja"] is True
+
+
+# --- posicion en la respuesta ---
+
+
+def test_pos_01_la_consulta_incluye_la_posicion(cliente):
+    creada = _crear(cliente, subtitulo="Para comenzar", posicion=4).json()
+
+    respuesta = cliente.get(f"{RUTA}/{creada['id']}")
+
+    assert respuesta.status_code == 200
+    assert respuesta.json() == {
+        "id": creada["id"],
+        "nombre": "Entradas",
+        "subtitulo": "Para comenzar",
+        "posicion": 4,
+    }
+
+
+def test_pos_09_posicion_en_el_limite_inferior_responde_201(cliente):
+    respuesta = _crear(cliente, posicion=1)
+
+    assert respuesta.status_code == 201
+    assert respuesta.json()["posicion"] == 1
+
+
+@pytest.mark.parametrize("posicion", ["3", 3.0])
+def test_pos_29_posicion_como_texto_o_decimal_entero_se_devuelve_como_entero(
+    cliente, posicion
+):
+    respuesta = _crear(cliente, posicion=posicion)
+
+    assert respuesta.status_code == 201
+    assert respuesta.json()["posicion"] == 3
+    assert isinstance(respuesta.json()["posicion"], int)
+    assert cliente.delete(f"{RUTA}/{respuesta.json()['id']}").status_code == 204
+
+
+def test_pos_22_el_alta_devuelve_la_posicion_informada(cliente):
+    respuesta = _crear(cliente, posicion=2)
+
+    assert respuesta.status_code == 201
+    assert respuesta.json()["posicion"] == 2
+
+
+def test_pos_19_se_permiten_huecos_en_las_posiciones(cliente):
+    respuesta = _crear(cliente, posicion=10)
+
+    assert respuesta.status_code == 201
+    assert respuesta.json()["posicion"] == 10
+
+
+def test_pos_14_la_modificacion_conserva_la_propia_posicion(cliente):
+    creada = _crear(cliente, subtitulo="Para comenzar", posicion=3).json()
+
+    respuesta = cliente.put(
+        f"{RUTA}/{creada['id']}",
+        json={"nombre": "Entradas", "subtitulo": "Nuevo", "posicion": 3},
+    )
+
+    assert respuesta.status_code == 200
+    assert respuesta.json()["subtitulo"] == "Nuevo"
+    assert respuesta.json()["posicion"] == 3
+
+
+def test_pos_15_mover_una_seccion_a_una_posicion_libre(cliente):
+    creada = _crear(cliente, posicion=1).json()
+
+    respuesta = cliente.put(
+        f"{RUTA}/{creada['id']}", json={"nombre": "Entradas", "posicion": 5}
+    )
+
+    assert respuesta.status_code == 200
+    assert respuesta.json()["posicion"] == 5
+
+
+def test_pos_25_la_modificacion_devuelve_la_nueva_posicion(cliente):
+    creada = _crear(cliente, posicion=1).json()
+
+    respuesta = cliente.put(
+        f"{RUTA}/{creada['id']}", json={"nombre": "Entradas", "posicion": 7}
+    )
+
+    assert respuesta.status_code == 200
+    assert respuesta.json()["posicion"] == 7
+    assert cliente.get(f"{RUTA}/{creada['id']}").json()["posicion"] == 7

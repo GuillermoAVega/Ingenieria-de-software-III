@@ -40,6 +40,7 @@ def crear_seccion(sesion: Session, datos: SeccionCrear) -> Seccion:
         nombre=datos.nombre,
         nombre_normalizado=normalizar_nombre(datos.nombre),
         subtitulo=datos.subtitulo,
+        posicion=datos.posicion,
     )
     sesion.add(seccion)
     _confirmar(sesion)
@@ -54,6 +55,7 @@ def actualizar_seccion(
     seccion.nombre = datos.nombre
     seccion.nombre_normalizado = normalizar_nombre(datos.nombre)
     seccion.subtitulo = datos.subtitulo
+    seccion.posicion = datos.posicion
     _confirmar(sesion)
     return seccion
 

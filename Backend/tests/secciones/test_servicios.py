@@ -16,6 +16,26 @@ def contar_secciones(sesion) -> int:
     return sesion.scalar(select(func.count()).select_from(Seccion))
 
 
+def test_posicion_crear_seccion_persiste_la_posicion_informada(sesion):
+    creada = servicios.crear_seccion(
+        sesion, SeccionCrear(nombre="Entradas", posicion=4)
+    )
+
+    assert sesion.get(Seccion, creada.id).posicion == 4
+
+
+def test_posicion_actualizar_seccion_persiste_la_nueva_posicion(
+    sesion, crear_seccion, persistir
+):
+    seccion_id = persistir(crear_seccion(nombre="Entradas", posicion=1))
+
+    servicios.actualizar_seccion(
+        sesion, seccion_id, SeccionActualizar(nombre="Entradas", posicion=5)
+    )
+
+    assert sesion.get(Seccion, seccion_id).posicion == 5
+
+
 # --- obtener_seccion ---
 
 

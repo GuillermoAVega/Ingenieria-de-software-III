@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 import pytest
-from sqlalchemy import inspect
+from sqlalchemy import Integer, inspect
 from sqlalchemy.exc import IntegrityError
 
 from src.productos.registro import Plato, Seccion
@@ -13,20 +13,22 @@ def test_create_all_crea_la_tabla_seccion_con_las_columnas_del_diseno(motor):
     assert "seccion" in inspector.get_table_names()
 
     columnas = {c["name"]: c for c in inspector.get_columns("seccion")}
-    assert set(columnas) == {"id", "nombre", "nombre_normalizado", "subtitulo"}
+    assert set(columnas) == {"id", "nombre", "nombre_normalizado", "subtitulo", "posicion"}
     assert columnas["nombre"]["nullable"] is False
     assert columnas["nombre_normalizado"]["nullable"] is False
     assert columnas["subtitulo"]["nullable"] is True
+    assert columnas["posicion"]["nullable"] is False
+    assert isinstance(columnas["posicion"]["type"], Integer)
     assert columnas["nombre"]["type"].length == NOMBRE_MAX
     assert columnas["nombre_normalizado"]["type"].length == NOMBRE_MAX
     assert columnas["subtitulo"]["type"].length == SUBTITULO_MAX
 
 
 def test_indice_unico_rechaza_dos_secciones_con_el_mismo_nombre_normalizado(sesion):
-    sesion.add(Seccion(nombre="Entradas", nombre_normalizado="entradas"))
+    sesion.add(Seccion(nombre="Entradas", nombre_normalizado="entradas", posicion=1))
     sesion.commit()
 
-    sesion.add(Seccion(nombre="ENTRADAS", nombre_normalizado="entradas"))
+    sesion.add(Seccion(nombre="ENTRADAS", nombre_normalizado="entradas", posicion=2))
     with pytest.raises(IntegrityError):
         sesion.commit()
 
@@ -35,6 +37,22 @@ def test_indice_ux_seccion_nombre_normalizado_es_unico(motor):
     indices = {i["name"]: i for i in inspect(motor).get_indexes("seccion")}
     assert indices["ux_seccion_nombre_normalizado"]["unique"]
     assert indices["ux_seccion_nombre_normalizado"]["column_names"] == ["nombre_normalizado"]
+
+
+def test_pos_11_indice_unico_rechaza_posicion_repetida(sesion):
+    sesion.add(Seccion(nombre="Entradas", nombre_normalizado="entradas", posicion=1))
+    sesion.commit()
+
+    sesion.add(Seccion(nombre="Postres", nombre_normalizado="postres", posicion=1))
+    with pytest.raises(IntegrityError) as error:
+        sesion.commit()
+    assert "seccion.posicion" in str(error.value.orig)
+
+
+def test_indice_ux_seccion_posicion_es_unico(motor):
+    indices = {i["name"]: i for i in inspect(motor).get_indexes("seccion")}
+    assert indices["ux_seccion_posicion"]["unique"]
+    assert indices["ux_seccion_posicion"]["column_names"] == ["posicion"]
 
 
 def test_producto_tiene_seccion_id_anulable_con_fk_set_null(motor):
@@ -62,7 +80,7 @@ def _plato():
 
 
 def test_relacion_bidireccional_asignando_desde_el_producto(sesion):
-    seccion = Seccion(nombre="Entradas", nombre_normalizado="entradas")
+    seccion = Seccion(nombre="Entradas", nombre_normalizado="entradas", posicion=1)
     plato = _plato()
     plato.seccion = seccion
     sesion.add_all([seccion, plato])
@@ -73,7 +91,7 @@ def test_relacion_bidireccional_asignando_desde_el_producto(sesion):
 
 
 def test_relacion_bidireccional_asignando_desde_la_seccion(sesion):
-    seccion = Seccion(nombre="Entradas", nombre_normalizado="entradas")
+    seccion = Seccion(nombre="Entradas", nombre_normalizado="entradas", posicion=1)
     plato = _plato()
     seccion.productos.append(plato)
     sesion.add(seccion)

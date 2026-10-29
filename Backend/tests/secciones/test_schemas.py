@@ -146,11 +146,16 @@ def test_actualizar_equivale_a_crear():
     assert SeccionActualizar is SeccionCrear
 
 
-def test_sec_02_respuesta_solo_expone_id_nombre_y_subtitulo():
-    assert set(SeccionRespuesta.model_fields) == {"id", "nombre", "subtitulo"}
+def test_sec_02_respuesta_solo_expone_id_nombre_subtitulo_y_posicion():
+    assert set(SeccionRespuesta.model_fields) == {"id", "nombre", "subtitulo", "posicion"}
 
 
 def test_respuesta_se_construye_desde_atributos():
-    origen = SimpleNamespace(id=3, nombre="Entradas", subtitulo=None, productos=[])
+    origen = SimpleNamespace(id=3, nombre="Entradas", subtitulo=None, posicion=2, productos=[])
     respuesta = SeccionRespuesta.model_validate(origen)
-    assert respuesta.model_dump() == {"id": 3, "nombre": "Entradas", "subtitulo": None}
+    assert respuesta.model_dump() == {
+        "id": 3,
+        "nombre": "Entradas",
+        "subtitulo": None,
+        "posicion": 2,
+    }

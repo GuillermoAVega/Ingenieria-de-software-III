@@ -1,3 +1,4 @@
+import itertools
 import os
 from datetime import date
 
@@ -86,11 +87,15 @@ def persistir(sesion):
 
 @pytest.fixture
 def crear_seccion():
-    def _crear(nombre="Entradas", subtitulo=None):
+    # Autoasignadas desde 1001 para no chocar con las posiciones explícitas de las pruebas
+    posiciones = itertools.count(1001)
+
+    def _crear(nombre="Entradas", subtitulo=None, posicion=None):
         return Seccion(
             nombre=nombre,
             nombre_normalizado=nombre.strip().casefold(),
             subtitulo=subtitulo,
+            posicion=next(posiciones) if posicion is None else posicion,
         )
 
     return _crear
