@@ -15,7 +15,7 @@ import { DEMO_RESERVATIONS } from '../reservations/demo'
 
 const formatCurrency = (value: number) => `$ ${value.toLocaleString('es-AR')}`
 
-const upcomingReservations = DEMO_RESERVATIONS.filter((reservation) => reservation.status === 'confirmada')
+const upcomingReservations = DEMO_RESERVATIONS.filter((reservation) => reservation.status === 'pendiente')
 
 const orderColumns: DataTableColumn<Order>[] = [
   {
@@ -133,7 +133,7 @@ export function DashboardPage() {
                       {reservation.guests} comensales · {reservation.table}
                     </div>
                   </div>
-                  <Badge tone="success">Confirmada</Badge>
+                  <Badge>Pendiente</Badge>
                 </div>
               ))}
             </div>

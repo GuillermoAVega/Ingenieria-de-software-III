@@ -19,7 +19,7 @@ export const DEMO_RESERVATIONS: Reservation[] = [
     phone: '280 455-0187',
     guests: 2,
     table: 'Mesa 10',
-    status: 'con-comanda',
+    status: 'con_comanda',
   },
   {
     id: 'res-3',
@@ -29,7 +29,7 @@ export const DEMO_RESERVATIONS: Reservation[] = [
     phone: '280 455-0233',
     guests: 5,
     table: 'Mesa 3',
-    status: 'con-comanda',
+    status: 'con_comanda',
   },
   {
     id: 'res-4',
@@ -39,7 +39,7 @@ export const DEMO_RESERVATIONS: Reservation[] = [
     phone: '280 455-0142',
     guests: 4,
     table: 'Mesa 4',
-    status: 'confirmada',
+    status: 'pendiente',
   },
   {
     id: 'res-5',
@@ -49,7 +49,7 @@ export const DEMO_RESERVATIONS: Reservation[] = [
     phone: '280 455-0376',
     guests: 2,
     table: 'Mesa 9',
-    status: 'confirmada',
+    status: 'pendiente',
   },
   {
     id: 'res-6',
@@ -59,7 +59,7 @@ export const DEMO_RESERVATIONS: Reservation[] = [
     phone: '280 455-0420',
     guests: 6,
     table: 'Mesa 8',
-    status: 'confirmada',
+    status: 'pendiente',
   },
   {
     id: 'res-7',
@@ -69,7 +69,7 @@ export const DEMO_RESERVATIONS: Reservation[] = [
     phone: '280 455-0518',
     guests: 3,
     table: 'Mesa 6',
-    status: 'confirmada',
+    status: 'pendiente',
   },
   {
     id: 'res-8',

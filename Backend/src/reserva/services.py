@@ -70,9 +70,9 @@ def cancelar_reserva(db: Session, reserva_id: int) -> None:
     if reserva_db is None:
         raise exceptions.RecursoNoEncontrado("La reserva no existe")
 
-    if reserva_db.estado == EstadoReserva.CANCELADA:
+    if reserva_db.estado != EstadoReserva.PENDIENTE:
         raise exceptions.EstadoReservaInvalido(
-            "La reserva ya está cancelada"
+            "Solo se pueden cancelar reservas pendientes"
         )
 
     validar_fecha_hora_modificable(reserva_db)
@@ -113,12 +113,11 @@ def obtener_reserva_modificable(
     reserva_id: int,
 ) -> models.Reserva:
     reserva_db = obtener_reserva(db, reserva_id)
-    if reserva_db.estado == EstadoReserva.CANCELADA:
+    if reserva_db.estado != EstadoReserva.PENDIENTE:
         raise exceptions.EstadoReservaInvalido(
-            "No se puede modificar una reserva cancelada"
+            "Solo se pueden modificar reservas pendientes"
         )
 
-    validar_fecha_hora_modificable(reserva_db)
     return reserva_db
 
 
@@ -126,7 +125,7 @@ def validar_fecha_hora_modificable(reserva: models.Reserva) -> None:
     fecha_hora_reserva = datetime.combine(reserva.fecha, reserva.hora)
     if fecha_hora_reserva <= datetime.now():
         raise exceptions.EstadoReservaInvalido(
-            "No se puede modificar una reserva después de su fecha y hora"
+            "No se puede cancelar una reserva después de su fecha y hora"
         )
 
 

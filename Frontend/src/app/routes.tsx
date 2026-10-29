@@ -6,6 +6,7 @@ import { OrderDetailPage } from '../features/orders/OrderDetailPage'
 import { OrderFormPage } from '../features/orders/OrderFormPage'
 import { ReservationsListPage } from '../features/reservations/ReservationsListPage'
 import { ReservationFormPage } from '../features/reservations/ReservationFormPage'
+import { ReservationDetailPage } from '../features/reservations/ReservationDetailPage'
 import { BillingListPage } from '../features/billing/BillingListPage'
 import { ProductsListPage } from '../features/products/ProductsListPage'
 import { ProductFormPage } from '../features/products/ProductFormPage'
@@ -81,6 +82,10 @@ export const routes: RouteDefinition[] = [
   {
     path: '/reservas/nueva',
     render: () => <ReservationFormPage />,
+  },
+  {
+    path: '/reservas/:id',
+    render: (params) => <ReservationDetailPage id={params.id} />,
   },
   {
     path: '/reservas/:id/editar',
