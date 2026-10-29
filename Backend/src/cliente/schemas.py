@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr, field_validator
 import re
+import unicodedata
 
 
 class ClienteBase(BaseModel):
@@ -10,8 +11,9 @@ class ClienteBase(BaseModel):
 
     @field_validator("nombre", "apellido")
     @classmethod
-    def validar_nombre_apellido(cls, valor):
-        if not valor.isalpha():
+    def validar_nombre_apellido(cls, valor: str) -> str:
+        valor = unicodedata.normalize("NFC", valor).strip()
+        if not valor or not all(palabra.isalpha() for palabra in valor.split()):
             raise ValueError("Nombre y apellido solo deben contener letras")
         return valor
 
