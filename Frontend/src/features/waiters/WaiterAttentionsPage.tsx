@@ -81,6 +81,14 @@ export function WaiterAttentionsPage({ id }: { id: string }) {
         .sort((left, right) => left.fecha_desde.localeCompare(right.fecha_desde)),
     [attentions, sectorsById],
   )
+  const assignedSectorIds = useMemo(
+    () => new Set(activeAttentions.map((attention) => attention.sector_id)),
+    [activeAttentions],
+  )
+  const availableSectors = useMemo(
+    () => activeSectors.filter((sector) => !assignedSectorIds.has(sector.id)),
+    [activeSectors, assignedSectorIds],
+  )
   const historyAttentions = useMemo(
     () =>
       attentions
@@ -181,6 +189,11 @@ export function WaiterAttentionsPage({ id }: { id: string }) {
             {waiter.estado && activeSectors.length === 0 && (
               <Alert tone="warning">No hay sectores activos para asignar.</Alert>
             )}
+            {waiter.estado && activeSectors.length > 0 && availableSectors.length === 0 && (
+              <Alert tone="warning">
+                El mozo ya tiene una atención activa en todos los sectores disponibles.
+              </Alert>
+            )}
             <form onSubmit={handleCreate}>
               <div className="form-grid">
                 <Field label="Sector" required>
@@ -188,10 +201,10 @@ export function WaiterAttentionsPage({ id }: { id: string }) {
                     value={sectorId}
                     onChange={(event) => setSectorId(event.target.value)}
                     required
-                    disabled={!waiter.estado || activeSectors.length === 0}
+                    disabled={!waiter.estado || availableSectors.length === 0}
                   >
                     <option value="">Seleccionar sector...</option>
-                    {activeSectors.map((sector) => (
+                    {availableSectors.map((sector) => (
                       <option key={sector.id} value={sector.id}>{sector.nombre}</option>
                     ))}
                   </Select>
@@ -211,7 +224,7 @@ export function WaiterAttentionsPage({ id }: { id: string }) {
                 <Button
                   type="submit"
                   variant="primary"
-                  disabled={!waiter.estado || activeSectors.length === 0 || !sectorId || saving}
+                  disabled={!waiter.estado || availableSectors.length === 0 || !sectorId || saving}
                 >
                   {saving ? 'Guardando...' : 'Agregar atención'}
                 </Button>

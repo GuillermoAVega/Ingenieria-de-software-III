@@ -18,8 +18,27 @@ def _validar_mozo_sector(db: Session, mozo_id: int, sector_id: int) -> None:
         raise exceptions.SectorInvalido()
 
 
+def _validar_sector_no_asignado(
+    db: Session,
+    mozo_id: int,
+    sector_id: int,
+    excluir_atencion_id: Optional[int] = None,
+) -> None:
+    atencion_existente = db.scalar(
+        select(Atencion).where(
+            Atencion.mozo_id == mozo_id,
+            Atencion.sector_id == sector_id,
+            Atencion.estado == True,
+            Atencion.fecha_hasta.is_(None),
+        )
+    )
+    if atencion_existente is not None and atencion_existente.id != excluir_atencion_id:
+        raise exceptions.SectorYaAsignado()
+
+
 def crear_atencion(db: Session, atencion: schema.AtencionCreate) -> schema.Atencion:
     _validar_mozo_sector(db, atencion.mozo_id, atencion.sector_id)
+    _validar_sector_no_asignado(db, atencion.mozo_id, atencion.sector_id)
     _atencion = Atencion(**atencion.model_dump())
     db.add(_atencion)
     db.commit()
@@ -59,6 +78,14 @@ def modificar_atencion(
     nueva_hasta = update_data.get("fecha_hasta", db_atencion.fecha_hasta)
     if nueva_hasta is not None and nueva_desde is not None and nueva_hasta < nueva_desde:
         raise exceptions.FechaInvalida()
+
+    if nueva_hasta is None:
+        _validar_sector_no_asignado(
+            db,
+            db_atencion.mozo_id,
+            db_atencion.sector_id,
+            excluir_atencion_id=db_atencion.id,
+        )
 
     if "mozo_id" in update_data or "sector_id" in update_data:
         _validar_mozo_sector(

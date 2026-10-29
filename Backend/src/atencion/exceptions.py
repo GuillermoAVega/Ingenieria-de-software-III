@@ -14,6 +14,10 @@ class FechaInvalida(BadRequest):
     DETAIL = ErrorCode.ATENCION_FECHA_INVALIDA
 
 
+class SectorYaAsignado(BadRequest):
+    DETAIL = ErrorCode.ATENCION_SECTOR_YA_ASIGNADO
+
+
 class MozoInvalido(BadRequest):
     DETAIL = ErrorCode.MOZO_INACTIVO_O_INEXISTENTE
 
