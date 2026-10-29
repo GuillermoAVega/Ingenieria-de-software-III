@@ -1,35 +1,170 @@
 /**
  * EQUIPO: Salón
  * FUNCIONALIDAD: Mapa de mesas y sectores
- * COMPLETAR:
- * 1. Reemplazar DEMO_SECTORS y DEMO_TABLES por la llamada a la API.
- * 2. Implementar acciones rápidas sobre cada mesa (estado, comanda, reserva).
- * 3. Conectar la edición de sectores y mesas con la API.
  */
-import { Badge, Button, Card, DeleteButton, PageHeader } from '../../ui/ui'
+import { useEffect, useState } from 'react'
+import { Alert, Badge, Button, Card, DeleteButton, PageHeader } from '../../ui/ui'
 import type { BadgeTone } from '../../ui/ui'
 import { navigate } from '../../app/navigation'
-import { DEMO_SECTORS, DEMO_TABLES } from './demo'
-import type { RestaurantTable, TableStatus } from './types'
-
-const statusLabel: Record<TableStatus, string> = {
-  disponible: 'Disponible',
-  ocupada: 'Ocupada',
-  reservada: 'Reservada',
-}
-
-const statusTone: Record<TableStatus, BadgeTone> = {
-  disponible: 'success',
-  ocupada: 'info',
-  reservada: 'warning',
-}
-
-const tableClassName = (table: RestaurantTable) =>
-  ['mesa', table.status === 'ocupada' ? 'is-busy' : '', table.status === 'reservada' ? 'is-reserved' : '']
-    .filter(Boolean)
-    .join(' ')
+import {
+  deactivateSector,
+  deactivateTable,
+  listSectors,
+  listTables,
+  reactivateSector,
+} from './api'
+import type { SectorRecord, TableRecord } from './types'
 
 export function TablesAndSectorsPage() {
+  const [sectors, setSectors] = useState<SectorRecord[]>([])
+  const [tables, setTables] = useState<TableRecord[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    Promise.all([listSectors(), listTables()])
+      .then(([sectorResults, tableResults]) => {
+        if (cancelled) return
+        setSectors(sectorResults)
+        setTables(tableResults)
+      })
+      .catch((cause: unknown) => {
+        if (!cancelled) {
+          setError(
+            cause instanceof Error
+              ? cause.message
+              : 'No se pudieron cargar los sectores y las mesas.',
+          )
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const orderedSectors = [
+    ...sectors.filter((sector) => sector.estado),
+    ...sectors.filter((sector) => !sector.estado),
+  ]
+
+  async function handleDeactivateSector(sector: SectorRecord) {
+    setError(null)
+    try {
+      await deactivateSector(sector.id)
+      setSectors((current) =>
+        current.map((candidate) =>
+          candidate.id === sector.id ? { ...candidate, estado: false } : candidate,
+        ),
+      )
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'No se pudo dar de baja el sector.')
+    }
+  }
+
+  async function handleReactivateSector(sector: SectorRecord) {
+    setError(null)
+    try {
+      await reactivateSector(sector.id)
+      setSectors((current) =>
+        current.map((candidate) =>
+          candidate.id === sector.id ? { ...candidate, estado: true } : candidate,
+        ),
+      )
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'No se pudo reactivar el sector.')
+    }
+  }
+
+  async function handleDeactivateTable(table: TableRecord) {
+    setError(null)
+    try {
+      await deactivateTable(table.id)
+      setTables((current) => current.filter((candidate) => candidate.id !== table.id))
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'No se pudo dar de baja la mesa.')
+    }
+  }
+
+  function renderSector(sector: SectorRecord) {
+    const sectorTables = tables.filter((table) => table.sector_id === sector.id)
+
+    return (
+      <Card
+        key={sector.id}
+        title={sector.nombre}
+        subtitle={`${sector.piso} · ${sector.apto_fumadores ? 'Apto fumadores' : 'No fumadores'}`}
+        actions={
+          <div className="row">
+            {sector.estado ? (
+              <>
+                <Button size="sm" onClick={() => navigate(`/mesas/sectores/${sector.id}/editar`)}>
+                  Editar sector
+                </Button>
+                <DeleteButton
+                  label="Dar de baja"
+                  title="Dar de baja sector"
+                  confirmLabel="Dar de baja"
+                  onConfirm={() => void handleDeactivateSector(sector)}
+                >
+                  ¿Querés dar de baja <strong>{sector.nombre}</strong>?
+                </DeleteButton>
+              </>
+            ) : (
+              <>
+                <Badge tone="neutral">Inactivo</Badge>
+                <Button size="sm" onClick={() => void handleReactivateSector(sector)}>
+                  Reactivar
+                </Button>
+              </>
+            )}
+          </div>
+        }
+      >
+        {sectorTables.length > 0 ? (
+          <div className="mesa-grid">
+            {sectorTables.map((table) => {
+              const status = table.disponible ? 'Disponible' : 'Ocupada'
+              const tone: BadgeTone = table.disponible ? 'success' : 'info'
+
+              return (
+                <div key={table.id} className="stack">
+                  <button
+                    type="button"
+                    className={`mesa${table.disponible ? '' : ' is-busy'}`}
+                    onClick={() => navigate(`/mesas/${table.id}/editar`)}
+                  >
+                    <span className="mesa-num">Mesa {table.id}</span>
+                    <span className="mesa-meta">{table.capacidad} personas</span>
+                    <Badge tone={tone}>{status}</Badge>
+                  </button>
+                  <div className="row">
+                    <DeleteButton
+                      label="Dar de baja"
+                      title="Dar de baja mesa"
+                      confirmLabel="Dar de baja"
+                      onConfirm={() => void handleDeactivateTable(table)}
+                    >
+                      ¿Querés dar de baja la <strong>Mesa {table.id}</strong>?
+                    </DeleteButton>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <p className="muted text-sm">
+            {sector.estado ? 'No hay mesas activas en este sector.' : 'No hay mesas activas.'}
+          </p>
+        )}
+      </Card>
+    )
+  }
+
   return (
     <>
       <PageHeader
@@ -49,51 +184,16 @@ export function TablesAndSectorsPage() {
         <span className="muted text-sm">Referencias:</span>
         <Badge tone="success">Disponible</Badge>
         <Badge tone="info">Ocupada</Badge>
-        <Badge tone="warning">Reservada</Badge>
       </div>
 
-      {DEMO_SECTORS.map((sector) => {
-        const tables = DEMO_TABLES.filter((table) => table.sectorId === sector.id)
-
-        return (
-          <Card
-            key={sector.id}
-            title={sector.name}
-            subtitle={`${sector.floor} · ${sector.condition}`}
-            actions={
-              <div className="row">
-                <Button size="sm" onClick={() => navigate(`/mesas/sectores/${sector.id}/editar`)}>
-                  Editar sector
-                </Button>
-                <DeleteButton
-                  label="Eliminar sector"
-                  title="Eliminar sector"
-                  onConfirm={() => {
-                    // TODO(equipo-salon): eliminar el sector en la API.
-                  }}
-                >
-                  ¿Querés eliminar <strong>{sector.name}</strong>?
-                </DeleteButton>
-              </div>
-            }
-          >
-            <div className="mesa-grid">
-              {tables.map((table) => (
-                <button
-                  key={table.id}
-                  type="button"
-                  className={tableClassName(table)}
-                  onClick={() => navigate(`/mesas/${table.id}/editar`)}
-                >
-                  <span className="mesa-num">{table.number}</span>
-                  <span className="mesa-meta">{table.seats} personas</span>
-                  <Badge tone={statusTone[table.status]}>{statusLabel[table.status]}</Badge>
-                </button>
-              ))}
-            </div>
-          </Card>
-        )
-      })}
+      {error && <Alert tone="danger">{error}</Alert>}
+      {loading ? (
+        <p className="muted">Cargando sectores y mesas...</p>
+      ) : orderedSectors.length > 0 ? (
+        orderedSectors.map(renderSector)
+      ) : (
+        <p className="muted">No hay sectores para mostrar.</p>
+      )}
     </>
   )
 }

@@ -1,9 +1,11 @@
-export type WaiterStatus = 'activo' | 'inactivo'
-
 export type Waiter = {
-  id: string
+  id: number
   name: string
-  phone: string
-  email: string
-  status: WaiterStatus
+  nro_legajo: number
+  estado: boolean
+}
+
+export type WaiterPayload = {
+  nombre: string
+  nro_legajo: number
 }
