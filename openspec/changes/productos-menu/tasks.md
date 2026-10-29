@@ -145,12 +145,12 @@ Chain strategy: pending
 
 ## Fase 5: Router, manejadores y `main.py`
 
-- [ ] **5.1 Manejadores de excepciones** — Archivos: `Backend/src/productos_menu/router.py`, `Backend/tests/productos_menu/test_manejadores.py`. Depende de 4.1.
+- [x] **5.1 Manejadores de excepciones** — Archivos: `Backend/src/productos_menu/router.py`, `Backend/tests/productos_menu/test_manejadores.py`. Depende de 4.1.
   - RED (H, aplicación mínima de prueba que lanza cada excepción): `ProductoInexistente` → 422 con `{"detail": [{"loc": ["body","producto_id"], "msg": ..., "type": "producto_inexistente", "ids": [id]}]}`; `ProductoDadoDeBaja` → 409 `{"detail": "El producto está dado de baja"}`; `FechaMenuOcupada` → 409 `{"detail": "Ya existe un menú del día en esa fecha"}`; `ProductoMenuNoEncontrado` → 404 `{"detail": "Menú del día no encontrado"}`; los mensajes de baja y de fecha ocupada difieren; los manejadores de `productos` no capturan estas excepciones.
   - GREEN: `router.py` con el helper `_error_de_campo` propio (decisión 11), `MANEJADORES_EXCEPCIONES` y un `APIRouter(prefix=PREFIJO)` aún sin rutas.
   - Escenarios: soporte de PMD-13, 14, 15, 18, 24, 30.
 
-- [ ] **5.2 `POST /productos-menu` y registro en `main.py`** — Archivos: `Backend/src/productos_menu/router.py`, `Backend/src/main.py`, `Backend/tests/productos_menu/test_router_alta.py`. Depende de 5.1, 4.3, 3.1.
+- [x] **5.2 `POST /productos-menu` y registro en `main.py`** — Archivos: `Backend/src/productos_menu/router.py`, `Backend/src/main.py`, `Backend/tests/productos_menu/test_router_alta.py`. Depende de 5.1, 4.3, 3.1.
   - RED (H):
     - 201 con exactamente `id`, `producto_id`, `fecha` y registro persistido (PMD-03, PMD-04); fecha pasada, hoy y futura (PMD-05..07); los cinco subtipos (PMD-08).
     - 422 sin registro: `producto_id` ausente (PMD-09), `"abc"` (PMD-10), `fecha` ausente (PMD-11), `"no-es-una-fecha"` y `"2026-02-30"` (PMD-12), `producto_id` inexistente (PMD-13).
@@ -162,7 +162,7 @@ Chain strategy: pending
   - GREEN: `POST ""` con `status_code=201`, delgado sobre `crear_producto_menu`; `main.py` incluye el router y agrega `MANEJADORES_EXCEPCIONES` a la tupla de manejadores.
   - Escenarios (H): PMD-03..20, PMD-40.
 
-- [ ] **5.3 `PUT /productos-menu/{producto_menu_id}`** — Archivos: `Backend/src/productos_menu/router.py`, `Backend/tests/productos_menu/test_router_modificacion.py`. Depende de 5.2, 4.4.
+- [x] **5.3 `PUT /productos-menu/{producto_menu_id}`** — Archivos: `Backend/src/productos_menu/router.py`, `Backend/tests/productos_menu/test_router_modificacion.py`. Depende de 5.2, 4.4.
   - RED (H):
     - 200 al mover a fecha libre con `F1` liberada (PMD-21); conservar la fecha propia (PMD-22).
     - 409 con fecha de otro registro y ambos intactos (PMD-23); 404 con `id` inexistente (PMD-24).
@@ -174,12 +174,12 @@ Chain strategy: pending
   - GREEN: `PUT "/{producto_menu_id:int}"` con `status_code=200`.
   - Escenarios (H): PMD-21..31.
 
-- [ ] **5.4 `DELETE /productos-menu/{producto_menu_id}`** — Archivos: `Backend/src/productos_menu/router.py`, `Backend/tests/productos_menu/test_router_borrado.py`. Depende de 5.3, 4.5.
+- [x] **5.4 `DELETE /productos-menu/{producto_menu_id}`** — Archivos: `Backend/src/productos_menu/router.py`, `Backend/tests/productos_menu/test_router_borrado.py`. Depende de 5.3, 4.5.
   - RED (H): 204 sin cuerpo y registro ausente en la base (PMD-32); `id` inexistente → 404 (PMD-33); DELETE repetido → 404 (PMD-34); con producto dado de baja → 204 (PMD-35); `POST` posterior con la fecha liberada → 201 (PMD-36).
   - GREEN: `DELETE "/{producto_menu_id:int}"` con `status_code=204`.
   - Escenarios (H): PMD-32..36.
 
-- [ ] **5.5 Baja lógica y respuestas de producto sin cambios** — **[CARACTERIZACIÓN: nace en verde]** — Archivos: `Backend/tests/productos_menu/test_integracion_productos.py`. Depende de 5.4.
+- [x] **5.5 Baja lógica y respuestas de producto sin cambios** — **[CARACTERIZACIÓN: nace en verde]** — Archivos: `Backend/tests/productos_menu/test_integracion_productos.py`. Depende de 5.4.
   - RED (sustituido): las pruebas pasan sin cambios de código.
     - Baja lógica de un Plato con menús del día: mismo código de estado que sin menús (PMD-37); los dos registros siguen con su `producto_id` y `fecha` (PMD-38).
     - `GET` del producto con un menú del día: sin `menus_del_dia` y mismas claves que sin menú (PMD-39).
@@ -192,15 +192,15 @@ Chain strategy: pending
 
 ## Fase 6: Verificación final y trazabilidad
 
-- [ ] **6.1 Suite completa e importaciones** — **[CARACTERIZACIÓN: nace en verde]** — Archivos: ninguno. Depende de Fase 5.
+- [x] **6.1 Suite completa e importaciones** — **[CARACTERIZACIÓN: nace en verde]** — Archivos: ninguno. Depende de Fase 5.
   - Verificar `cd Backend && python -m pytest` en verde y `configure_mappers()` sin errores (PMD-01); `rg "from src.productos" Backend/src/productos_menu/models.py` sin resultados; `rg "productos_menu" Backend/src/productos` solo en `registro.py` y en cadenas de `models.py`.
   - Hecho cuando: suite en verde y grafo de importaciones acíclico.
 
-- [ ] **6.2 Trazabilidad de escenarios** — Archivos: ninguno (solo se agregan pruebas en archivos existentes). Depende de 6.1.
+- [x] **6.2 Trazabilidad de escenarios** — Archivos: ninguno (solo se agregan pruebas en archivos existentes). Depende de 6.1.
   - Revisar el Anexo A: para cada uno de los 40 escenarios debe existir una prueba cuyo nombre contenga `test_pmd_NN`, con nivel H o BD donde aplica. Listar los huecos y cerrarlos con RED → GREEN o registrarlos como riesgo.
   - Hecho cuando: el listado sin cobertura está vacío y `python -m pytest` pasa.
 
-- [ ] **6.3 Base local y comprobación manual** — Archivos: ninguno. Depende de 6.2.
+- [x] **6.3 Base local y comprobación manual** — Archivos: ninguno. Depende de 6.2. *Ejecutada contra una base temporal (`DB_URL=sqlite:///./prueba_humo.db`, eliminada al terminar) para no tocar el `app.db` del usuario: POST 201, POST misma fecha 409, POST producto inexistente 422, PUT 200, DELETE 204, DELETE repetido 404. El `app.db` del usuario debe recrearse por el cambio de `posicion`.*
   - Borrar `Backend/app.db` local, iniciar la aplicación para recrearla y comprobar `POST`, `PUT` y `DELETE /productos-menu`.
   - `[COMMIT]` final (verify queda para `sdd-verify`).
 
