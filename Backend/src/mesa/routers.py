@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 from src.database import get_db
@@ -9,8 +9,11 @@ router = APIRouter(prefix="/mesas", tags=["MESAS"])
 
 
 @router.get("", response_model=list[schemas.Mesa])
-def listar_mesas(db: Session = Depends(get_db)):
-    return services.listar_mesas(db).all()
+def listar_mesas(
+    incluir_inactivas: bool = Query(False),
+    db: Session = Depends(get_db),
+):
+    return services.listar_mesas(db, incluir_inactivas=incluir_inactivas).all()
 
 
 @router.get("/{mesa_id}", response_model=schemas.Mesa)
@@ -55,3 +58,15 @@ def eliminar_mesa(mesa_id: int, db: Session = Depends(get_db)):
         ) from error
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.patch("/{mesa_id}/reactivar", response_model=schemas.Mesa)
+def reactivar_mesa(mesa_id: int, db: Session = Depends(get_db)):
+    try:
+        services.restaurar_mesa(db, mesa_id)
+        return services.obtener_mesa(db, mesa_id)
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(error),
+        ) from error

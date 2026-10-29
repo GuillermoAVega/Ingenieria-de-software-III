@@ -6,11 +6,14 @@ import { useEffect, useState } from 'react'
 import { Alert, Badge, Button, Card, DeleteButton, PageHeader } from '../../ui/ui'
 import type { BadgeTone } from '../../ui/ui'
 import { navigate } from '../../app/navigation'
+import { listAttentions, listWaiters } from '../waiters/api'
+import type { Attention, Waiter } from '../waiters/types'
 import {
   deactivateSector,
   deactivateTable,
   listSectors,
   listTables,
+  reactivateTable,
   reactivateSector,
 } from './api'
 import type { SectorRecord, TableRecord } from './types'
@@ -18,16 +21,20 @@ import type { SectorRecord, TableRecord } from './types'
 export function TablesAndSectorsPage() {
   const [sectors, setSectors] = useState<SectorRecord[]>([])
   const [tables, setTables] = useState<TableRecord[]>([])
+  const [waiters, setWaiters] = useState<Waiter[]>([])
+  const [attentions, setAttentions] = useState<Attention[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
-    Promise.all([listSectors(), listTables()])
-      .then(([sectorResults, tableResults]) => {
+    Promise.all([listSectors(), listTables(true), listWaiters(), listAttentions()])
+      .then(([sectorResults, tableResults, waiterResults, attentionResults]) => {
         if (cancelled) return
         setSectors(sectorResults)
         setTables(tableResults)
+        setWaiters(waiterResults)
+        setAttentions(attentionResults)
       })
       .catch((cause: unknown) => {
         if (!cancelled) {
@@ -51,6 +58,7 @@ export function TablesAndSectorsPage() {
     ...sectors.filter((sector) => sector.estado),
     ...sectors.filter((sector) => !sector.estado),
   ]
+  const waiterNames = new Map(waiters.map((waiter) => [waiter.id, waiter.name]))
 
   async function handleDeactivateSector(sector: SectorRecord) {
     setError(null)
@@ -84,20 +92,51 @@ export function TablesAndSectorsPage() {
     setError(null)
     try {
       await deactivateTable(table.id)
-      setTables((current) => current.filter((candidate) => candidate.id !== table.id))
+      setTables((current) =>
+        current.map((candidate) =>
+          candidate.id === table.id ? { ...candidate, estado: false } : candidate,
+        ),
+      )
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'No se pudo dar de baja la mesa.')
     }
   }
 
+  async function handleReactivateTable(table: TableRecord) {
+    setError(null)
+    try {
+      await reactivateTable(table.id)
+      setTables((current) =>
+        current.map((candidate) =>
+          candidate.id === table.id ? { ...candidate, estado: true } : candidate,
+        ),
+      )
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'No se pudo dar de alta la mesa.')
+    }
+  }
+
   function renderSector(sector: SectorRecord) {
     const sectorTables = tables.filter((table) => table.sector_id === sector.id)
+    const currentWaiterNames = [
+      ...new Set(
+        attentions
+          .filter(
+            (attention) =>
+              attention.estado &&
+              attention.fecha_hasta === null &&
+              attention.sector_id === sector.id,
+          )
+          .map((attention) => waiterNames.get(attention.mozo_id))
+          .filter((name): name is string => Boolean(name)),
+      ),
+    ]
 
     return (
       <Card
         key={sector.id}
         title={sector.nombre}
-        subtitle={`${sector.piso} · ${sector.apto_fumadores ? 'Apto fumadores' : 'No fumadores'}`}
+        subtitle={`${sector.piso} · ${sector.apto_fumadores ? 'Apto fumadores' : 'No fumadores'} · Mozos a cargo: ${currentWaiterNames.join(', ') || 'Sin mozos asignados'}`}
         actions={
           <div className="row">
             {sector.estado ? (
@@ -133,25 +172,42 @@ export function TablesAndSectorsPage() {
 
               return (
                 <div key={table.id} className="stack">
-                  <button
-                    type="button"
-                    className={`mesa${table.disponible ? '' : ' is-busy'}`}
-                    onClick={() => navigate(`/mesas/${table.id}/editar`)}
-                  >
-                    <span className="mesa-num">Mesa {table.id}</span>
-                    <span className="mesa-meta">{table.capacidad} personas</span>
-                    <Badge tone={tone}>{status}</Badge>
-                  </button>
-                  <div className="row">
-                    <DeleteButton
-                      label="Dar de baja"
-                      title="Dar de baja mesa"
-                      confirmLabel="Dar de baja"
-                      onConfirm={() => void handleDeactivateTable(table)}
+                  {table.estado ? (
+                    <button
+                      type="button"
+                      className={`mesa${table.disponible ? '' : ' is-busy'}`}
+                      onClick={() => navigate(`/mesas/${table.id}/editar`)}
                     >
-                      ¿Querés dar de baja la <strong>Mesa {table.id}</strong>?
-                    </DeleteButton>
-                  </div>
+                      <span className="mesa-num">Mesa {table.id}</span>
+                      <span className="mesa-meta">{table.capacidad} personas</span>
+                      <Badge tone={tone}>{status}</Badge>
+                    </button>
+                  ) : (
+                    <div className="mesa">
+                      <span className="mesa-num">Mesa {table.id}</span>
+                      <span className="mesa-meta">{table.capacidad} personas</span>
+                      <Badge tone="neutral">Inactiva</Badge>
+                    </div>
+                  )}
+                  {table.estado && (
+                    <div className="row">
+                      <DeleteButton
+                        label="Dar de baja"
+                        title="Dar de baja mesa"
+                        confirmLabel="Dar de baja"
+                        onConfirm={() => void handleDeactivateTable(table)}
+                      >
+                        ¿Querés dar de baja la <strong>Mesa {table.id}</strong>?
+                      </DeleteButton>
+                    </div>
+                  )}
+                  {!table.estado && (
+                    <div className="row">
+                      <Button size="sm" onClick={() => void handleReactivateTable(table)}>
+                        Dar de alta
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )
             })}

@@ -93,5 +93,8 @@ def obtener_mesa(db: Session, mesa_id: int) -> models.Mesa:
     return mesa_db
 
 
-def listar_mesas(db: Session):
-    return db.query(models.Mesa).filter(models.Mesa.estado.is_(True))
+def listar_mesas(db: Session, incluir_inactivas: bool = False):
+    query = db.query(models.Mesa)
+    if not incluir_inactivas:
+        query = query.filter(models.Mesa.estado.is_(True))
+    return query

@@ -66,8 +66,9 @@ export async function reactivateSector(id: number): Promise<void> {
   await request(`/sectores/${id}/reactivar`, { method: 'PATCH' })
 }
 
-export async function listTables(): Promise<TableRecord[]> {
-  const response = await request('/mesas')
+export async function listTables(incluirInactivas = false): Promise<TableRecord[]> {
+  const query = incluirInactivas ? '?incluir_inactivas=true' : ''
+  const response = await request(`/mesas${query}`)
   return (await response.json()) as TableRecord[]
 }
 
@@ -92,4 +93,8 @@ export async function updateTable(id: number, table: TablePayload): Promise<void
 
 export async function deactivateTable(id: number): Promise<void> {
   await request(`/mesas/${id}`, { method: 'DELETE' })
+}
+
+export async function reactivateTable(id: number): Promise<void> {
+  await request(`/mesas/${id}/reactivar`, { method: 'PATCH' })
 }
