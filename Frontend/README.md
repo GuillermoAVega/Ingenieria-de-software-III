@@ -1,78 +1,71 @@
-# React + TypeScript + Vite
+# Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Base visual del sistema de gestión del restaurante. Cada funcionalidad vive en una carpeta dentro de `src/features/`. Las pantallas ya tienen estructura, datos de ejemplo y comentarios `TODO` que indican qué falta implementar.
 
-Currently, two official plugins are available:
+## Levantar el proyecto
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
-
-Note: This will impact Vite dev & build performances.
-You can also try [the experimental native React Compiler support in plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md#rust-react-compiler) by using `compiler: true` in the plugin options instead of using the Babel plugin.
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+cd Frontend
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+Antes de abrir un PR:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm run build
+npm run lint
 ```
+
+## Qué archivos toca cada equipo
+
+| Funcionalidad | Ruta principal | Carpeta | Archivos que toca el equipo |
+|---|---|---|---|
+| Inicio / Dashboard | `#/` | `src/features/dashboard/` | `DashboardPage.tsx` |
+| Comandas | `#/comandas` | `src/features/orders/` | `OrdersListPage.tsx`, `OrderDetailPage.tsx`, `OrderFormPage.tsx`, `demo.ts`, `types.ts` |
+| Reservas | `#/reservas` | `src/features/reservations/` | `ReservationsListPage.tsx`, `ReservationFormPage.tsx`, `demo.ts`, `types.ts` |
+| Facturación | `#/facturacion` | `src/features/billing/` | `BillingListPage.tsx`, `demo.ts`, `types.ts` |
+| Productos | `#/productos` | `src/features/products/` | `ProductsListPage.tsx`, `ProductFormPage.tsx`, `demo.ts`, `types.ts` |
+| Secciones | `#/secciones` | `src/features/sections/` | `SectionsListPage.tsx`, `SectionFormPage.tsx`, `demo.ts`, `types.ts` |
+| Promociones | `#/promociones` | `src/features/promotions/` | `PromotionsListPage.tsx`, `PromotionFormPage.tsx`, `demo.ts`, `types.ts` |
+| Mesas y sectores | `#/mesas` | `src/features/tables/` | `TablesAndSectorsPage.tsx`, `SectorFormPage.tsx`, `TableFormPage.tsx`, `demo.ts`, `types.ts` |
+| Mozos | `#/mozos` | `src/features/waiters/` | `WaitersListPage.tsx`, `WaiterFormPage.tsx`, `demo.ts`, `types.ts` |
+| Clientes | `#/clientes` | `src/features/customers/` | `CustomersListPage.tsx`, `CustomerFormPage.tsx`, `demo.ts`, `types.ts` |
+| Medios de pago | `#/medios-de-pago` | `src/features/payment-methods/` | `PaymentMethodsListPage.tsx`, `PaymentMethodFormPage.tsx`, `demo.ts`, `types.ts` |
+| Reportes | `#/reportes` | `src/features/reports/` | `ReportsPage.tsx`, `ReportDetailPage.tsx`, `demo.ts`, `types.ts` |
+
+## Cómo saber qué tocar
+
+1. Buscá tu pantalla en la tabla de arriba.
+2. Abrí esa carpeta en `src/features/`.
+3. Los archivos `*Page.tsx` son las pantallas. `demo.ts` tiene datos falsos y `types.ts` los tipos.
+4. Cada página empieza con un comentario que indica el equipo y los `TODO` pendientes.
+5. Las rutas y el menú lateral están en `src/app/routes.tsx`; el `import` de cada ruta te dice qué archivo se muestra.
+
+## Reglas rápidas
+
+- Usá solo `src/ui/ui.tsx` y las clases de `src/ui/ui.css`.
+- No crees CSS nuevo ni colores, radios o sombras sueltas.
+- Reemplazá los datos `DEMO_*` por la API cuando esté disponible.
+- Completá los `TODO(equipo-...)` de tu carpeta.
+- Para eliminaciones usá `DeleteButton`.
+- No modifiques la carpeta de otra feature sin acordarlo.
+- Los cambios en `ui.tsx`, `ui.css` o `routes.tsx` los revisa el equipo base.
+- Copy y comentarios en español; nombres de código en inglés.
+
+## Archivos compartidos
+
+No tocar sin coordinar:
+
+- `src/ui/ui.tsx` y `src/ui/ui.css`: componentes y estilos base.
+- `src/app/routes.tsx`: rutas y navegación.
+- `src/layout/AppLayout.tsx`: estructura general.
+- `src/App.tsx` y `src/main.tsx`: entrada de la aplicación.
+
+## Rutas
+
+Todas las rutas están declaradas en `src/app/routes.tsx`. Si tu equipo necesita una ruta nueva:
+
+1. Agregá la entrada en `routes.tsx`.
+2. Si debe aparecer en el menú, completá `nav: { group: '...', label: '...' }`.
+3. Agregá tu página dentro de la carpeta de la feature correspondiente.
