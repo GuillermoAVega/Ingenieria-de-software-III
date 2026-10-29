@@ -824,3 +824,325 @@ def test_pos_20_intercambio_de_dos_secciones_en_tres_put(cliente):
 
     assert cliente.get(f"{RUTA}/{a['id']}").json()["posicion"] == 2
     assert cliente.get(f"{RUTA}/{b['id']}").json()["posicion"] == 1
+
+
+# --- productos_ids: comportamiento HTTP (IDS-04..17) ---
+
+_nombres = itertools.count(1)
+
+
+def _cuerpo_producto(tipo, seccion_id, **extra):
+    """Cuerpo mínimo válido de alta o modificación de cada subtipo."""
+    n = next(_nombres)
+    comun = {"nombre": f"Producto {n}", "precio": "1000.00", "seccion_id": seccion_id}
+    if tipo == "plato":
+        return {**comun, "cant_personas": 2, **extra}
+    if tipo == "bebida":
+        return {**comun, "es_alcoholica": False, **extra}
+    if tipo == "postre":
+        return {**comun, **extra}
+    if tipo == "menu":
+        return {**comun, "plato_id": extra.pop("plato_id"),
+                "postre_id": extra.pop("postre_id"), **extra}
+    return {
+        **comun,
+        "fecha_desde": "2026-06-01",
+        "fecha_hasta": extra.pop("fecha_hasta", "2026-06-30"),
+        "platos_ids": [extra.pop("plato_id")],
+        "bebidas_ids": [],
+        "postres_ids": [],
+        **extra,
+    }
+
+
+def _alta(cliente, tipo="plato", seccion_id=None, **extra):
+    respuesta = cliente.post(
+        RUTAS_PRODUCTO[tipo], json=_cuerpo_producto(tipo, seccion_id, **extra)
+    )
+    assert respuesta.status_code == 201, respuesta.text
+    return respuesta.json()
+
+
+def _mover(cliente, producto, seccion_id, tipo="plato", **extra):
+    """PUT completo del producto con otra sección (reemplazo completo)."""
+    cuerpo = {
+        clave: producto[clave]
+        for clave in ("nombre", "precio", "cant_personas", "es_alcoholica")
+        if clave in producto
+    }
+    cuerpo.update(seccion_id=seccion_id, **extra)
+    respuesta = cliente.put(f"{RUTAS_PRODUCTO[tipo]}/{producto['id']}", json=cuerpo)
+    assert respuesta.status_code == 200, respuesta.text
+    return respuesta.json()
+
+
+def _dar_de_baja(cliente, producto, tipo="plato"):
+    assert cliente.delete(f"{RUTAS_PRODUCTO[tipo]}/{producto['id']}").status_code == 204
+
+
+def _ids(cliente, seccion):
+    respuesta = cliente.get(f"{RUTA}/{seccion['id']}")
+    assert respuesta.status_code == 200
+    return respuesta.json()["productos_ids"]
+
+
+def test_ids_06_get_incluye_solo_productos_activos(cliente):
+    seccion = _crear(cliente).json()
+    plato = _alta(cliente, "plato", seccion["id"])
+    bebida = _alta(cliente, "bebida", seccion["id"])
+    postre = _alta(cliente, "postre", seccion["id"])
+    _dar_de_baja(cliente, bebida, "bebida")
+
+    assert _ids(cliente, seccion) == [plato["id"], postre["id"]]
+
+
+def test_ids_07_seccion_con_solo_productos_dados_de_baja_devuelve_lista_vacia(cliente):
+    seccion = _crear(cliente).json()
+    plato = _alta(cliente, "plato", seccion["id"])
+    _dar_de_baja(cliente, plato)
+
+    assert _ids(cliente, seccion) == []
+
+
+def test_ids_08_get_devuelve_ids_ascendentes(cliente):
+    seccion = _crear(cliente).json()
+    menor, medio, mayor = (_alta(cliente, "postre") for _ in range(3))
+    assert menor["id"] < medio["id"] < mayor["id"]
+    for producto in (mayor, menor, medio):  # orden de asignación 12, 10, 11
+        _mover(cliente, producto, seccion["id"], "postre")
+
+    assert _ids(cliente, seccion) == [menor["id"], medio["id"], mayor["id"]]
+
+
+def test_ids_15_get_no_incluye_productos_de_otras_secciones_ni_sin_seccion(cliente):
+    a = _crear(cliente, nombre="A").json()
+    b = _crear(cliente, nombre="B").json()
+    plato = _alta(cliente, "plato", a["id"])
+    _alta(cliente, "postre", b["id"])
+    _alta(cliente, "bebida", None)
+
+    assert _ids(cliente, a) == [plato["id"]]
+
+
+def _cinco_subtipos(cliente, seccion_id, fecha_hasta="2026-06-30"):
+    plato = _alta(cliente, "plato", seccion_id)
+    bebida = _alta(cliente, "bebida", seccion_id)
+    postre = _alta(cliente, "postre", seccion_id)
+    menu = _alta(cliente, "menu", seccion_id,
+                 plato_id=plato["id"], postre_id=postre["id"])
+    combo = _alta(cliente, "combo", seccion_id,
+                  plato_id=plato["id"], fecha_hasta=fecha_hasta)
+    return plato, bebida, postre, menu, combo
+
+
+def test_ids_09_get_cuenta_los_cinco_subtipos(cliente):
+    seccion = _crear(cliente).json()
+
+    productos = _cinco_subtipos(cliente, seccion["id"])
+
+    esperados = sorted(p["id"] for p in productos)
+    assert len(set(esperados)) == 5
+    assert _ids(cliente, seccion) == esperados
+
+
+def test_ids_10_get_incluye_combo_vencido_pero_activo(
+    cliente, crear_seccion, persistir
+):
+    # El alta HTTP rechaza combos vencidos: se persiste directamente (como SEC-37)
+    seccion_id = persistir(crear_seccion())
+    plato = _plato()
+    combo = ComboPromocion(nombre="Combo", nombre_normalizado="combo",
+                           precio=Decimal("3000.00"), fecha_desde=date(2026, 6, 1),
+                           fecha_hasta=date(2026, 6, 14), platos=[plato],
+                           seccion_id=seccion_id)
+    combo_id = persistir(combo)
+
+    detalle = cliente.get(f"{RUTAS_PRODUCTO['combo']}/{combo_id}").json()
+    assert detalle["dado_de_baja"] is False
+    assert detalle["fecha_hasta"] < "2026-06-15"  # HOY_FIJO: ya venció
+    assert cliente.get(f"{RUTA}/{seccion_id}").json()["productos_ids"] == [combo_id]
+
+
+def test_ids_11_dar_de_baja_un_producto_lo_quita(cliente):
+    seccion = _crear(cliente).json()
+    plato = _alta(cliente, "plato", seccion["id"])
+    bebida = _alta(cliente, "bebida", seccion["id"])
+    assert _ids(cliente, seccion) == [plato["id"], bebida["id"]]
+
+    _dar_de_baja(cliente, plato)
+
+    assert _ids(cliente, seccion) == [bebida["id"]]
+    conservado = cliente.get(f"{RUTAS_PRODUCTO['plato']}/{plato['id']}").json()
+    assert conservado["seccion_id"] == seccion["id"]
+    assert conservado["dado_de_baja"] is True
+
+
+def test_ids_12_reactivar_un_producto_lo_reincorpora(cliente):
+    seccion = _crear(cliente).json()
+    plato = _alta(cliente, "plato", seccion["id"])
+    bebida = _alta(cliente, "bebida", seccion["id"])
+    _dar_de_baja(cliente, plato)
+    assert _ids(cliente, seccion) == [bebida["id"]]
+
+    _mover(cliente, plato, seccion["id"], dado_de_baja=False)
+
+    assert _ids(cliente, seccion) == [plato["id"], bebida["id"]]
+
+
+def test_ids_13_cambiar_la_seccion_de_un_producto_lo_mueve(cliente):
+    a = _crear(cliente, nombre="A").json()
+    b = _crear(cliente, nombre="B").json()
+    plato = _alta(cliente, "plato", a["id"])
+    assert _ids(cliente, a) == [plato["id"]]
+
+    _mover(cliente, plato, b["id"])
+
+    assert _ids(cliente, a) == []
+    assert _ids(cliente, b) == [plato["id"]]
+
+
+def test_ids_14_desasignar_un_producto_lo_quita(cliente):
+    seccion = _crear(cliente).json()
+    plato = _alta(cliente, "plato", seccion["id"])
+    assert _ids(cliente, seccion) == [plato["id"]]
+
+    _mover(cliente, plato, None)
+
+    assert _ids(cliente, seccion) == []
+
+
+def test_ids_16_no_quedan_ids_obsoletos_tras_borrar_y_crear_una_seccion(cliente):
+    seccion = _crear(cliente, nombre="Vieja").json()
+    plato = _alta(cliente, "plato", seccion["id"])
+    assert cliente.delete(f"{RUTA}/{seccion['id']}").status_code == 204
+
+    nueva = _crear(cliente, nombre="Nueva").json()
+
+    assert _ids(cliente, nueva) == []
+    conservado = cliente.get(f"{RUTAS_PRODUCTO['plato']}/{plato['id']}")
+    assert conservado.status_code == 200
+    assert conservado.json()["seccion_id"] is None
+
+
+def test_ids_17_no_existe_listado_de_productos_por_seccion(cliente):
+    seccion = _crear(cliente).json()
+    _alta(cliente, "plato", seccion["id"])
+
+    assert cliente.get(f"{RUTA}/{seccion['id']}/productos").status_code == 404
+
+
+def test_ids_02_el_alta_devuelve_lista_vacia_aunque_existan_otros_productos(cliente):
+    otra = _crear(cliente, nombre="Otra").json()
+    _alta(cliente, "plato", None)
+    _alta(cliente, "postre", otra["id"])
+
+    respuesta = _crear(cliente, nombre="Nueva")
+
+    assert respuesta.status_code == 201
+    assert respuesta.json()["productos_ids"] == []
+
+
+def test_ids_04_el_put_devuelve_el_estado_persistido(cliente):
+    seccion = _crear(cliente).json()
+    plato = _alta(cliente, "plato", seccion["id"])
+    postre = _alta(cliente, "postre", seccion["id"])
+    _dar_de_baja(cliente, postre, "postre")
+
+    respuesta = cliente.put(
+        f"{RUTA}/{seccion['id']}",
+        json={"nombre": "Entradas", "posicion": seccion["posicion"]},
+    )
+
+    assert respuesta.status_code == 200
+    assert respuesta.json()["productos_ids"] == [plato["id"]]
+    assert cliente.get(f"{RUTA}/{seccion['id']}").json() == respuesta.json()
+
+
+def test_ids_05_enviar_productos_ids_en_el_put_no_cambia_la_asignacion(cliente):
+    seccion = _crear(cliente).json()
+    plato = _alta(cliente, "plato", seccion["id"])
+    postre = _alta(cliente, "postre", None)
+
+    respuesta = cliente.put(
+        f"{RUTA}/{seccion['id']}",
+        json={
+            "nombre": "Entradas",
+            "posicion": seccion["posicion"],
+            "productos_ids": [postre["id"]],
+        },
+    )
+
+    assert respuesta.status_code == 200
+    assert respuesta.json()["productos_ids"] == [plato["id"]]
+    plato_actual = cliente.get(f"{RUTAS_PRODUCTO['plato']}/{plato['id']}").json()
+    postre_actual = cliente.get(f"{RUTAS_PRODUCTO['postre']}/{postre['id']}").json()
+    assert plato_actual["seccion_id"] == seccion["id"]
+    assert postre_actual["seccion_id"] is None
+
+
+def test_productos_ids_el_alta_ignora_productos_ids_del_cuerpo(cliente):
+    postre = _alta(cliente, "postre", None)
+
+    respuesta = _crear(cliente, productos_ids=[postre["id"]])
+
+    assert respuesta.status_code == 201
+    assert respuesta.json()["productos_ids"] == []
+    actual = cliente.get(f"{RUTAS_PRODUCTO['postre']}/{postre['id']}").json()
+    assert actual["seccion_id"] is None
+
+
+def test_sec_25_el_put_incluye_productos_ids_vigentes(cliente):
+    creada = _crear(cliente, subtitulo="Para comenzar").json()
+    plato = _alta(cliente, "plato", creada["id"])
+    bebida = _alta(cliente, "bebida", creada["id"])
+
+    respuesta = cliente.put(
+        f"{RUTA}/{creada['id']}",
+        json={"nombre": "Aperitivos", "subtitulo": "Para compartir", "posicion": 1},
+    )
+
+    assert respuesta.status_code == 200
+    assert respuesta.json() == {
+        "id": creada["id"],
+        "nombre": "Aperitivos",
+        "subtitulo": "Para compartir",
+        "posicion": 1,
+        "productos_ids": [plato["id"], bebida["id"]],
+    }
+
+
+def test_sec_30_la_modificacion_no_altera_los_productos_asignados(cliente):
+    creada = _crear(cliente).json()
+    plato = _alta(cliente, "plato", creada["id"])
+
+    respuesta = cliente.put(
+        f"{RUTA}/{creada['id']}", json={"nombre": "Aperitivos", "posicion": 1}
+    )
+
+    assert respuesta.status_code == 200
+    assert plato["id"] in respuesta.json()["productos_ids"]
+    actual = cliente.get(f"{RUTAS_PRODUCTO['plato']}/{plato['id']}").json()
+    assert actual["seccion_id"] == creada["id"]
+
+
+def test_productos_ids_solicitudes_rechazadas_no_alteran_el_get(cliente):
+    seccion = _crear(cliente, nombre="Entradas", posicion=1).json()
+    otra = _crear(cliente, nombre="Postres", posicion=2).json()
+    plato = _alta(cliente, "plato", seccion["id"])
+    antes = cliente.get(f"{RUTA}/{seccion['id']}").json()
+    assert antes["productos_ids"] == [plato["id"]]
+
+    alta_409 = cliente.post(RUTA, json={"nombre": "Entradas", "posicion": 50})
+    alta_422 = cliente.post(RUTA, json={"nombre": "", "posicion": 51})
+    put_409 = cliente.put(
+        f"{RUTA}/{otra['id']}", json={"nombre": "Entradas", "posicion": 2}
+    )
+    put_422 = cliente.put(
+        f"{RUTA}/{seccion['id']}", json={"nombre": "", "posicion": 1}
+    )
+
+    assert [r.status_code for r in (alta_409, alta_422, put_409, put_422)] == [
+        409, 422, 409, 422,
+    ]
+    assert cliente.get(f"{RUTA}/{seccion['id']}").json() == antes
+    assert cliente.get(f"{RUTA}/{otra['id']}").json()["productos_ids"] == []

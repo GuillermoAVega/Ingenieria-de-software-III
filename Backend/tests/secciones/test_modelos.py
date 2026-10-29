@@ -1,8 +1,9 @@
+import re
 from datetime import date, timedelta
 from decimal import Decimal
 
 import pytest
-from sqlalchemy import Integer, inspect
+from sqlalchemy import Integer, event, inspect
 from sqlalchemy.exc import IntegrityError
 
 from src.productos.registro import (
@@ -218,3 +219,33 @@ def test_ids_10_modelo_cuenta_combo_vencido_pero_activo(sesion):
 
     assert combo.dado_de_baja is False
     assert seccion.productos_ids == [combo.id]
+
+
+def test_productos_ids_emite_un_unico_select_sobre_producto(sesion, motor):
+    plato = _producto(Plato, "Milanesa", cant_personas=2)
+    bebida = _producto(Bebida, "Cerveza", es_alcoholica=True)
+    postre = _producto(Postre, "Flan")
+    menu = _producto(MenuEjecutivo, "Menu", plato=plato, postre=postre)
+    combo = _combo(plato)
+    seccion = _seccion_con(sesion, plato, bebida, postre, menu, combo)
+    esperados = sorted([plato.id, bebida.id, postre.id, menu.id, combo.id])
+    sesion.expire_all()  # fuerza la carga diferida de `productos`
+    assert seccion.id  # recarga los atributos de la sección fuera de la medición
+
+    sentencias = []
+
+    def registrar(_conexion, _cursor, sentencia, *_resto):
+        sentencias.append(sentencia)
+
+    event.listen(motor, "before_cursor_execute", registrar)
+    try:
+        ids = seccion.productos_ids
+    finally:
+        event.remove(motor, "before_cursor_execute", registrar)
+
+    assert ids == esperados
+    selects = [s for s in sentencias if s.lstrip().upper().startswith("SELECT")]
+    assert len(selects) == 1
+    assert len(sentencias) == 1
+    tablas_de_subtipo = r"\b(plato|bebida|postre|menu_ejecutivo|combo_promocion)\b"
+    assert not re.search(tablas_de_subtipo, selects[0])

@@ -1,4 +1,5 @@
 import ast
+import importlib
 import inspect
 
 from src.productos import exceptions as excepciones_productos
@@ -59,3 +60,27 @@ def test_excepciones_no_importan_fastapi_ni_productos():
             modulos.add(nodo.module or "")
     assert not any(m.split(".")[0] == "fastapi" for m in modulos)
     assert not any(m.startswith("src.productos") for m in modulos)
+
+
+def _importaciones(modulo):
+    arbol = ast.parse(inspect.getsource(modulo))
+    importados = set()
+    for nodo in ast.walk(arbol):
+        if isinstance(nodo, ast.Import):
+            importados.update(alias.name for alias in nodo.names)
+        elif isinstance(nodo, ast.ImportFrom):
+            base = nodo.module or ""
+            importados.add(base)
+            # `from src import productos` importa el paquete como nombre
+            importados.update(f"{base}.{alias.name}" for alias in nodo.names)
+    return importados
+
+
+def test_productos_ids_secciones_no_importa_productos():
+    for nombre in ("models", "schemas", "services", "router"):
+        modulo = importlib.import_module(f"src.secciones.{nombre}")
+        importados = _importaciones(modulo)
+        ofensores = {
+            m for m in importados if m == "src.productos" or m.startswith("src.productos.")
+        }
+        assert not ofensores, f"src.secciones.{nombre} importa {ofensores}"

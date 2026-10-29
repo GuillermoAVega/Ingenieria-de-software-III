@@ -79,37 +79,37 @@ Chain strategy: pending
 
 ## Fase 3: Comportamiento HTTP
 
-- [ ] **3.1 Mezcla de activos e inactivos, orden y otras secciones (caracterización, nace verde)** — Archivos: `Backend/tests/secciones/test_router.py`. Depende de 2.2.
+- [x] **3.1 Mezcla de activos e inactivos, orden y otras secciones (caracterización, nace verde)** — Archivos: `Backend/tests/secciones/test_router.py`. Depende de 2.2.
   - RED (caracterización): línea base verde.
   - GREEN: `test_ids_06_get_incluye_solo_productos_activos` (Plato activo 10, Bebida dada de baja 11, Postre activo 12 → `[10, 12]`); `test_ids_07_seccion_con_solo_productos_dados_de_baja_devuelve_lista_vacia`; `test_ids_08_get_devuelve_ids_ascendentes` (asignados en el orden 12, 10, 11 → `[10, 11, 12]`); `test_ids_15_get_no_incluye_productos_de_otras_secciones_ni_sin_seccion` (A con Plato, B con Postre, Bebida sin sección → A devuelve solo el Plato). Comprobación de sensibilidad del filtro de baja y del orden según la convención.
   - Escenarios (H): IDS-06, IDS-07, IDS-08, IDS-15.
 
-- [ ] **3.2 Los cinco subtipos y el combo vencido por HTTP (caracterización, nace verde)** — Archivos: `Backend/tests/secciones/test_router.py`. Depende de 3.1.
+- [x] **3.2 Los cinco subtipos y el combo vencido por HTTP (caracterización, nace verde)** — Archivos: `Backend/tests/secciones/test_router.py`. Depende de 3.1.
   - RED (caracterización): línea base verde.
   - GREEN: `test_ids_09_get_cuenta_los_cinco_subtipos` (los cinco productos activos asignados mediante los endpoints reales de cada subtipo → cinco ids ascendentes); `test_ids_10_get_incluye_combo_vencido_pero_activo` (`fecha_hasta` de ayer, activo → figura).
   - Escenarios (H): IDS-09, IDS-10.
 
-- [ ] **3.3 Baja, reactivación, movimiento y desasignación de productos (caracterización, nace verde)** — Archivos: `Backend/tests/secciones/test_router.py`. Depende de 3.2.
+- [x] **3.3 Baja, reactivación, movimiento y desasignación de productos (caracterización, nace verde)** — Archivos: `Backend/tests/secciones/test_router.py`. Depende de 3.2.
   - RED (caracterización): línea base verde. Cada prueba consulta `GET /secciones/{id}` antes y después de la acción sobre el producto, para confirmar que no se necesita ninguna acción sobre la sección.
   - GREEN: `test_ids_11_dar_de_baja_un_producto_lo_quita` (DELETE del Plato → `[11]` y el Plato conserva su `seccion_id`); `test_ids_12_reactivar_un_producto_lo_reincorpora` (PUT del producto con `dado_de_baja: false` → `[10, 11]`); `test_ids_13_cambiar_la_seccion_de_un_producto_lo_mueve` (PUT con otro `seccion_id` → A `[]` y B `[10]`); `test_ids_14_desasignar_un_producto_lo_quita` (`seccion_id: null` → `[]`).
   - Escenarios (H): IDS-11, IDS-12, IDS-13, IDS-14.
 
-- [ ] **3.4 Borrado de sección y ausencia de listado por sección (caracterización, nace verde)** — Archivos: `Backend/tests/secciones/test_router.py`. Depende de 3.3.
+- [x] **3.4 Borrado de sección y ausencia de listado por sección (caracterización, nace verde)** — Archivos: `Backend/tests/secciones/test_router.py`. Depende de 3.3.
   - RED (caracterización): línea base verde.
   - GREEN: `test_ids_16_no_quedan_ids_obsoletos_tras_borrar_y_crear_una_seccion` (borrar la sección con un Plato activo, crear otra → `[]` y el Plato sigue existiendo con `seccion_id = null`); `test_ids_17_no_existe_listado_de_productos_por_seccion` (`GET /secciones/{id}/productos` → 404).
   - Escenarios (H): IDS-16, IDS-17.
 
-- [ ] **3.5 Frescura en POST y PUT, ignorar `productos_ids` del cuerpo y rechazos (caracterización, nace verde)** — Archivos: `Backend/tests/secciones/test_router.py`. Depende de 3.4.
+- [x] **3.5 Frescura en POST y PUT, ignorar `productos_ids` del cuerpo y rechazos (caracterización, nace verde)** — Archivos: `Backend/tests/secciones/test_router.py`. Depende de 3.4.
   - RED (caracterización): línea base verde. Estas pruebas fijan la decisión 5 del diseño (`expire_on_commit=True`); si alguna falla, la corrección consiste en `sesion.refresh` en el servicio (cambio mínimo) o en revisar el `expire_on_commit` de la sesión.
   - GREEN: `test_ids_02_el_alta_devuelve_lista_vacia_aunque_existan_otros_productos` (productos con `seccion_id = null` y asignados a otras secciones → POST devuelve `[]`); `test_ids_04_el_put_devuelve_el_estado_persistido` (Plato activo 10 y Postre dado de baja 11 asignados → PUT devuelve `[10]` y el GET siguiente es idéntico); `test_ids_05_enviar_productos_ids_en_el_put_no_cambia_la_asignacion` (cuerpo con `productos_ids = [11]` → 200, `[10]`, el Plato conserva su `seccion_id` y el Postre conserva `null`); prueba de apoyo `test_productos_ids_el_alta_ignora_productos_ids_del_cuerpo` (POST con `productos_ids = [11]` → 201, `[]`, el producto sigue sin sección); `test_sec_25_el_put_incluye_productos_ids_vigentes` (respuesta exacta del PUT con productos asignados); `test_sec_30_la_modificacion_no_altera_los_productos_asignados` (el Plato conserva su `seccion_id` y su id figura en `productos_ids` de la respuesta); `test_productos_ids_solicitudes_rechazadas_no_alteran_el_get` (POST y PUT rechazados con 409 y 422 dejan el `GET` con los mismos `productos_ids`).
   - Escenarios (H): IDS-02, IDS-04, IDS-05; SEC-25, SEC-30.
 
-- [ ] **3.6 Conteo de sentencias SQL (caracterización, nace verde)** — Archivos: `Backend/tests/secciones/test_modelos.py`. Depende de 3.5.
+- [x] **3.6 Conteo de sentencias SQL (caracterización, nace verde)** — Archivos: `Backend/tests/secciones/test_modelos.py`. Depende de 3.5.
   - RED (caracterización): línea base verde.
   - GREEN: `test_productos_ids_emite_un_unico_select_sobre_producto` con un listener `before_cursor_execute` sobre el motor de prueba: con una sección que tenga productos de los cinco subtipos, leer `productos_ids` emite exactamente un `SELECT` y ninguna sentencia consulta las tablas de subtipos (`plato`, `bebida`, `postre`, `menu_ejecutivo`, `combo_promocion`; nombres reales según los modelos). Se retira el listener al terminar la prueba. Cubre las decisiones 2 y 3 del diseño (sin N+1, sin cargas por fila).
   - Escenarios: soporte de IDS-09.
 
-- [ ] **3.7 Verificación de importaciones (caracterización, nace verde)** — Archivos: `Backend/tests/secciones/test_excepciones.py`. Depende de 1.1.
+- [x] **3.7 Verificación de importaciones (caracterización, nace verde)** — Archivos: `Backend/tests/secciones/test_excepciones.py`. Depende de 1.1.
   - RED (caracterización): línea base verde (hoy el archivo solo verifica `exceptions`).
   - GREEN: `test_productos_ids_secciones_no_importa_productos` recorre con `ast` el código fuente de `src.secciones.models`, `schemas`, `services` y `router` y comprueba que ninguno importa `src.productos` (ni `from src import productos`). Comprobación de sensibilidad: agregar temporalmente un import de `src.productos` en `models.py` debe hacerla fallar; se repone de inmediato.
   - Escenarios: restricción de dirección de importaciones (diseño, matriz de pruebas).
@@ -119,11 +119,11 @@ Chain strategy: pending
 
 ## Fase 4: Verificación final y trazabilidad
 
-- [ ] **4.1 Suite completa y grafo de importaciones** — Archivos: ninguno. Depende de Fase 3.
+- [x] **4.1 Suite completa y grafo de importaciones** — Archivos: ninguno. Depende de Fase 3.
   - RED/GREEN: ejecutar `cd Backend && python -m pytest` en verde; `configure_mappers()` sin errores; `rg "from src.productos|import src.productos" Backend/src/secciones` sin resultados; `git status` no muestra cambios en `Backend/src` fuera de `secciones/models.py` y `secciones/schemas.py`, ni en `.atl/` ni `.claude/`.
   - Hecho cuando: suite en verde y el diff de código fuente se limita a los dos archivos previstos.
 
-- [ ] **4.2 Trazabilidad de escenarios** — Archivos: ninguno (solo se agregan pruebas en archivos existentes). Depende de 4.1.
+- [x] **4.2 Trazabilidad de escenarios** — Archivos: ninguno (solo se agregan pruebas en archivos existentes). Depende de 4.1.
   - RED/GREEN: revisar el Anexo A. Para cada uno de los 17 escenarios IDS debe existir una prueba cuyo nombre contenga `test_ids_NN` con nivel H (o BD); para SEC-02, SEC-22 y SEC-30 debe existir la prueba `test_sec_NN` correspondiente. Comprobar con `rg "def test_ids_" Backend/tests/secciones` y `rg "def test_sec_(02|22|30)" Backend/tests/secciones`. Listar los huecos y cerrarlos con RED → GREEN o registrarlos como riesgo.
   - Hecho cuando: el listado sin cobertura está vacío y `python -m pytest` pasa.
   - `[COMMIT]` final (verify queda para `sdd-verify`).
