@@ -102,17 +102,17 @@ Chain strategy: pending
 
 ## Fase 4: Excepciones y servicios
 
-- [ ] **4.1 Excepciones** — Archivos: `Backend/src/productos_menu/exceptions.py`, `Backend/tests/productos_menu/test_excepciones.py`. Depende de 2.1.
+- [x] **4.1 Excepciones** — Archivos: `Backend/src/productos_menu/exceptions.py`, `Backend/tests/productos_menu/test_excepciones.py`. Depende de 2.1.
   - RED: `ErrorProductoMenu(Exception)` es base de `ProductoInexistente(producto_id)` (guarda `producto_id`), `ProductoDadoDeBaja`, `FechaMenuOcupada` y `ProductoMenuNoEncontrado`; la jerarquía es disjunta de `productos.ErrorDominio` y `secciones.ErrorSeccion`; cada una tiene mensaje; el módulo no importa FastAPI.
   - GREEN: crear las clases.
   - Escenarios: soporte de PMD-13, 14, 15, 24.
 
-- [ ] **4.2 `obtener_producto_menu` y rollback en salida con error** — Archivos: `Backend/src/productos_menu/services.py`, `Backend/tests/productos_menu/test_servicios.py`. Depende de 4.1, 2.3.
+- [x] **4.2 `obtener_producto_menu` y rollback en salida con error** — Archivos: `Backend/src/productos_menu/services.py`, `Backend/tests/productos_menu/test_servicios.py`. Depende de 4.1, 2.3.
   - RED (S): existente devuelve la fila; inexistente lanza `ProductoMenuNoEncontrado` y `sesion.in_transaction()` es falso tras el error (decisión 10).
   - GREEN: `obtener_producto_menu(sesion, id)` con rollback antes de lanzar.
   - Escenarios (S): soporte de PMD-24, 29, 33.
 
-- [ ] **4.3 `crear_producto_menu`, verificaciones y `_confirmar`** — Archivos: `Backend/src/productos_menu/services.py`, `Backend/tests/productos_menu/test_servicios.py`. Depende de 4.2.
+- [x] **4.3 `crear_producto_menu`, verificaciones y `_confirmar`** — Archivos: `Backend/src/productos_menu/services.py`, `Backend/tests/productos_menu/test_servicios.py`. Depende de 4.2.
   - RED (S):
     - Alta válida persiste y devuelve `id` (PMD-04); fecha pasada, de hoy y futura (PMD-05..07); los cinco subtipos con fechas distintas (PMD-08); mismo producto en dos fechas (PMD-40).
     - `producto_id` inexistente → `ProductoInexistente` (PMD-13); producto dado de baja → `ProductoDadoDeBaja` (PMD-14); fecha ocupada → `FechaMenuOcupada` sin fila nueva y el existente intacto (PMD-15).
@@ -122,7 +122,7 @@ Chain strategy: pending
   - GREEN: `crear_producto_menu` (`sesion.get(Producto, id)` → `_verificar_producto_activo` → `_verificar_fecha_libre` → `add` → `_confirmar`); `_confirmar` traduce solo el `IntegrityError` cuyo `orig` contiene `producto_menu.fecha` y hace rollback en todo error.
   - Escenarios (S): PMD-04..08, PMD-13..15, PMD-17..20, PMD-40.
 
-- [ ] **4.4 `actualizar_fecha_producto_menu`** — Archivos: `Backend/src/productos_menu/services.py`, `Backend/tests/productos_menu/test_servicios.py`. Depende de 4.3.
+- [x] **4.4 `actualizar_fecha_producto_menu`** — Archivos: `Backend/src/productos_menu/services.py`, `Backend/tests/productos_menu/test_servicios.py`. Depende de 4.3.
   - RED (S):
     - Mover a fecha libre: misma `id` y `producto_id`, `F1` queda libre (PMD-21); conservar la fecha propia (PMD-22).
     - Fecha de otro registro → `FechaMenuOcupada` y ambos intactos (PMD-23).
@@ -135,7 +135,7 @@ Chain strategy: pending
   - GREEN: `obtener` → `_verificar_producto_activo(registro.producto)` → `_verificar_fecha_libre(fecha, excluir_id=id)` → asignar `fecha` solo después de verificar (`autoflush=False`) → `_confirmar`.
   - Escenarios (S): PMD-21..26, PMD-29..31.
 
-- [ ] **4.5 `eliminar_producto_menu`** — Archivos: `Backend/src/productos_menu/services.py`, `Backend/tests/productos_menu/test_servicios.py`. Depende de 4.4.
+- [x] **4.5 `eliminar_producto_menu`** — Archivos: `Backend/src/productos_menu/services.py`, `Backend/tests/productos_menu/test_servicios.py`. Depende de 4.4.
   - RED (S): borra la fila (PMD-32); `id` inexistente (PMD-33) y repetido (PMD-34) → `ProductoMenuNoEncontrado`; con producto dado de baja el borrado se completa (PMD-35); tras borrar, `crear_producto_menu` con la fecha liberada funciona (PMD-36); el producto sigue existiendo.
   - GREEN: `obtener` → `sesion.delete` → `_confirmar`, sin consultar el estado del producto.
   - Escenarios (S): PMD-32..36.
