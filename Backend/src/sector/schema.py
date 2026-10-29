@@ -5,7 +5,7 @@ from typing import Optional
 class SectorBase(BaseModel):
     nombre: str = Field(max_length=50, description="Nombre del sector (máximo 50 caracteres)")
     apto_fumadores: bool = Field(description="Indica si el sector es apto para fumadores")
-    piso: int = Field(description="Piso del sector (entero)")
+    piso: str = Field(max_length=30, description="Piso del sector (máximo 30 caracteres)")
 
     @field_validator("nombre")
     @classmethod
@@ -26,7 +26,7 @@ class SectorUpdate(BaseModel):
 
     nombre: Optional[str] = Field(default=None, max_length=50)
     apto_fumadores: Optional[bool] = None
-    piso: Optional[int] = None
+    piso: Optional[str] = None
 
     @field_validator("nombre")
     @classmethod
