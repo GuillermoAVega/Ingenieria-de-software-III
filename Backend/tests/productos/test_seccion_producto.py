@@ -1,18 +1,21 @@
 """Integración de `seccion_id` en los servicios compartidos de productos (nivel servicio)."""
+from datetime import date
 from decimal import Decimal
 
 import pytest
-from sqlalchemy import event, select
+from sqlalchemy import event, select, text
 
 from src.productos import services
 from src.productos.bebidas import services as servicios_bebidas
 from src.productos.bebidas.schemas import BebidaActualizar, BebidaCrear
 from src.productos.exceptions import NombreDuplicado, ProductoNoEncontrado, SeccionInexistente
+from src.productos.combos.models import ComboPromocion
 from src.productos.models import Producto
 from src.productos.platos import services as servicios_platos
 from src.productos.platos.models import Plato
 from src.productos.platos.schemas import PlatoActualizar, PlatoCrear
 from src.productos.postres import services as servicios_postres
+from src.productos.postres.models import Postre
 from src.productos.postres.schemas import PostreActualizar, PostreCrear
 
 
@@ -228,3 +231,134 @@ def test_crear_producto_hace_rollback_ante_cualquier_error_de_dominio(sesion):
         )
 
     assert not sesion.new
+
+
+# --- Desvinculación a nivel de base de datos (ON DELETE SET NULL) ---
+
+
+def _crear_cinco_subtipos(
+    sesion, seccion_id, crear_plato, crear_bebida, crear_postre, crear_menu, crear_combo,
+    sufijo="", vencido=False,
+):
+    """Persiste un producto de cada subtipo en la sección; devuelve {tipo: id}."""
+    plato = crear_plato(nombre=f"Plato{sufijo}")
+    bebida = crear_bebida(nombre=f"Bebida{sufijo}")
+    postre = crear_postre(nombre=f"Postre{sufijo}")
+    menu = crear_menu(plato, postre, nombre=f"Menu{sufijo}")
+    hasta = date(2026, 6, 10) if vencido else date(2026, 6, 30)
+    combo = crear_combo(nombre=f"Combo{sufijo}", hasta=hasta, platos=[plato])
+    productos = {
+        "plato": plato, "bebida": bebida, "postre": postre, "menu": menu, "combo": combo,
+    }
+    for producto in productos.values():
+        producto.seccion_id = seccion_id
+    sesion.add_all(productos.values())
+    sesion.commit()
+    return {tipo: producto.id for tipo, producto in productos.items()}
+
+
+def _secciones_de_productos(sesion):
+    sesion.expire_all()
+    filas = sesion.execute(text("SELECT id, seccion_id FROM producto")).all()
+    return dict(filas)
+
+
+def test_sec_34_pragma_foreign_keys_esta_activo(sesion):
+    assert sesion.execute(text("PRAGMA foreign_keys")).scalar() == 1
+
+
+def test_sec_34_delete_crudo_conserva_plato_y_bebida_con_seccion_nula(
+    sesion, crear_seccion, crear_plato, crear_bebida
+):
+    seccion = _seccion(sesion, crear_seccion)
+    plato = crear_plato()
+    bebida = crear_bebida()
+    plato.seccion_id = bebida.seccion_id = seccion.id
+    sesion.add_all([plato, bebida])
+    sesion.commit()
+    ids = [plato.id, bebida.id]
+
+    sesion.execute(text("DELETE FROM seccion WHERE id = :id"), {"id": seccion.id})
+    sesion.commit()
+
+    assert sesion.execute(text("SELECT COUNT(*) FROM seccion")).scalar() == 0
+    assert _secciones_de_productos(sesion) == {ids[0]: None, ids[1]: None}
+
+
+def test_sec_35_delete_crudo_solo_desvincula_los_productos_de_la_seccion_borrada(
+    sesion, crear_seccion, crear_plato
+):
+    borrada = _seccion(sesion, crear_seccion, nombre="Entradas")
+    conservada = _seccion(sesion, crear_seccion, nombre="Postres")
+    del_borrada = crear_plato(nombre="Milanesa")
+    de_la_otra = crear_plato(nombre="Pizza")
+    sin_seccion = crear_plato(nombre="Tarta")
+    del_borrada.seccion_id = borrada.id
+    de_la_otra.seccion_id = conservada.id
+    sesion.add_all([del_borrada, de_la_otra, sin_seccion])
+    sesion.commit()
+    ids = (del_borrada.id, de_la_otra.id, sin_seccion.id)
+    conservada_id = conservada.id
+
+    sesion.execute(text("DELETE FROM seccion WHERE id = :id"), {"id": borrada.id})
+    sesion.commit()
+
+    assert _secciones_de_productos(sesion) == {
+        ids[0]: None, ids[1]: conservada_id, ids[2]: None,
+    }
+
+
+def test_sec_36_delete_crudo_desvincula_los_cinco_subtipos(
+    sesion, crear_seccion, crear_plato, crear_bebida, crear_postre, crear_menu, crear_combo
+):
+    seccion = _seccion(sesion, crear_seccion)
+    ids = _crear_cinco_subtipos(
+        sesion, seccion.id, crear_plato, crear_bebida, crear_postre, crear_menu, crear_combo
+    )
+
+    sesion.execute(text("DELETE FROM seccion WHERE id = :id"), {"id": seccion.id})
+    sesion.commit()
+
+    assert _secciones_de_productos(sesion) == {id_: None for id_ in ids.values()}
+    assert sesion.execute(text("SELECT COUNT(*) FROM combo_promocion")).scalar() == 1
+    assert sesion.execute(text("SELECT COUNT(*) FROM menu_ejecutivo")).scalar() == 1
+
+
+def test_sec_37_delete_crudo_desvincula_un_combo_vencido_sin_otros_cambios(
+    sesion, crear_seccion, crear_plato, crear_bebida, crear_postre, crear_menu, crear_combo
+):
+    seccion = _seccion(sesion, crear_seccion)
+    ids = _crear_cinco_subtipos(
+        sesion, seccion.id, crear_plato, crear_bebida, crear_postre, crear_menu, crear_combo,
+        vencido=True,
+    )
+
+    sesion.execute(text("DELETE FROM seccion WHERE id = :id"), {"id": seccion.id})
+    sesion.commit()
+
+    combo = sesion.get(ComboPromocion, ids["combo"])
+    assert combo is not None
+    assert combo.seccion_id is None
+    assert combo.fecha_hasta == date(2026, 6, 10)
+    assert combo.dado_de_baja is False
+
+
+def test_sec_38_delete_crudo_desvincula_un_postre_dado_de_baja(
+    sesion, crear_seccion, crear_postre
+):
+    seccion = _seccion(sesion, crear_seccion)
+    postre = crear_postre()
+    postre.dado_de_baja = True
+    postre.seccion_id = seccion.id
+    sesion.add(postre)
+    sesion.commit()
+    postre_id = postre.id
+
+    sesion.execute(text("DELETE FROM seccion WHERE id = :id"), {"id": seccion.id})
+    sesion.commit()
+
+    sesion.expire_all()
+    conservado = sesion.get(Postre, postre_id)
+    assert conservado is not None
+    assert conservado.seccion_id is None
+    assert conservado.dado_de_baja is True

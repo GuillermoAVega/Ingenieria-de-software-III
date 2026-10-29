@@ -1,4 +1,13 @@
+from datetime import date
+from decimal import Decimal
+
 import pytest
+
+from src.productos.bebidas.models import Bebida
+from src.productos.combos.models import ComboPromocion
+from src.productos.menus_ejecutivos.models import MenuEjecutivo
+from src.productos.platos.models import Plato
+from src.productos.postres.models import Postre
 
 RUTA = "/secciones"
 
@@ -101,8 +110,8 @@ def test_sec_43_subtitulo_de_201_caracteres_rodeado_de_espacios_responde_422(cli
     "nombre_repetido",
     [
         pytest.param("Entradas", id="sec_11_exacto"),
-        pytest.param("entradas", id="sec_12_mayusculas"),
-        pytest.param("  Entradas ", id="sec_13_espacios"),
+        pytest.param("entradas", id="test_sec_12_mayusculas"),
+        pytest.param("  Entradas ", id="test_sec_13_espacios"),
     ],
 )
 def test_sec_11_12_13_nombre_duplicado_en_el_alta_responde_409(cliente, nombre_repetido):
@@ -277,3 +286,129 @@ def test_sec_18_el_nombre_se_puede_reutilizar_tras_el_borrado(cliente):
     cliente.delete(f"{RUTA}/{creada['id']}")
 
     assert _crear(cliente).status_code == 201
+
+
+# --- Desvinculación de productos al borrar una sección (HTTP) ---
+
+RUTAS_PRODUCTO = {
+    "plato": "/productos/platos",
+    "bebida": "/productos/bebidas",
+    "postre": "/productos/postres",
+    "menu": "/productos/menus-ejecutivos",
+    "combo": "/productos/combos",
+}
+
+
+def _plato(nombre="Milanesa", **extra):
+    return Plato(nombre=nombre, nombre_normalizado=nombre.casefold(),
+                 precio=Decimal("1500.00"), cant_personas=2, **extra)
+
+
+def _bebida(nombre="Cerveza", **extra):
+    return Bebida(nombre=nombre, nombre_normalizado=nombre.casefold(),
+                  precio=Decimal("800.00"), es_alcoholica=True, **extra)
+
+
+def _postre(nombre="Flan", **extra):
+    return Postre(nombre=nombre, nombre_normalizado=nombre.casefold(),
+                  precio=Decimal("600.00"), **extra)
+
+
+def _persistir_cinco_subtipos(
+    seccion_id, persistir, vencido=False
+):
+    plato, bebida, postre = _plato(), _bebida(), _postre()
+    menu = MenuEjecutivo(nombre="Menu", nombre_normalizado="menu",
+                         precio=Decimal("2000.00"), plato=plato, postre=postre)
+    hasta = date(2026, 6, 10) if vencido else date(2026, 6, 30)
+    combo = ComboPromocion(nombre="Combo", nombre_normalizado="combo",
+                           precio=Decimal("3000.00"), fecha_desde=date(2026, 6, 1),
+                           fecha_hasta=hasta, platos=[plato])
+    productos = {
+        "plato": plato, "bebida": bebida, "postre": postre, "menu": menu, "combo": combo,
+    }
+    for producto in productos.values():
+        producto.seccion_id = seccion_id
+    ids = persistir(*productos.values())
+    return dict(zip(productos, ids))
+
+
+def _seccion_de(cliente, tipo, producto_id):
+    respuesta = cliente.get(f"{RUTAS_PRODUCTO[tipo]}/{producto_id}")
+    assert respuesta.status_code == 200
+    return respuesta.json()["seccion_id"]
+
+
+def test_sec_34_borrar_la_seccion_conserva_plato_y_bebida_con_seccion_id_nulo(
+    cliente, crear_seccion, persistir
+):
+    seccion_id = persistir(crear_seccion())
+    plato, bebida = _plato(), _bebida()
+    plato.seccion_id = bebida.seccion_id = seccion_id
+    plato_id, bebida_id = persistir(plato, bebida)
+
+    assert cliente.delete(f"{RUTA}/{seccion_id}").status_code == 204
+
+    assert _seccion_de(cliente, "plato", plato_id) is None
+    assert _seccion_de(cliente, "bebida", bebida_id) is None
+
+
+def test_sec_35_borrar_la_seccion_no_desvincula_los_productos_de_otra_seccion(
+    cliente, crear_seccion, persistir
+):
+    borrada_id = persistir(crear_seccion(nombre="Entradas"))
+    conservada_id = persistir(crear_seccion(nombre="Postres"))
+    del_borrada = _plato(nombre="Milanesa")
+    de_la_otra = _plato(nombre="Pizza")
+    del_borrada.seccion_id = borrada_id
+    de_la_otra.seccion_id = conservada_id
+    del_borrada_id, de_la_otra_id = persistir(del_borrada, de_la_otra)
+
+    assert cliente.delete(f"{RUTA}/{borrada_id}").status_code == 204
+
+    assert _seccion_de(cliente, "plato", del_borrada_id) is None
+    assert _seccion_de(cliente, "plato", de_la_otra_id) == conservada_id
+    assert cliente.get(f"{RUTA}/{conservada_id}").status_code == 200
+
+
+def test_sec_36_borrar_la_seccion_desvincula_los_cinco_subtipos(
+    cliente, crear_seccion, persistir
+):
+    seccion_id = persistir(crear_seccion())
+    ids = _persistir_cinco_subtipos(seccion_id, persistir)
+
+    assert cliente.delete(f"{RUTA}/{seccion_id}").status_code == 204
+
+    for tipo, producto_id in ids.items():
+        assert _seccion_de(cliente, tipo, producto_id) is None
+
+
+def test_sec_37_borrar_la_seccion_desvincula_un_combo_vencido(
+    cliente, crear_seccion, persistir
+):
+    seccion_id = persistir(crear_seccion())
+    ids = _persistir_cinco_subtipos(seccion_id, persistir, vencido=True)
+
+    assert cliente.delete(f"{RUTA}/{seccion_id}").status_code == 204
+
+    combo = cliente.get(f"{RUTAS_PRODUCTO['combo']}/{ids['combo']}").json()
+    assert combo["seccion_id"] is None
+    assert combo["fecha_hasta"] == "2026-06-10"
+    assert combo["dado_de_baja"] is False
+
+
+def test_sec_38_borrar_la_seccion_desvincula_un_postre_dado_de_baja(
+    cliente, crear_seccion, persistir
+):
+    seccion_id = persistir(crear_seccion())
+    postre = _postre()
+    postre.dado_de_baja = True
+    postre.seccion_id = seccion_id
+    postre_id = persistir(postre)
+
+    assert cliente.delete(f"{RUTA}/{seccion_id}").status_code == 204
+
+    respuesta = cliente.get(f"{RUTAS_PRODUCTO['postre']}/{postre_id}")
+    assert respuesta.status_code == 200
+    assert respuesta.json()["seccion_id"] is None
+    assert respuesta.json()["dado_de_baja"] is True

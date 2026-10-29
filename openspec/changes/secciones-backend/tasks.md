@@ -160,21 +160,21 @@ Chain strategy: pending
 
 ## Fase 6: Verificación final y trazabilidad
 
-- [ ] **6.1 Desvinculación a nivel de base de datos (`ON DELETE SET NULL`)** — Archivos: `Backend/tests/productos/test_seccion_producto.py` (sección BD). Depende de Fase 5.
+- [x] **6.1 Desvinculación a nivel de base de datos (`ON DELETE SET NULL`)** — Archivos: `Backend/tests/productos/test_seccion_producto.py` (sección BD). Depende de Fase 5.
   - RED (BD): `test_sec_34_pragma_foreign_keys_esta_activo` (`PRAGMA foreign_keys` = 1 en el motor de pruebas); `DELETE FROM seccion` crudo deja `seccion_id` NULL con las filas de producto intactas para Plato y Bebida (SEC-34), solo desvincula la sección borrada (SEC-35), los cinco subtipos (SEC-36), combo vencido sin otros cambios (SEC-37) y Postre dado de baja (SEC-38).
   - GREEN: ajustes mínimos si algún caso falla (p. ej. falta `passive_deletes` o el `ondelete`).
   - Escenarios (BD): SEC-34..38.
 
-- [ ] **6.2 Desvinculación vía HTTP** — Archivos: `Backend/tests/secciones/test_router.py` (sección borrado). Depende de 6.1.
+- [x] **6.2 Desvinculación vía HTTP** — Archivos: `Backend/tests/secciones/test_router.py` (sección borrado). Depende de 6.1.
   - RED (H): `DELETE /secciones/{id}` y consulta posterior de `GET /productos/platos/{id}` y `GET /productos/bebidas/{id}` con `seccion_id = null` (SEC-34); solo se desvincula la sección borrada (SEC-35); los cinco subtipos (SEC-36); combo vencido (SEC-37); Postre dado de baja (SEC-38).
   - GREEN: sin código esperado.
   - Escenarios (H): SEC-34..38.
 
-- [ ] **6.3 Suite completa y base local** — Archivos: ninguno. Depende de 6.2.
+- [x] **6.3 Suite completa y base local** — Archivos: ninguno. Depende de 6.2.
   - Verificar `cd Backend && python -m pytest` en verde y `configure_mappers()` sin errores; `rg "from src.productos" Backend/src/secciones` sin resultados. Borrar `Backend/app.db` local, iniciar la aplicación para recrearla y comprobar `POST /secciones` y `DELETE /secciones/{id}`.
   - Hecho cuando: suite en verde, grafo de importaciones acíclico y base local recreada.
 
-- [ ] **6.4 Trazabilidad de escenarios** — Archivos: ninguno (solo se agregan pruebas en archivos existentes). Depende de 6.3.
+- [x] **6.4 Trazabilidad de escenarios** — Archivos: ninguno (solo se agregan pruebas en archivos existentes). Depende de 6.3.
   - Revisar el Anexo A: para cada uno de los 72 escenarios (44 SEC + 28 CAT-S) debe existir una prueba cuyo nombre contenga `test_sec_NN` o `test_cat_s_NN`, con nivel H o BD donde aplica. Listar los huecos y cerrarlos con RED → GREEN o registrarlos como riesgo.
   - Hecho cuando: el listado sin cobertura está vacío y `python -m pytest` pasa.
   - `[COMMIT]` final (verify queda para `sdd-verify`).

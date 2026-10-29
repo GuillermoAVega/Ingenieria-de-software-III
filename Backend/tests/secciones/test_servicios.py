@@ -85,8 +85,8 @@ def test_crear_seccion_persiste_el_nombre_normalizado(sesion):
     "nombre",
     [
         pytest.param("Entradas", id="sec_11_exacto"),
-        pytest.param("entradas", id="sec_12_mayusculas"),
-        pytest.param("  Entradas ", id="sec_13_espacios"),
+        pytest.param("entradas", id="test_sec_12_mayusculas"),
+        pytest.param("  Entradas ", id="test_sec_13_espacios"),
     ],
 )
 def test_sec_11_a_13_nombre_duplicado_lanza_error_sin_fila_nueva(
