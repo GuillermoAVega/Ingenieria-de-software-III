@@ -43,12 +43,12 @@ Chain strategy: pending
 
 ## Fase 1: Infraestructura de pruebas (fábricas de producto compartidas)
 
-- [ ] **1.1 Mover las cinco fábricas de producto a `Backend/tests/conftest.py`** — Archivos: `Backend/tests/conftest.py`, `Backend/tests/productos/conftest.py`, `Backend/tests/test_fabricas_producto.py`.
+- [x] **1.1 Mover las cinco fábricas de producto a `Backend/tests/conftest.py`** — Archivos: `Backend/tests/conftest.py`, `Backend/tests/productos/conftest.py`, `Backend/tests/test_fabricas_producto.py`.
   - RED: `test_fabricas_producto_disponibles_fuera_de_tests_productos` solicita `crear_plato`, `crear_bebida`, `crear_postre`, `crear_menu` y `crear_combo` desde `Backend/tests/` (fuera de `tests/productos`) y persiste un ejemplar de cada una con `persistir`; falla con `fixture 'crear_plato' not found`.
   - GREEN: mover las cinco fixtures sin cambiar su cuerpo a `Backend/tests/conftest.py` (con los imports de `Decimal`, `date` y los modelos de subtipo) y eliminar `Backend/tests/productos/conftest.py` (queda vacío).
   - Escenarios: soporte de PMD-08, PMD-37..40.
 
-- [ ] **1.2 Suite existente intacta tras el movimiento** — **[CARACTERIZACIÓN: nace en verde]** — Archivos: ninguno. Depende de 1.1.
+- [x] **1.2 Suite existente intacta tras el movimiento** — **[CARACTERIZACIÓN: nace en verde]** — Archivos: ninguno. Depende de 1.1.
   - RED (sustituido): `cd Backend && python -m pytest` debe pasar completa tal como está; `rg "def crear_(plato|bebida|postre|menu|combo)" Backend/tests` devuelve solo `Backend/tests/conftest.py`.
   - GREEN: sin código; si algo falla, corregir imports de la fábrica movida, sin tocar aserciones.
   - `[COMMIT]` (Fase 1 completa).
@@ -57,12 +57,12 @@ Chain strategy: pending
 
 ## Fase 2: Modelo, clave foránea, índice y registro
 
-- [ ] **2.1 Constantes y paquete de pruebas** — Archivos: `Backend/src/productos_menu/__init__.py`, `Backend/src/productos_menu/constants.py`, `Backend/tests/productos_menu/__init__.py`, `Backend/tests/productos_menu/test_constantes.py`.
+- [x] **2.1 Constantes y paquete de pruebas** — Archivos: `Backend/src/productos_menu/__init__.py`, `Backend/src/productos_menu/constants.py`, `Backend/tests/productos_menu/__init__.py`, `Backend/tests/productos_menu/test_constantes.py`.
   - RED: `test_constantes_prefijo` (`PREFIJO == "/productos-menu"`).
   - GREEN: crear paquetes y `constants.py`.
   - Escenarios: soporte del router.
 
-- [ ] **2.2 Modelo `ProductoMenu`, FK, índice UNIQUE y relación bidireccional** — Archivos: `Backend/src/productos_menu/models.py`, `Backend/src/productos/models.py`, `Backend/src/productos/registro.py`, `Backend/tests/productos_menu/test_modelos.py`, `Backend/tests/productos/test_registro.py`. Depende de 2.1, 1.1.
+- [x] **2.2 Modelo `ProductoMenu`, FK, índice UNIQUE y relación bidireccional** — Archivos: `Backend/src/productos_menu/models.py`, `Backend/src/productos/models.py`, `Backend/src/productos/registro.py`, `Backend/tests/productos_menu/test_modelos.py`, `Backend/tests/productos/test_registro.py`. Depende de 2.1, 1.1.
   - RED:
     - `test_pmd_01_mappers_se_configuran_con_la_nueva_entidad` (`configure_mappers()` tras importar solo `src.productos.registro`, sin error).
     - `test_pmd_02_relacion_bidireccional` (asignar `ProductoMenu.producto` con un Plato y leer `Producto.menus_del_dia`, y a la inversa).
@@ -75,7 +75,7 @@ Chain strategy: pending
   - Escenarios: PMD-01, PMD-02, PMD-40 (BD); soporte de PMD-15.
   - Hecho cuando: suite completa en verde.
 
-- [ ] **2.3 Fábrica `crear_producto_menu`** — Archivos: `Backend/tests/conftest.py`, `Backend/tests/productos_menu/test_fabrica.py`. Depende de 2.2.
+- [x] **2.3 Fábrica `crear_producto_menu`** — Archivos: `Backend/tests/conftest.py`, `Backend/tests/productos_menu/test_fabrica.py`. Depende de 2.2.
   - RED: `test_fabrica_crear_producto_menu_persiste_con_fecha_explicita`; sin fecha, la primera llamada devuelve `date(2100, 1, 1)` y las siguientes días consecutivos (contador por prueba); dos llamadas con el mismo producto y sin fecha no violan el índice UNIQUE. Falla con fixture inexistente.
   - GREEN: fixture `crear_producto_menu(producto, fecha=None)` con `itertools.count()` por prueba e importación de `ProductoMenu`.
   - `[COMMIT]` (Fase 2 completa).
@@ -84,7 +84,7 @@ Chain strategy: pending
 
 ## Fase 3: Esquemas
 
-- [ ] **3.1 Esquemas de menú del día** — Archivos: `Backend/src/productos_menu/schemas.py`, `Backend/tests/productos_menu/test_schemas.py`. Depende de 2.1.
+- [x] **3.1 Esquemas de menú del día** — Archivos: `Backend/src/productos_menu/schemas.py`, `Backend/tests/productos_menu/test_schemas.py`. Depende de 2.1.
   - RED (E):
     - `ProductoMenuCrear`: `producto_id` ausente (PMD-09), `"abc"` (PMD-10), `fecha` ausente (PMD-11), `"no-es-una-fecha"` y `"2026-02-30"` (PMD-12) → error; fecha pasada, de hoy y futura válidas (PMD-05..07); `"2026-10-28"` se parsea a `date`.
     - `ProductoMenuActualizar`: `fecha` ausente o inválida → error (PMD-27); `{fecha, producto_id}` valida y el modelo resultante solo contiene `fecha` (PMD-26).
@@ -92,7 +92,7 @@ Chain strategy: pending
   - GREEN: los tres modelos Pydantic del diseño, con `date` laxo y `producto_id: int` laxo.
   - Escenarios (E): PMD-03, PMD-05..07, PMD-09..12, PMD-26, PMD-27.
 
-- [ ] **3.2 Los esquemas de producto no exponen `menus_del_dia`** — **[CARACTERIZACIÓN: nace en verde]** — Archivos: `Backend/tests/productos/test_schemas.py`. Depende de 2.2.
+- [x] **3.2 Los esquemas de producto no exponen `menus_del_dia`** — **[CARACTERIZACIÓN: nace en verde]** — Archivos: `Backend/tests/productos/test_schemas.py`. Depende de 2.2.
   - RED (sustituido): parametrizada por los cinco subtipos, `menus_del_dia` no está en `model_fields` de ningún `*Respuesta` de producto; pasa antes de cualquier cambio de código.
   - GREEN: sin código; si falla, quitar el campo expuesto.
   - Escenarios (E): PMD-39.

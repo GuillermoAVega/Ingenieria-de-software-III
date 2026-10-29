@@ -34,3 +34,19 @@ def test_sec_01_mappers_se_configuran_con_la_nueva_entidad():
 
     configure_mappers()
     assert class_mapper(Seccion).relationships["productos"].mapper.class_.__name__ == "Producto"
+
+
+# [CARACTERIZACIÓN: nace en verde] el cambio productos-menu no toca la restricción de baja
+def test_restrict_por_tipo_conserva_su_contenido():
+    from src.productos.registro import (
+        RESTRICT_POR_TIPO,
+        combo_bebida,
+        combo_plato,
+        combo_postre,
+    )
+
+    assert RESTRICT_POR_TIPO == {
+        TIPO_PLATO: ("plato_id", combo_plato, "plato_id"),
+        TIPO_POSTRE: ("postre_id", combo_postre, "postre_id"),
+        TIPO_BEBIDA: (None, combo_bebida, "bebida_id"),
+    }

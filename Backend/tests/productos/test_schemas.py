@@ -151,3 +151,21 @@ def test_respuesta_base_expone_seccion_id(seccion_id):
 )
 def test_los_subtipos_heredan_seccion_id(esquema):
     assert "seccion_id" in esquema.model_fields
+
+
+# --- PMD-39 [CARACTERIZACIÓN: nace en verde] ---
+
+
+@pytest.mark.parametrize(
+    "esquema",
+    [
+        PlatoRespuesta,
+        BebidaRespuesta,
+        PostreRespuesta,
+        MenuRespuesta,
+        ComboRespuesta,
+        ProductoRespuestaBase,
+    ],
+)
+def test_pmd_39_respuestas_de_producto_no_exponen_menus_del_dia(esquema):
+    assert "menus_del_dia" not in esquema.model_fields

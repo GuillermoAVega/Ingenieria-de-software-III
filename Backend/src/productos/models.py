@@ -44,6 +44,8 @@ class Producto(ModeloBase):
 
     # Referencia a Seccion solo por cadena; `registro` carga su modelo
     seccion = relationship("Seccion", back_populates="productos")
+    # Referencia a ProductoMenu solo por cadena; sin cascada `delete` (historial)
+    menus_del_dia = relationship("ProductoMenu", back_populates="producto")
 
     def __new__(cls, *args, **kw):
         # Se valida en __new__ porque la instrumentación de SQLAlchemy envuelve

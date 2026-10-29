@@ -1,6 +1,7 @@
 import itertools
 import os
-from datetime import date
+from datetime import date, timedelta
+from decimal import Decimal
 
 # Debe fijarse antes de importar src.main (load_dotenv no sobrescribe)
 os.environ["ENV"] = "test"
@@ -16,6 +17,12 @@ from src.database import configurar_sqlite, get_db
 from src.main import app
 from src.models import ModeloBase
 from src.productos import registro  # noqa: F401  (carga los mappers de todos los subtipos)
+from src.productos.bebidas.models import Bebida
+from src.productos.combos.models import ComboPromocion
+from src.productos.menus_ejecutivos.models import MenuEjecutivo
+from src.productos.platos.models import Plato
+from src.productos.postres.models import Postre
+from src.productos_menu.models import ProductoMenu
 from src.productos.services import obtener_hoy
 from src.secciones.models import Seccion
 
@@ -97,5 +104,88 @@ def crear_seccion():
             subtitulo=subtitulo,
             posicion=next(posiciones) if posicion is None else posicion,
         )
+
+    return _crear
+
+
+@pytest.fixture
+def crear_plato():
+    def _crear(nombre="Milanesa", precio="1500.00", cant_personas=2, **extra):
+        return Plato(
+            nombre=nombre,
+            nombre_normalizado=nombre.strip().casefold(),
+            precio=Decimal(precio),
+            cant_personas=cant_personas,
+            **extra,
+        )
+
+    return _crear
+
+
+@pytest.fixture
+def crear_bebida():
+    def _crear(nombre="Cerveza", precio="800.00", es_alcoholica=True):
+        return Bebida(
+            nombre=nombre,
+            nombre_normalizado=nombre.strip().casefold(),
+            precio=Decimal(precio),
+            es_alcoholica=es_alcoholica,
+        )
+
+    return _crear
+
+
+@pytest.fixture
+def crear_postre():
+    def _crear(nombre="Flan", precio="600.00"):
+        return Postre(
+            nombre=nombre,
+            nombre_normalizado=nombre.strip().casefold(),
+            precio=Decimal(precio),
+        )
+
+    return _crear
+
+
+@pytest.fixture
+def crear_menu():
+    def _crear(plato, postre, nombre="Menú del día", precio="2000.00"):
+        return MenuEjecutivo(
+            nombre=nombre,
+            nombre_normalizado=nombre.strip().casefold(),
+            precio=Decimal(precio),
+            plato=plato,
+            postre=postre,
+        )
+
+    return _crear
+
+
+@pytest.fixture
+def crear_combo():
+    def _crear(
+        nombre="Combo", desde=date(2026, 6, 1), hasta=date(2026, 6, 30), **relaciones
+    ):
+        return ComboPromocion(
+            nombre=nombre,
+            nombre_normalizado=nombre.strip().casefold(),
+            precio=Decimal("3000.00"),
+            fecha_desde=desde,
+            fecha_hasta=hasta,
+            **relaciones,
+        )
+
+    return _crear
+
+
+@pytest.fixture
+def crear_producto_menu():
+    # Autoasignadas desde 2100-01-01 para no chocar con las fechas explícitas de las pruebas
+    dias = itertools.count()
+
+    def _crear(producto, fecha=None):
+        if fecha is None:
+            fecha = date(2100, 1, 1) + timedelta(days=next(dias))
+        return ProductoMenu(producto=producto, fecha=fecha)
 
     return _crear
