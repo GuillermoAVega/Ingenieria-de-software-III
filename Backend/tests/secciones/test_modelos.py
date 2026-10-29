@@ -1,10 +1,18 @@
+from datetime import date, timedelta
 from decimal import Decimal
 
 import pytest
 from sqlalchemy import Integer, inspect
 from sqlalchemy.exc import IntegrityError
 
-from src.productos.registro import Plato, Seccion
+from src.productos.registro import (
+    Bebida,
+    ComboPromocion,
+    MenuEjecutivo,
+    Plato,
+    Postre,
+    Seccion,
+)
 from src.secciones.constants import NOMBRE_MAX, SUBTITULO_MAX
 
 
@@ -99,3 +107,114 @@ def test_relacion_bidireccional_asignando_desde_la_seccion(sesion):
 
     assert plato.seccion is seccion
     assert plato.seccion_id == seccion.id
+
+
+# --- Seccion.productos_ids ---
+
+
+def _producto(clase, nombre, **cambios):
+    return clase(
+        nombre=nombre,
+        nombre_normalizado=nombre.lower(),
+        precio=Decimal("1500.00"),
+        **cambios,
+    )
+
+
+def _seccion_con(sesion, *productos):
+    seccion = Seccion(nombre="Entradas", nombre_normalizado="entradas", posicion=1)
+    seccion.productos.extend(productos)
+    sesion.add(seccion)
+    sesion.commit()
+    return seccion
+
+
+def test_ids_02_seccion_sin_productos_devuelve_lista_vacia_en_el_modelo(sesion):
+    sin_productos = _seccion_con(sesion)
+    con_producto = Seccion(nombre="Postres", nombre_normalizado="postres", posicion=2)
+    con_producto.productos.append(_producto(Plato, "Milanesa", cant_personas=2))
+    sesion.add(con_producto)
+    sesion.commit()
+
+    assert sin_productos.productos_ids == []
+    assert con_producto.productos_ids == [con_producto.productos[0].id]
+
+
+def test_ids_06_modelo_incluye_solo_productos_activos(sesion):
+    plato = _producto(Plato, "Milanesa", cant_personas=2)
+    bebida = _producto(Bebida, "Cerveza", es_alcoholica=True, dado_de_baja=True)
+    postre = _producto(Postre, "Flan")
+    seccion = _seccion_con(sesion, plato, bebida, postre)
+
+    assert seccion.productos_ids == [plato.id, postre.id]
+    assert bebida.id not in seccion.productos_ids
+
+
+def test_ids_07_modelo_con_solo_productos_dados_de_baja_devuelve_lista_vacia(sesion):
+    plato_de_baja = _producto(Plato, "Milanesa", cant_personas=2, dado_de_baja=True)
+    seccion = _seccion_con(sesion, plato_de_baja)
+
+    assert seccion.productos == [plato_de_baja]
+    assert seccion.productos_ids == []
+
+
+def test_ids_08_modelo_devuelve_ids_ascendentes(sesion):
+    # Productos con ids explícitos asignados en el orden 12, 10, 11
+    doce = _producto(Plato, "Doce", cant_personas=1, id=12)
+    diez = _producto(Postre, "Diez", id=10)
+    once = _producto(Postre, "Once", id=11)
+    seccion = Seccion(nombre="Entradas", nombre_normalizado="entradas", posicion=1)
+    seccion.productos.extend([doce, diez, once])
+
+    assert [p.id for p in seccion.productos] == [12, 10, 11]
+    assert seccion.productos_ids == [10, 11, 12]
+
+
+def test_ids_15_modelo_ignora_productos_de_otras_secciones_y_sin_seccion(sesion):
+    plato = _producto(Plato, "Milanesa", cant_personas=2)
+    postre = _producto(Postre, "Flan")
+    bebida = _producto(Bebida, "Cerveza", es_alcoholica=False)
+    propia = _seccion_con(sesion, plato)
+    otra = Seccion(nombre="Postres", nombre_normalizado="postres", posicion=2)
+    otra.productos.append(postre)
+    sesion.add_all([otra, bebida])
+    sesion.commit()
+
+    assert bebida.seccion_id is None
+    assert propia.productos_ids == [plato.id]
+    assert otra.productos_ids == [postre.id]
+
+
+def _combo(plato, **cambios):
+    return ComboPromocion(
+        nombre="Combo",
+        nombre_normalizado="combo",
+        precio=Decimal("3000.00"),
+        fecha_desde=date.today() - timedelta(days=30),
+        fecha_hasta=date.today() + timedelta(days=30),
+        platos=[plato],
+        **cambios,
+    )
+
+
+def test_ids_09_modelo_cuenta_los_cinco_subtipos(sesion):
+    plato = _producto(Plato, "Milanesa", cant_personas=2)
+    bebida = _producto(Bebida, "Cerveza", es_alcoholica=True)
+    postre = _producto(Postre, "Flan")
+    menu = _producto(MenuEjecutivo, "Menu", plato=plato, postre=postre)
+    combo = _combo(plato)
+    seccion = _seccion_con(sesion, plato, bebida, postre, menu, combo)
+
+    ids = [plato.id, bebida.id, postre.id, menu.id, combo.id]
+    assert len(set(ids)) == 5
+    assert seccion.productos_ids == sorted(ids)
+
+
+def test_ids_10_modelo_cuenta_combo_vencido_pero_activo(sesion):
+    plato = _producto(Plato, "Milanesa", cant_personas=2)
+    combo = _combo(plato)
+    combo.fecha_hasta = date.today() - timedelta(days=1)
+    seccion = _seccion_con(sesion, combo)
+
+    assert combo.dado_de_baja is False
+    assert seccion.productos_ids == [combo.id]

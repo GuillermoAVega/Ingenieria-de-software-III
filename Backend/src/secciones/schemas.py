@@ -35,3 +35,4 @@ class SeccionRespuesta(BaseModel):
     nombre: str
     subtitulo: str | None
     posicion: int
+    productos_ids: list[int]

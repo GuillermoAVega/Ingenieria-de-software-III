@@ -23,3 +23,8 @@ class Seccion(ModeloBase):
     # Referencia a Producto solo por cadena (secciones no importa productos).
     # La desvinculación al borrar la hace la BD con ON DELETE SET NULL.
     productos = relationship("Producto", back_populates="seccion", passive_deletes=True)
+
+    @property
+    def productos_ids(self):
+        """Ids de los productos activos de la sección, ascendentes (para from_attributes)."""
+        return sorted(p.id for p in self.productos if not p.dado_de_baja)

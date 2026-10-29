@@ -22,7 +22,30 @@ def _crear(cliente, **cuerpo):
     )
 
 
-def test_sec_02_la_respuesta_no_incluye_productos_ni_estado_de_baja(cliente):
+def _crear_plato(cliente, seccion_id=None):
+    respuesta = cliente.post(
+        "/productos/platos",
+        json={
+            "nombre": "Milanesa",
+            "precio": "1500.00",
+            "cant_personas": 2,
+            "seccion_id": seccion_id,
+        },
+    )
+    assert respuesta.status_code == 201
+    return respuesta.json()
+
+
+def _crear_postre(cliente, seccion_id=None):
+    respuesta = cliente.post(
+        "/productos/postres",
+        json={"nombre": "Flan", "precio": "600.00", "seccion_id": seccion_id},
+    )
+    assert respuesta.status_code == 201
+    return respuesta.json()
+
+
+def test_sec_02_la_respuesta_incluye_productos_ids_y_no_el_estado_de_baja(cliente):
     seccion = _crear(cliente, subtitulo="Para comenzar").json()
     plato = cliente.post(
         "/productos/platos",
@@ -43,7 +66,9 @@ def test_sec_02_la_respuesta_no_incluye_productos_ni_estado_de_baja(cliente):
         "nombre": "Entradas",
         "subtitulo": "Para comenzar",
         "posicion": seccion["posicion"],
+        "productos_ids": [plato.json()["id"]],
     }
+    assert "dado_de_baja" not in respuesta.json()
 
 
 @pytest.mark.parametrize("nombre", ["", "   "])
@@ -170,6 +195,53 @@ def test_sec_22_obtener_una_seccion_existente(cliente):
     assert respuesta.json() == creada
 
 
+def test_sec_22_obtener_una_seccion_existente_incluye_productos_ids(cliente):
+    creada = _crear(cliente, subtitulo="Para comenzar").json()
+    plato = _crear_plato(cliente, creada["id"])
+
+    respuesta = cliente.get(f"{RUTA}/{creada['id']}")
+
+    assert respuesta.status_code == 200
+    assert respuesta.json() == {
+        "id": creada["id"],
+        "nombre": "Entradas",
+        "subtitulo": "Para comenzar",
+        "posicion": creada["posicion"],
+        "productos_ids": [plato["id"]],
+    }
+
+
+def test_ids_01_productos_ids_es_lista_de_enteros(cliente):
+    seccion = _crear(cliente).json()
+    _crear_plato(cliente, seccion["id"])
+    _crear_postre(cliente, seccion["id"])
+
+    cuerpo = cliente.get(f"{RUTA}/{seccion['id']}").json()
+
+    assert len(cuerpo["productos_ids"]) == 2
+    assert all(type(id_) is int for id_ in cuerpo["productos_ids"])
+    assert set(cuerpo) == {"id", "nombre", "subtitulo", "posicion", "productos_ids"}
+    for clave in ("precio", "dado_de_baja"):
+        assert clave not in cuerpo
+
+
+def test_ids_02_el_alta_devuelve_productos_ids_vacio(cliente):
+    respuesta = _crear(cliente)
+
+    assert respuesta.status_code == 201
+    assert respuesta.json()["productos_ids"] == []
+
+
+def test_ids_03_la_consulta_devuelve_los_ids_de_los_productos_activos(cliente):
+    seccion = _crear(cliente).json()
+    plato = _crear_plato(cliente, seccion["id"])
+
+    respuesta = cliente.get(f"{RUTA}/{seccion['id']}")
+
+    assert respuesta.status_code == 200
+    assert respuesta.json()["productos_ids"] == [plato["id"]]
+
+
 def test_sec_23_obtener_una_seccion_inexistente_responde_404(cliente):
     respuesta = cliente.get(f"{RUTA}/999")
 
@@ -201,6 +273,7 @@ def test_sec_25_modificar_una_seccion(cliente):
         "nombre": "Aperitivos",
         "subtitulo": "Para compartir",
         "posicion": 1,
+        "productos_ids": [],
     }
     assert cliente.get(f"{RUTA}/{creada['id']}").json() == respuesta.json()
 
@@ -510,6 +583,7 @@ def test_pos_01_la_consulta_incluye_la_posicion(cliente):
         "nombre": "Entradas",
         "subtitulo": "Para comenzar",
         "posicion": 4,
+        "productos_ids": [],
     }
 
 

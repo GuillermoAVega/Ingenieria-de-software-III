@@ -49,12 +49,12 @@ Chain strategy: pending
 
 ## Fase 1: Propiedad del modelo
 
-- [ ] **1.1 `Seccion.productos_ids`: vacío, filtro de baja y orden** — Archivos: `Backend/src/secciones/models.py`, `Backend/tests/secciones/test_modelos.py`.
+- [x] **1.1 `Seccion.productos_ids`: vacío, filtro de baja y orden** — Archivos: `Backend/src/secciones/models.py`, `Backend/tests/secciones/test_modelos.py`.
   - RED (U/BD): `test_ids_02_seccion_sin_productos_devuelve_lista_vacia_en_el_modelo`; `test_ids_06_modelo_incluye_solo_productos_activos` (Plato activo, Bebida dada de baja y Postre activo → solo los activos; IDS-06 y IDS-07 a nivel modelo con una sección con solo productos dados de baja → `[]`); `test_ids_08_modelo_devuelve_ids_ascendentes` (productos insertados en orden 12, 10, 11 → `[10, 11, 12]`, sin repetidos); `test_ids_15_modelo_ignora_productos_de_otras_secciones_y_sin_seccion`. Fallan con `AttributeError` porque la propiedad no existe.
   - GREEN: propiedad de solo lectura en `Seccion` con el contrato del diseño: `sorted(p.id for p in self.productos if not p.dado_de_baja)`. Sin importar `src.productos`.
   - Escenarios (U): IDS-06, IDS-07, IDS-08, IDS-15 (nivel modelo); soporte de IDS-02.
 
-- [ ] **1.2 Subtipos y combo vencido en el modelo (caracterización, nace verde)** — Archivos: `Backend/tests/secciones/test_modelos.py`. Depende de 1.1.
+- [x] **1.2 Subtipos y combo vencido en el modelo (caracterización, nace verde)** — Archivos: `Backend/tests/secciones/test_modelos.py`. Depende de 1.1.
   - RED (caracterización): línea base verde de `cd Backend && python -m pytest tests/secciones`.
   - GREEN: `test_ids_09_modelo_cuenta_los_cinco_subtipos` (Plato, Bebida, Postre, MenuEjecutivo y ComboPromocion activos → los cinco ids, ascendentes) y `test_ids_10_modelo_cuenta_combo_vencido_pero_activo` (`fecha_hasta` de ayer, `dado_de_baja = false` → figura). Pasan sin código nuevo: la propiedad no distingue subtipos ni vigencia. Comprobación de sensibilidad: filtrar por vigencia haría fallar IDS-10.
   - Escenarios (U): IDS-09, IDS-10.
@@ -64,12 +64,12 @@ Chain strategy: pending
 
 ## Fase 2: Esquema de respuesta y pruebas existentes
 
-- [ ] **2.1 `SeccionRespuesta.productos_ids` y actualización de las pruebas que comparan respuestas exactas** — Archivos: `Backend/src/secciones/schemas.py`, `Backend/tests/secciones/test_schemas.py`, `Backend/tests/secciones/test_router.py`, y todo otro archivo con igualdades exactas de una respuesta de sección (localizar con `rg "== \{" Backend/tests/secciones Backend/tests/productos` y `rg '"/secciones' Backend/tests`). Depende de 1.2. Unidad atómica: el campo y las pruebas existentes entran juntos para que la suite no quede en rojo entre commits.
+- [x] **2.1 `SeccionRespuesta.productos_ids` y actualización de las pruebas que comparan respuestas exactas** — Archivos: `Backend/src/secciones/schemas.py`, `Backend/tests/secciones/test_schemas.py`, `Backend/tests/secciones/test_router.py`, y todo otro archivo con igualdades exactas de una respuesta de sección (localizar con `rg "== \{" Backend/tests/secciones Backend/tests/productos` y `rg '"/secciones' Backend/tests`). Depende de 1.2. Unidad atómica: el campo y las pruebas existentes entran juntos para que la suite no quede en rojo entre commits.
   - RED (U/H): en `test_schemas.py`, el conjunto de `model_fields` incluye `productos_ids` después de `posicion` y `model_validate` de un `SimpleNamespace` con `productos_ids=[...]` lo copia (`test_productos_ids_esquema_expone_el_campo`); las igualdades exactas de SEC-22 (respuesta con `productos_ids: []`), SEC-25, POS-01 y toda otra comparación `== {...}` de una sección agregan `productos_ids: []`; SEC-02 se reescribe como `test_sec_02_la_respuesta_incluye_productos_ids_y_no_el_estado_de_baja` (sección con un Plato activo → `productos_ids == [id_del_plato]`, sin `dado_de_baja` ni objetos de producto). Fallan por diferencia de claves y por campo ausente.
   - GREEN: `productos_ids: list[int]` en `SeccionRespuesta`, después de `posicion` (se lee por `from_attributes`). Todas las pruebas actualizadas pasan y el resto de la suite sigue en verde.
   - Escenarios (U/H): SEC-02, SEC-22, SEC-25 (respuesta exacta), POS-01; soporte de IDS-01.
 
-- [ ] **2.2 Respuesta de POST y GET con `productos_ids` (caracterización, nace verde)** — Archivos: `Backend/tests/secciones/test_router.py`. Depende de 2.1.
+- [x] **2.2 Respuesta de POST y GET con `productos_ids` (caracterización, nace verde)** — Archivos: `Backend/tests/secciones/test_router.py`. Depende de 2.1.
   - RED (caracterización): línea base verde de `cd Backend && python -m pytest tests/secciones tests/productos`.
   - GREEN: `test_ids_01_productos_ids_es_lista_de_enteros` (dos productos activos; cada elemento es `int` y la respuesta no contiene `precio`, `dado_de_baja` ni claves de producto); `test_ids_02_el_alta_devuelve_productos_ids_vacio` (POST → 201 y `productos_ids == []`); `test_ids_03_la_consulta_devuelve_los_ids_de_los_productos_activos` (sección con Plato activo → `[10]` según el id real); `test_sec_22_obtener_una_seccion_existente_incluye_productos_ids` (200 con `id`, `nombre`, `subtitulo`, `posicion` y `productos_ids`). Pasan sin código nuevo.
   - Escenarios (H): IDS-01, IDS-02, IDS-03, SEC-22.
