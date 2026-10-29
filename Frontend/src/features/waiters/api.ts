@@ -1,4 +1,4 @@
-import type { Waiter, WaiterPayload } from './types'
+import type { Attention, AttentionPayload, Waiter, WaiterPayload } from './types'
 
 const API_BASE_URL = 'http://localhost:8000'
 
@@ -80,4 +80,26 @@ export async function deactivateWaiter(id: number): Promise<void> {
 
 export async function reactivateWaiter(id: number): Promise<void> {
   await request(`/mozos/${id}/reactivar`, { method: 'PATCH' })
+}
+
+export async function listAttentions(mozoId?: number): Promise<Attention[]> {
+  const query = mozoId === undefined ? '' : `?mozo_id=${mozoId}`
+  const response = await request(`/atenciones/${query}`)
+  return (await response.json()) as Attention[]
+}
+
+export async function createAttention(attention: AttentionPayload): Promise<Attention> {
+  const response = await request('/atenciones/', {
+    method: 'POST',
+    body: JSON.stringify(attention),
+  })
+  return (await response.json()) as Attention
+}
+
+export async function finishAttention(id: number, fecha_hasta: string): Promise<Attention> {
+  const response = await request(`/atenciones/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ fecha_hasta }),
+  })
+  return (await response.json()) as Attention
 }

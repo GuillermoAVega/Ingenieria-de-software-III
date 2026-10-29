@@ -19,6 +19,7 @@ import { SectorFormPage } from '../features/tables/SectorFormPage'
 import { TableFormPage } from '../features/tables/TableFormPage'
 import { WaitersListPage } from '../features/waiters/WaitersListPage'
 import { WaiterFormPage } from '../features/waiters/WaiterFormPage'
+import { WaiterAttentionsPage } from '../features/waiters/WaiterAttentionsPage'
 import { CustomersListPage } from '../features/customers/CustomersListPage'
 import { CustomerFormPage } from '../features/customers/CustomerFormPage'
 import { PaymentMethodsListPage } from '../features/payment-methods/PaymentMethodsListPage'
@@ -164,6 +165,10 @@ export const routes: RouteDefinition[] = [
   {
     path: '/mozos/nuevo',
     render: () => <WaiterFormPage />,
+  },
+  {
+    path: '/mozos/:id/atenciones',
+    render: (params) => <WaiterAttentionsPage key={params.id} id={params.id} />,
   },
   {
     path: '/mozos/:id/editar',

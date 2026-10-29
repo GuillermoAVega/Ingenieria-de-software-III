@@ -29,7 +29,7 @@ npm run lint
 | Secciones | `#/secciones` | `src/features/sections/` | `SectionsListPage.tsx`, `SectionFormPage.tsx`, `demo.ts`, `types.ts` |
 | Promociones | `#/promociones` | `src/features/promotions/` | `PromotionsListPage.tsx`, `PromotionFormPage.tsx`, `demo.ts`, `types.ts` |
 | Mesas y sectores | `#/mesas` | `src/features/tables/` | `TablesAndSectorsPage.tsx`, `SectorFormPage.tsx`, `TableFormPage.tsx`, `demo.ts`, `types.ts` |
-| Mozos | `#/mozos` | `src/features/waiters/` | `WaitersListPage.tsx`, `WaiterFormPage.tsx`, `demo.ts`, `types.ts` |
+| Mozos | `#/mozos` | `src/features/waiters/` | `WaitersListPage.tsx`, `WaiterFormPage.tsx`, `WaiterAttentionsPage.tsx`, `api.ts`, `types.ts` |
 | Clientes | `#/clientes` | `src/features/customers/` | `CustomersListPage.tsx`, `CustomerFormPage.tsx`, `demo.ts`, `types.ts` |
 | Medios de pago | `#/medios-de-pago` | `src/features/payment-methods/` | `PaymentMethodsListPage.tsx`, `PaymentMethodFormPage.tsx`, `demo.ts`, `types.ts` |
 | Reportes | `#/reportes` | `src/features/reports/` | `ReportsPage.tsx`, `ReportDetailPage.tsx`, `demo.ts`, `types.ts` |

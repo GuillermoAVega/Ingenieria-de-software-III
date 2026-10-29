@@ -23,10 +23,24 @@ class AtencionCreate(BaseModel):
     mozo_id: int
     sector_id: int
 
+    @field_validator("fecha_desde")
+    @classmethod
+    def validar_fecha_desde(cls, v: date) -> date:
+        if v > date.today():
+            raise ValueError("fecha_desde no puede ser posterior a hoy")
+        return v
+
 
 class AtencionUpdate(BaseModel):
     fecha_desde: Optional[date] = None
     fecha_hasta: Optional[date] = None
+
+    @field_validator("fecha_desde", "fecha_hasta")
+    @classmethod
+    def validar_fecha_no_futura(cls, v: Optional[date]) -> Optional[date]:
+        if v is not None and v > date.today():
+            raise ValueError("Las fechas de atención no pueden ser posteriores a hoy")
+        return v
 
 
 class Atencion(AtencionBase):

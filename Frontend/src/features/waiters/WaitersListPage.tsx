@@ -15,14 +15,16 @@ import {
 } from '../../ui/ui'
 import type { DataTableColumn } from '../../ui/ui'
 import { navigate } from '../../app/navigation'
-import { deactivateWaiter, listWaiters, reactivateWaiter } from './api'
+import { listSectors } from '../tables/api'
+import { deactivateWaiter, listAttentions, listWaiters, reactivateWaiter } from './api'
 import type { Waiter } from './types'
 
 type StatusFilter = 'todos' | 'activos' | 'inactivos'
+type WaiterRow = Waiter & { sectors: string[] }
 
 const pageSize = 10
 
-const columns: DataTableColumn<Waiter>[] = [
+const columns: DataTableColumn<WaiterRow>[] = [
   {
     key: 'name',
     header: 'Mozo',
@@ -32,6 +34,11 @@ const columns: DataTableColumn<Waiter>[] = [
     key: 'nro_legajo',
     header: 'N.º de legajo',
     num: true,
+  },
+  {
+    key: 'sectors',
+    header: 'Sector a cargo',
+    render: (waiter) => waiter.sectors.join(', ') || 'Sin sector asignado',
   },
   {
     key: 'estado',
@@ -45,7 +52,7 @@ const columns: DataTableColumn<Waiter>[] = [
 ]
 
 export function WaitersListPage() {
-  const [waiters, setWaiters] = useState<Waiter[]>([])
+  const [waiters, setWaiters] = useState<WaiterRow[]>([])
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<StatusFilter>('todos')
   const [page, setPage] = useState(1)
@@ -54,9 +61,24 @@ export function WaitersListPage() {
 
   useEffect(() => {
     let cancelled = false
-    listWaiters()
-      .then((result) => {
-        if (!cancelled) setWaiters(result)
+    Promise.all([listWaiters(), listAttentions(), listSectors()])
+      .then(([waiterRecords, attentions, sectors]) => {
+        if (cancelled) return
+        const sectorNames = new Map(sectors.map((sector) => [sector.id, sector.nombre]))
+        const sectorsByWaiter = new Map<number, Set<string>>()
+        for (const attention of attentions) {
+          if (!attention.estado || attention.fecha_hasta !== null) continue
+          const sectorName = sectorNames.get(attention.sector_id) ?? `Sector #${attention.sector_id}`
+          const waiterSectors = sectorsByWaiter.get(attention.mozo_id) ?? new Set<string>()
+          waiterSectors.add(sectorName)
+          sectorsByWaiter.set(attention.mozo_id, waiterSectors)
+        }
+        setWaiters(
+          waiterRecords.map((waiter) => ({
+            ...waiter,
+            sectors: [...(sectorsByWaiter.get(waiter.id) ?? [])],
+          })),
+        )
       })
       .catch((cause: unknown) => {
         if (!cancelled) {
@@ -168,6 +190,9 @@ export function WaitersListPage() {
           rowKey="id"
           actions={(waiter) => (
             <div className="row">
+              <Button size="sm" onClick={() => navigate(`/mozos/${waiter.id}/atenciones`)}>
+                Atenciones
+              </Button>
               {waiter.estado ? (
                 <>
                   <Button size="sm" onClick={() => navigate(`/mozos/${waiter.id}/editar`)}>
