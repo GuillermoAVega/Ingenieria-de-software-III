@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, inspect, text
+from sqlalchemy import Boolean, create_engine, inspect, text
 from sqlalchemy.orm import sessionmaker
 
 load_dotenv()
@@ -45,6 +45,34 @@ def migrar_detalle_reserva_legacy(database_engine=engine):
         ))
 
     DetalleReserva.__table__.create(bind=database_engine)
+
+
+def migrar_estado_reserva_legacy(database_engine=engine):
+    with database_engine.begin() as connection:
+        inspector = inspect(connection)
+        if "reservas" not in inspector.get_table_names():
+            return
+
+        estado_column = next(
+            (
+                column
+                for column in inspector.get_columns("reservas")
+                if column["name"] == "estado"
+            ),
+            None,
+        )
+        if estado_column is None or not isinstance(
+            estado_column["type"],
+            Boolean,
+        ):
+            return
+
+        connection.execute(text(
+            "UPDATE reservas "
+            "SET estado = CASE WHEN estado = 1 "
+            "THEN 'pendiente' ELSE 'cancelada' END "
+            "WHERE estado IN (0, 1)"
+        ))
 
 
 # Dependency

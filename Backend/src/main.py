@@ -2,7 +2,11 @@ import os
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from fastapi import FastAPI
-from src.database import engine, migrar_detalle_reserva_legacy
+from src.database import (
+    engine,
+    migrar_detalle_reserva_legacy,
+    migrar_estado_reserva_legacy,
+)
 from src.models import ModeloBase
 from src.cliente.routers import router as clientes_router
 from src.mesa.routers import router as mesas_router
@@ -29,6 +33,7 @@ ROOT_PATH = os.getenv(f"ROOT_PATH_{ENV.upper()}")
 async def db_creation_lifespan(app: FastAPI):
     ModeloBase.metadata.create_all(bind=engine)
     migrar_detalle_reserva_legacy()
+    migrar_estado_reserva_legacy()
     yield
 
 
@@ -53,4 +58,3 @@ app.include_router(atencion_router)
 app.include_router(clientes_router)
 app.include_router(mesas_router)
 app.include_router(reservas_router)
-

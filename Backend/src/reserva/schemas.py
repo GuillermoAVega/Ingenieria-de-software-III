@@ -3,6 +3,7 @@ from datetime import date, time
 from pydantic import BaseModel, Field
 
 from src.detalleReserva.schemas import DetalleReserva, DetalleReservaCreate
+from src.reserva.estados import EstadoReserva
 
 
 class ReservaBase(BaseModel):
@@ -19,12 +20,12 @@ class ReservaCreate(ReservaBase):
 
 
 class ReservaUpdate(ReservaBase):
-    pass
+    estado: EstadoReserva
 
 
 class Reserva(ReservaBase):
     id: int
-    estado: bool
+    estado: EstadoReserva
     mesa_ids: list[int]
     detalles: list[DetalleReserva]
 

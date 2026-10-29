@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from datetime import date, time
 
-from sqlalchemy import Boolean, Date, ForeignKey, Integer, Text, Time
+from sqlalchemy import Date, Enum as SqlEnum, ForeignKey, Integer, Text, Time
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models import ModeloBase
+from src.reserva.estados import EstadoReserva
 
 
 class Reserva(ModeloBase):
@@ -21,7 +22,15 @@ class Reserva(ModeloBase):
         ForeignKey("clientes.id"),
         nullable=False,
     )
-    estado: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    estado: Mapped[EstadoReserva] = mapped_column(
+        SqlEnum(
+            EstadoReserva,
+            native_enum=False,
+            values_callable=lambda estados: [estado.value for estado in estados],
+        ),
+        nullable=False,
+        default=EstadoReserva.PENDIENTE,
+    )
 
     detalles: Mapped[list[DetalleReserva]] = relationship(
         back_populates="reserva",

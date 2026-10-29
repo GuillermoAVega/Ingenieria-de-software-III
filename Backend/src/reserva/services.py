@@ -6,6 +6,7 @@ from src.cliente.models import Cliente
 from src.detalleReserva.schemas import DetalleReservaCreate
 from src.mesa.models import Mesa
 from src.reserva import exceptions, models, schemas
+from src.reserva.estados import EstadoReserva
 
 
 def _validar_relaciones(
@@ -69,13 +70,13 @@ def cancelar_reserva(db: Session, reserva_id: int) -> None:
     if reserva_db is None:
         raise exceptions.RecursoNoEncontrado("La reserva no existe")
 
-    if not reserva_db.estado:
+    if reserva_db.estado == EstadoReserva.CANCELADA:
         raise exceptions.EstadoReservaInvalido(
             "La reserva ya está cancelada"
         )
 
     validar_fecha_hora_modificable(reserva_db)
-    reserva_db.estado = False
+    reserva_db.estado = EstadoReserva.CANCELADA
     db.commit()
 
 
@@ -97,16 +98,8 @@ def modificar_reserva(
 
 
 def obtener_reserva(db: Session, reserva_id: int) -> models.Reserva:
-    return obtener_reserva_activa(db, reserva_id)
-
-
-def obtener_reserva_activa(
-    db: Session,
-    reserva_id: int,
-) -> models.Reserva:
     reserva_db = db.query(models.Reserva).filter(
         models.Reserva.id == reserva_id,
-        models.Reserva.estado.is_(True),
     ).first()
 
     if reserva_db is None:
@@ -119,7 +112,12 @@ def obtener_reserva_modificable(
     db: Session,
     reserva_id: int,
 ) -> models.Reserva:
-    reserva_db = obtener_reserva_activa(db, reserva_id)
+    reserva_db = obtener_reserva(db, reserva_id)
+    if reserva_db.estado == EstadoReserva.CANCELADA:
+        raise exceptions.EstadoReservaInvalido(
+            "No se puede modificar una reserva cancelada"
+        )
+
     validar_fecha_hora_modificable(reserva_db)
     return reserva_db
 
@@ -133,7 +131,7 @@ def validar_fecha_hora_modificable(reserva: models.Reserva) -> None:
 
 
 def listar_reservas(db: Session):
-    return db.query(models.Reserva).filter(models.Reserva.estado.is_(True))
+    return db.query(models.Reserva)
 
 
 def listar_mesas_reserva(db: Session, reserva_id: int) -> list[Mesa]:

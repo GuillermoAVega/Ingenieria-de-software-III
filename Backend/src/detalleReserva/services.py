@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from src.detalleReserva import models, schemas
 from src.reserva import exceptions
 from src.reserva.services import (
-    obtener_reserva_activa,
+    obtener_reserva,
     obtener_reserva_modificable,
 )
 
@@ -28,7 +28,7 @@ def listar_detalles_reserva(
     db: Session,
     reserva_id: int,
 ) -> list[models.DetalleReserva]:
-    obtener_reserva_activa(db, reserva_id)
+    obtener_reserva(db, reserva_id)
     return db.query(models.DetalleReserva).filter(
         models.DetalleReserva.reserva_id == reserva_id,
     ).all()
