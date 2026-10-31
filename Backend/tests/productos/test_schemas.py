@@ -4,6 +4,23 @@ from types import SimpleNamespace
 import pytest
 from pydantic import ValidationError
 
+from src.productos.bebidas.schemas import (
+    BebidaActualizar,
+    BebidaCrear,
+    BebidaRespuesta,
+)
+from src.productos.combos.schemas import ComboActualizar, ComboCrear, ComboRespuesta
+from src.productos.menus_ejecutivos.schemas import (
+    MenuActualizar,
+    MenuCrear,
+    MenuRespuesta,
+)
+from src.productos.platos.schemas import PlatoActualizar, PlatoCrear, PlatoRespuesta
+from src.productos.postres.schemas import (
+    PostreActualizar,
+    PostreCrear,
+    PostreRespuesta,
+)
 from src.productos.schemas import ProductoBase, ProductoRespuestaBase
 
 
@@ -84,8 +101,71 @@ def test_respuesta_base_se_construye_desde_atributos():
         descripcion=None,
         imagen=None,
         dado_de_baja=False,
+        seccion_id=None,
     )
     respuesta = ProductoRespuestaBase.model_validate(origen)
     assert respuesta.id == 7
     assert respuesta.dado_de_baja is False
     assert respuesta.nombre == "Milanesa"
+
+
+# --- 2.2 seccion_id ---
+
+
+def test_cat_s_02_seccion_id_omitido_queda_en_none():
+    assert crear_base().seccion_id is None
+
+
+def test_seccion_id_entero_se_conserva():
+    assert crear_base(seccion_id=2).seccion_id == 2
+
+
+def test_cat_s_13_seccion_id_de_tipo_invalido_se_rechaza():
+    with pytest.raises(ValidationError):
+        crear_base(seccion_id="abc")
+
+
+@pytest.mark.parametrize("seccion_id", [None, 2])
+def test_respuesta_base_expone_seccion_id(seccion_id):
+    origen = SimpleNamespace(
+        id=7,
+        nombre="Milanesa",
+        precio=Decimal("1500.50"),
+        descripcion=None,
+        imagen=None,
+        dado_de_baja=False,
+        seccion_id=seccion_id,
+    )
+    assert ProductoRespuestaBase.model_validate(origen).seccion_id == seccion_id
+
+
+@pytest.mark.parametrize(
+    "esquema",
+    [
+        PlatoCrear, PlatoActualizar, PlatoRespuesta,
+        BebidaCrear, BebidaActualizar, BebidaRespuesta,
+        PostreCrear, PostreActualizar, PostreRespuesta,
+        MenuCrear, MenuActualizar, MenuRespuesta,
+        ComboCrear, ComboActualizar, ComboRespuesta,
+    ],
+)
+def test_los_subtipos_heredan_seccion_id(esquema):
+    assert "seccion_id" in esquema.model_fields
+
+
+# --- PMD-39 [CARACTERIZACIÓN: nace en verde] ---
+
+
+@pytest.mark.parametrize(
+    "esquema",
+    [
+        PlatoRespuesta,
+        BebidaRespuesta,
+        PostreRespuesta,
+        MenuRespuesta,
+        ComboRespuesta,
+        ProductoRespuestaBase,
+    ],
+)
+def test_pmd_39_respuestas_de_producto_no_exponen_menus_del_dia(esquema):
+    assert "menus_del_dia" not in esquema.model_fields

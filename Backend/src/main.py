@@ -8,8 +8,12 @@ from src.models import ModeloBase
 # importamos los routers desde nuestros modulos
 from fastapi.middleware.cors import CORSMiddleware
 from src.productos import registro  # noqa: F401  (carga los mappers antes de create_all)
-from src.productos.router import MANEJADORES_EXCEPCIONES
+from src.productos.router import MANEJADORES_EXCEPCIONES as MANEJADORES_PRODUCTOS
 from src.productos.router import router as router_productos
+from src.productos_menu.router import MANEJADORES_EXCEPCIONES as MANEJADORES_PRODUCTOS_MENU
+from src.productos_menu.router import router as router_productos_menu
+from src.secciones.router import MANEJADORES_EXCEPCIONES as MANEJADORES_SECCIONES
+from src.secciones.router import router as router_secciones
 
 load_dotenv()
 
@@ -38,6 +42,13 @@ app.add_middleware(
 )
 
 app.include_router(router_productos)
+app.include_router(router_secciones)
+app.include_router(router_productos_menu)
 
-for tipo_excepcion, manejador in MANEJADORES_EXCEPCIONES.items():
-    app.add_exception_handler(tipo_excepcion, manejador)
+for manejadores in (
+    MANEJADORES_PRODUCTOS,
+    MANEJADORES_SECCIONES,
+    MANEJADORES_PRODUCTOS_MENU,
+):
+    for tipo_excepcion, manejador in manejadores.items():
+        app.add_exception_handler(tipo_excepcion, manejador)

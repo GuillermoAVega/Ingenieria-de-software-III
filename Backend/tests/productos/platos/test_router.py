@@ -191,3 +191,27 @@ def test_cat_28_cant_personas_invalido_responde_422(cliente):
     assert cliente.post("/productos/platos", json=_cuerpo_plato(cant_personas=0)).status_code == 422
     sin_cantidad = {"nombre": "Milanesa", "precio": "1500.00"}
     assert cliente.post("/productos/platos", json=sin_cantidad).status_code == 422
+
+
+def test_cat_s_01_crear_plato_con_seccion(cliente, crear_seccion, persistir):
+    seccion_id = persistir(crear_seccion())
+
+    respuesta = cliente.post("/productos/platos", json=_cuerpo_plato(seccion_id=seccion_id))
+
+    assert respuesta.status_code == 201
+    assert respuesta.json()["seccion_id"] == seccion_id
+
+
+def test_cat_s_02_crear_plato_sin_seccion(cliente):
+    respuesta = cliente.post("/productos/platos", json=_cuerpo_plato())
+
+    assert respuesta.status_code == 201
+    assert respuesta.json()["seccion_id"] is None
+
+
+def test_cat_s_03_crear_plato_con_seccion_inexistente_responde_422_sin_crear(cliente, sesion):
+    respuesta = cliente.post("/productos/platos", json=_cuerpo_plato(seccion_id=999))
+
+    assert respuesta.status_code == 422
+    assert respuesta.json()["detail"][0]["type"] == "seccion_inexistente"
+    assert sesion.scalar(select(func.count()).select_from(Producto)) == 0

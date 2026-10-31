@@ -22,6 +22,7 @@ class ProductoBase(BaseModel):
     precio: Precio
     descripcion: str | None = Field(default=None, max_length=DESCRIPCION_MAX)
     imagen: str | None = None
+    seccion_id: int | None = None
 
     # Se recorta antes de validar la longitud: vacío o solo espacios queda rechazado
     @field_validator("nombre", mode="before")
@@ -40,3 +41,4 @@ class ProductoRespuestaBase(BaseModel):
     descripcion: str | None
     imagen: str | None
     dado_de_baja: bool
+    seccion_id: int | None

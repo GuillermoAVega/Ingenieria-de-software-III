@@ -17,6 +17,8 @@ from src.productos.constants import (
 from src.productos.menus_ejecutivos.models import MenuEjecutivo
 from src.productos.platos.models import Plato
 from src.productos.postres.models import Postre
+from src.productos_menu.models import ProductoMenu
+from src.secciones.models import Seccion
 
 # Clase concreta de cada valor del discriminador `tipo`
 MODELOS_POR_TIPO = {
@@ -44,6 +46,8 @@ __all__ = [
     "MenuEjecutivo",
     "Plato",
     "Postre",
+    "ProductoMenu",
+    "Seccion",
     "combo_bebida",
     "combo_plato",
     "combo_postre",

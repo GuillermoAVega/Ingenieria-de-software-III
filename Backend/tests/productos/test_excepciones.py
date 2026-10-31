@@ -10,6 +10,7 @@ from src.productos.exceptions import (
     ErrorDominio,
     NombreDuplicado,
     ProductoNoEncontrado,
+    SeccionInexistente,
 )
 
 
@@ -71,3 +72,11 @@ def test_el_modulo_no_importa_fastapi():
 def test_las_excepciones_de_combos_no_viven_en_el_modulo_compartido():
     assert not hasattr(excepciones, "FechaHastaVencida")
     assert not hasattr(excepciones, "ComboVencidoInmutable")
+
+
+def test_seccion_inexistente_es_error_de_dominio_y_guarda_el_id():
+    error = SeccionInexistente(42)
+    assert issubclass(SeccionInexistente, ErrorDominio)
+    assert not issubclass(SeccionInexistente, ErrorConflicto)
+    assert error.seccion_id == 42
+    assert error.mensaje

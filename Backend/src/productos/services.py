@@ -12,20 +12,17 @@ from src.productos.exceptions import (
     ErrorDominio,
     NombreDuplicado,
     ProductoNoEncontrado,
+    SeccionInexistente,
 )
 from src.productos.models import Producto
-from src.productos.registro import RESTRICT_POR_TIPO, ComboPromocion, MenuEjecutivo
+from src.productos.registro import RESTRICT_POR_TIPO, ComboPromocion, MenuEjecutivo, Seccion
 from src.productos.schemas import ProductoBase
+from src.texto import normalizar_nombre
 
 
 def obtener_hoy() -> date:
     """Fecha actual; los routers la inyectan para poder sobrescribirla en las pruebas."""
     return date.today()
-
-
-def normalizar_nombre(nombre: str) -> str:
-    """Clave de unicidad: sin espacios sobrantes y sin distinguir mayúsculas (sí tildes)."""
-    return nombre.strip().casefold()
 
 
 def obtener(sesion: Session, modelo: type[Producto], producto_id: int) -> Producto:
@@ -48,6 +45,12 @@ def verificar_nombre_unico(
         consulta = consulta.where(Producto.id != excluir_id)
     if sesion.execute(consulta.limit(1)).first() is not None:
         raise NombreDuplicado()
+
+
+def verificar_seccion(sesion: Session, seccion_id: int | None) -> None:
+    """Lanza `SeccionInexistente` si `seccion_id` no es `None` y no corresponde a una sección."""
+    if seccion_id is not None and sesion.get(Seccion, seccion_id) is None:
+        raise SeccionInexistente(seccion_id)
 
 
 def buscar_bloqueantes(sesion: Session, producto: Producto, hoy: date) -> list[int]:
@@ -131,6 +134,7 @@ def asignar_campos_comunes(producto: Producto, datos: ProductoBase) -> None:
     producto.precio = datos.precio
     producto.descripcion = datos.descripcion
     producto.imagen = datos.imagen
+    producto.seccion_id = datos.seccion_id
 
 
 def confirmar_cambios(sesion: Session) -> None:
@@ -149,8 +153,9 @@ def crear_producto(
 ) -> Producto:
     """Alta de un producto activo del subtipo `modelo` con sus campos propios."""
     try:
+        verificar_seccion(sesion, datos.seccion_id)
         verificar_nombre_unico(sesion, datos.nombre)
-    except NombreDuplicado:
+    except ErrorDominio:
         sesion.rollback()
         raise
     producto = modelo(**campos_propios)
@@ -172,13 +177,14 @@ def actualizar_producto(
     """Reemplazo completo de un producto del subtipo `modelo`.
 
     `datos.dado_de_baja` (si el esquema lo trae) omitido conserva el estado actual.
-    Orden: carga (404) → unicidad del nombre si el producto queda activo (409) →
+    Orden: carga (404) → sección (422) → unicidad del nombre si el producto queda activo (409) →
     cambio de estado (409 si la baja está restringida) → asignación → commit.
     `verificar_reactivacion` es el gancho del subtipo compuesto para las reactivaciones.
     """
     nuevo_estado = getattr(datos, "dado_de_baja", None)
     try:
         producto = obtener(sesion, modelo, producto_id)
+        verificar_seccion(sesion, datos.seccion_id)
         estado_resultante = producto.dado_de_baja if nuevo_estado is None else nuevo_estado
         # Una reactivación comprueba el nombre dentro de `aplicar_cambio_estado`
         if not estado_resultante and not producto.dado_de_baja:

@@ -15,8 +15,10 @@ from src.productos.exceptions import (
     BajaRestringida,
     ComponenteInactivo,
     ComponenteInvalido,
+    ErrorConflicto,
     NombreDuplicado,
     ProductoNoEncontrado,
+    SeccionInexistente,
 )
 from src.productos.menus_ejecutivos.constants import PREFIJO as PREFIJO_MENUS
 from src.productos.models import Producto
@@ -97,6 +99,27 @@ def test_fecha_hasta_vencida_responde_422_sobre_fecha_hasta():
     assert detalle[0]["loc"] == ["body", "fecha_hasta"]
     assert detalle[0]["msg"] == FechaHastaVencida.MENSAJE
     assert detalle[0]["type"] == "fecha_hasta_vencida"
+
+
+def test_seccion_inexistente_responde_422_con_la_forma_de_pydantic():
+    respuesta = _app_con_manejadores(SeccionInexistente(999)).get("/falla")
+
+    assert respuesta.status_code == 422
+    assert respuesta.json() == {
+        "detail": [
+            {
+                "loc": ["body", "seccion_id"],
+                "msg": SeccionInexistente(999).mensaje,
+                "type": "seccion_inexistente",
+                "ids": [999],
+            }
+        ]
+    }
+
+
+def test_seccion_inexistente_no_es_capturada_por_el_manejador_de_conflicto():
+    assert not issubclass(SeccionInexistente, ErrorConflicto)
+    assert SeccionInexistente in MANEJADORES_EXCEPCIONES
 
 
 def test_nombre_duplicado_responde_409_solo_con_detail():

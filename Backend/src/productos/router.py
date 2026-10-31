@@ -11,6 +11,7 @@ from src.productos.exceptions import (
     ComponenteInvalido,
     ErrorConflicto,
     ProductoNoEncontrado,
+    SeccionInexistente,
 )
 from src.productos.menus_ejecutivos.router import router as router_menus
 from src.productos.platos.router import router as router_platos
@@ -49,6 +50,13 @@ def manejar_componente_invalido(_peticion: Request, error: ComponenteInvalido) -
     return JSONResponse(status_code=422, content={"detail": [detalle]})
 
 
+def manejar_seccion_inexistente(_peticion: Request, error: SeccionInexistente) -> JSONResponse:
+    detalle = _error_de_campo(
+        "seccion_id", error.mensaje, "seccion_inexistente", ids=[error.seccion_id]
+    )
+    return JSONResponse(status_code=422, content={"detail": [detalle]})
+
+
 def manejar_fecha_hasta_vencida(_peticion: Request, error: FechaHastaVencida) -> JSONResponse:
     detalle = _error_de_campo("fecha_hasta", error.mensaje, "fecha_hasta_vencida")
     return JSONResponse(status_code=422, content={"detail": [detalle]})
@@ -67,6 +75,7 @@ def manejar_conflicto(_peticion: Request, error: ErrorConflicto) -> JSONResponse
 MANEJADORES_EXCEPCIONES = {
     ProductoNoEncontrado: manejar_no_encontrado,
     ComponenteInvalido: manejar_componente_invalido,
+    SeccionInexistente: manejar_seccion_inexistente,
     FechaHastaVencida: manejar_fecha_hasta_vencida,
     ErrorConflicto: manejar_conflicto,
 }

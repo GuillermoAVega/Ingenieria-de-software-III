@@ -6,7 +6,7 @@ from src.productos import services
 from src.productos.exceptions import (
     ComponenteInactivo,
     ComponenteInvalido,
-    ProductoNoEncontrado,
+    ErrorDominio,
 )
 from src.productos.menus_ejecutivos.schemas import MenuActualizar, MenuCrear
 from src.productos.registro import MenuEjecutivo, Plato, Postre
@@ -39,10 +39,18 @@ def verificar_componentes_activos(plato: Plato, postre: Postre) -> None:
 
 
 def crear_menu(sesion: Session, datos: MenuCrear) -> MenuEjecutivo:
-    """Alta de un menú activo: componentes (422/409) → nombre (409) → commit."""
+    """Alta de un menú activo.
+
+    Orden: existencia de componentes (422) → sección (422) → componentes activos (409) →
+    nombre (409) → commit.
+    """
     try:
-        resolver_componentes_menu(sesion, datos.plato_id, datos.postre_id, exigir_activos=True)
-    except (ComponenteInvalido, ComponenteInactivo):
+        plato, postre = resolver_componentes_menu(
+            sesion, datos.plato_id, datos.postre_id, exigir_activos=False
+        )
+        services.verificar_seccion(sesion, datos.seccion_id)
+        verificar_componentes_activos(plato, postre)
+    except ErrorDominio:
         sesion.rollback()
         raise
     return services.crear_producto(
@@ -55,8 +63,9 @@ def actualizar_menu(
 ) -> MenuEjecutivo:
     """Reemplazo completo del menú.
 
-    Orden: carga (404) → componentes: existencia y tipo siempre (422), que estén
-    activos solo si el menú queda activo (409) → nombre y estado (compartidos) → commit.
+    Orden: carga (404) → existencia y tipo de componentes (422) → sección (422) →
+    componentes activos solo si el menú queda activo (409) → nombre y estado
+    (compartidos) → commit.
     """
     try:
         menu = services.obtener(sesion, MenuEjecutivo, menu_id)
@@ -64,9 +73,12 @@ def actualizar_menu(
             menu.dado_de_baja if datos.dado_de_baja is None else datos.dado_de_baja
         )
         plato, postre = resolver_componentes_menu(
-            sesion, datos.plato_id, datos.postre_id, exigir_activos=queda_activo
+            sesion, datos.plato_id, datos.postre_id, exigir_activos=False
         )
-    except (ProductoNoEncontrado, ComponenteInvalido, ComponenteInactivo):
+        services.verificar_seccion(sesion, datos.seccion_id)
+        if queda_activo:
+            verificar_componentes_activos(plato, postre)
+    except ErrorDominio:
         sesion.rollback()
         raise
     return services.actualizar_producto(
