@@ -249,8 +249,38 @@ def test_sec_23_obtener_una_seccion_inexistente_responde_404(cliente):
     assert "detail" in respuesta.json()
 
 
-def test_sec_24_no_existe_el_listado_de_secciones(cliente):
-    assert cliente.get(RUTA).status_code == 405
+def test_sec_24_el_listado_devuelve_las_secciones_ordenadas_por_posicion(cliente):
+    segunda = cliente.post(RUTA, json={"nombre": "Postres", "posicion": 2})
+    primera = cliente.post(RUTA, json={"nombre": "Entradas", "posicion": 1})
+    assert segunda.status_code == 201
+    assert primera.status_code == 201
+
+    respuesta = cliente.get(RUTA)
+
+    assert respuesta.status_code == 200
+    assert [seccion["id"] for seccion in respuesta.json()] == [
+        primera.json()["id"],
+        segunda.json()["id"],
+    ]
+    for seccion in respuesta.json():
+        assert set(seccion) == {"id", "nombre", "subtitulo", "posicion", "productos_ids"}
+
+
+def test_sec_24_el_listado_vacio_devuelve_una_lista_vacia(cliente):
+    respuesta = cliente.get(RUTA)
+
+    assert respuesta.status_code == 200
+    assert respuesta.json() == []
+
+
+def test_sec_24_el_listado_incluye_los_productos_ids_de_cada_seccion(cliente):
+    seccion = _crear(cliente).json()
+    plato = _crear_plato(cliente, seccion["id"])
+
+    respuesta = cliente.get(RUTA)
+
+    assert respuesta.status_code == 200
+    assert respuesta.json()[0]["productos_ids"] == [plato["id"]]
 
 
 def test_la_ruta_por_id_exige_un_entero(cliente):

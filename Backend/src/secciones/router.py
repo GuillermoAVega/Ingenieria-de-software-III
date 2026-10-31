@@ -21,6 +21,11 @@ def crear_seccion(datos: SeccionCrear, sesion: Session = Depends(get_db)):
     return services.crear_seccion(sesion, datos)
 
 
+@router.get("", response_model=list[SeccionRespuesta])
+def listar_secciones(sesion: Session = Depends(get_db)):
+    return services.listar_secciones(sesion)
+
+
 @router.get("/{seccion_id:int}", response_model=SeccionRespuesta)
 def obtener_seccion(seccion_id: int, sesion: Session = Depends(get_db)):
     return services.obtener_seccion(sesion, seccion_id)

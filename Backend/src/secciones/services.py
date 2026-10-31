@@ -13,6 +13,11 @@ from src.secciones.schemas import SeccionActualizar, SeccionCrear
 from src.texto import normalizar_nombre
 
 
+def listar_secciones(sesion: Session) -> list[Seccion]:
+    """Devuelve todas las secciones ordenadas por `posicion` ascendente."""
+    return list(sesion.scalars(select(Seccion).order_by(Seccion.posicion)))
+
+
 def obtener_seccion(sesion: Session, seccion_id: int) -> Seccion:
     """Devuelve la sección o lanza `SeccionNoEncontrada` (404), sin dejar la transacción abierta."""
     seccion = sesion.get(Seccion, seccion_id)

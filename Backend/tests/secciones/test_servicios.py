@@ -78,6 +78,21 @@ def test_seccion_inexistente_no_deja_la_transaccion_abierta(sesion, operacion):
     assert not sesion.in_transaction()
 
 
+def test_sec_24_listar_secciones_devuelve_todas_ordenadas_por_posicion(
+    sesion, crear_seccion, persistir
+):
+    segunda_id = persistir(crear_seccion(nombre="Postres", posicion=2))
+    primera_id = persistir(crear_seccion(nombre="Entradas", posicion=1))
+
+    secciones = servicios.listar_secciones(sesion)
+
+    assert [seccion.id for seccion in secciones] == [primera_id, segunda_id]
+
+
+def test_sec_24_listar_secciones_sin_filas_devuelve_lista_vacia(sesion):
+    assert servicios.listar_secciones(sesion) == []
+
+
 # --- crear_seccion ---
 
 

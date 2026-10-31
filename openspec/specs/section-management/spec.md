@@ -2,7 +2,7 @@
 
 Especificación principal de la capacidad, consolidada a partir de los cambios `secciones-backend`, `secciones-posicion` y `secciones-productos-ids`. Códigos de estado: 422 = validación de esquema/campos, 404 = id inexistente, 409 = conflicto de regla de negocio.
 
-**Alcance**: esta capacidad cubre únicamente el alta, la consulta por id, la modificación y el borrado físico de secciones. Quedan explícitamente FUERA DE ALCANCE y NO DEBEN implementarse: listados de secciones, listados de productos por sección, endpoints de ordenamiento o reordenamiento (el orden de renderizado lo determina `posicion`), baja lógica de secciones (`dado_de_baja`) y reactivación. La respuesta de una sección PUEDE y DEBE incluir únicamente los ids de sus productos activos (`productos_ids`), y NO DEBE incluir objetos de producto embebidos.
+**Alcance**: esta capacidad cubre el alta, el listado, la consulta por id, la modificación y el borrado físico de secciones. Quedan explícitamente FUERA DE ALCANCE y NO DEBEN implementarse: listados de productos por sección, endpoints de ordenamiento o reordenamiento (el orden del listado lo determina `posicion`), baja lógica de secciones (`dado_de_baja`) y reactivación. La respuesta de una sección PUEDE y DEBE incluir únicamente los ids de sus productos activos (`productos_ids`), y NO DEBE incluir objetos de producto embebidos.
 
 ## ADDED Requirements
 
@@ -184,7 +184,7 @@ El `nombre` de una sección DEBE ser único entre TODAS las secciones, sin disti
 - ENTONCES 201 y la respuesta contiene `productos_ids = []`
 
 ### Requirement: Consulta de sección por id
-`GET /secciones/{id}` DEBE devolver 200 con la sección, incluido `productos_ids`, y 404 si el id no existe. NO DEBE existir `GET /secciones` (listado).
+`GET /secciones/{id}` DEBE devolver 200 con la sección, incluido `productos_ids`, y 404 si el id no existe.
 
 #### Scenario: SEC-22 Obtener una sección existente
 - DADO una sección con id 3
@@ -196,10 +196,20 @@ El `nombre` de una sección DEBE ser único entre TODAS las secciones, sin disti
 - CUANDO un cliente llama a `GET /secciones/999`
 - ENTONCES 404
 
-#### Scenario: SEC-24 No existe el listado de secciones
-- DADO que la API está en ejecución
+#### Scenario: SEC-24 Listado de secciones ordenado por posición
+- DADO las secciones "Postres" con `posicion = 2` y "Entradas" con `posicion = 1`
 - CUANDO un cliente llama a `GET /secciones`
-- ENTONCES la respuesta es 405 Method Not Allowed
+- ENTONCES 200 con ambas secciones ordenadas por `posicion` ascendente, cada una con `id`, `nombre`, `subtitulo`, `posicion` y `productos_ids`
+
+#### Scenario: SEC-24b Listado vacío
+- DADO que no existe ninguna sección
+- CUANDO un cliente llama a `GET /secciones`
+- ENTONCES 200 con `[]`
+
+#### Scenario: SEC-24c El listado incluye productos_ids por sección
+- DADO una sección con un Plato activo asignado
+- CUANDO un cliente llama a `GET /secciones`
+- ENTONCES la sección del listado devuelve `productos_ids` con el id del Plato
 
 #### Scenario: IDS-03 La consulta devuelve los ids de los productos activos
 - DADO una sección con id 3 y un Plato activo con id 10 asignado a ella
