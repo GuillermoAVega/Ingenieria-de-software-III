@@ -1,13 +1,10 @@
 /**
  * EQUIPO: Carta
  * FUNCIONALIDAD: Listado de productos de la carta
- * COMPLETAR:
- * 1. Reemplazar DEMO_PRODUCTS y DEMO_PRODUCT_TABS por la llamada a la API.
- * 2. Implementar las tabs, la búsqueda, el filtro por sección y la paginación.
- * 3. Conectar Editar y Eliminar con la API.
+ * La lógica vive en `useProductsList`; la pantalla solo renderiza.
  */
-import { useState } from 'react'
 import {
+  Alert,
   Button,
   Card,
   DataTable,
@@ -15,7 +12,6 @@ import {
   EmptyState,
   Input,
   PageHeader,
-  Pagination,
   Select,
   Tabs,
   Toolbar,
@@ -23,33 +19,42 @@ import {
 } from '../../ui/ui'
 import type { DataTableColumn } from '../../ui/ui'
 import { navigate } from '../../app/navigation'
-import { DEMO_PRODUCTS, DEMO_PRODUCT_SECTIONS, DEMO_PRODUCT_TABS } from './demo'
-import type { Product, ProductTabId } from './types'
+import { PRODUCT_TABS, useProductsList } from './useProductsList'
+import type { ProductListItem } from './useProductsList'
 
-const formatCurrency = (value: number) => `$ ${value.toLocaleString('es-AR')}`
+const formatCurrency = (value: string) => `$ ${Number(value).toLocaleString('es-AR')}`
 
-const columns: DataTableColumn<Product>[] = [
-  {
-    key: 'name',
-    header: 'Producto',
-    render: (product) => <span className="cell-main">{product.name}</span>,
-  },
-  {
-    key: 'section',
-    header: 'Sección',
-  },
-  {
-    key: 'price',
-    header: 'Precio',
-    num: true,
-    render: (product) => formatCurrency(product.price),
-  },
-]
+const SINGULAR: Record<string, string> = {
+  platos: 'plato',
+  bebidas: 'bebida',
+  postres: 'postre',
+}
 
 export function ProductsListPage() {
-  const [activeTab, setActiveTab] = useState<ProductTabId>('platos')
+  const { state, products, updateTab, updateSearch, updateSection, remove } = useProductsList()
 
-  const rows = activeTab === 'platos' ? DEMO_PRODUCTS : []
+  const sectionsById = new Map(state.sections.map((section) => [section.id, section.nombre]))
+  const tabs = PRODUCT_TABS.map((tab) => ({ ...tab }))
+
+  const columns: DataTableColumn<ProductListItem>[] = [
+    {
+      key: 'nombre',
+      header: 'Producto',
+      render: (product) => <span className="cell-main">{product.nombre}</span>,
+    },
+    {
+      key: 'seccion',
+      header: 'Sección',
+      render: (product) =>
+        product.seccion_id === null ? '—' : (sectionsById.get(product.seccion_id) ?? '—'),
+    },
+    {
+      key: 'precio',
+      header: 'Precio',
+      num: true,
+      render: (product) => formatCurrency(product.precio),
+    },
+  ]
 
   return (
     <>
@@ -57,77 +62,78 @@ export function ProductsListPage() {
         title="Productos"
         subtitle="Carta vigente, precios y secciones de cada producto."
         actions={
-          <Button variant="primary" onClick={() => navigate('/productos/nuevo')}>
-            Nuevo plato
+          <Button
+            variant="primary"
+            onClick={() => navigate(`/productos/${state.activeTab}/nuevo`)}
+          >
+            Nuevo {SINGULAR[state.activeTab]}
           </Button>
         }
       />
 
+      {state.error && (
+        <Alert tone="danger" title="No se pudieron cargar los productos">
+          {state.error}
+        </Alert>
+      )}
+
       <Card flush>
-        <Tabs
-          tabs={DEMO_PRODUCT_TABS}
-          active={activeTab}
-          onChange={(id) => setActiveTab(id as ProductTabId)}
-        />
+        <Tabs tabs={tabs} active={state.activeTab} onChange={updateTab} />
 
         <Toolbar>
           <Input
             placeholder="Buscar producto..."
-            onChange={() => {
-              // TODO(equipo-carta): filtrar productos por texto.
-            }}
+            value={state.search}
+            onChange={(event) => updateSearch(event.target.value)}
           />
           <Select
-            defaultValue=""
-            onChange={() => {
-              // TODO(equipo-carta): filtrar productos por sección.
-            }}
+            value={state.sectionId}
+            onChange={(event) => updateSection(event.target.value)}
+            disabled={state.sectionsLoading}
           >
             <option value="">Todas las secciones</option>
-            {DEMO_PRODUCT_SECTIONS.map((section) => (
-              <option key={section} value={section}>
-                {section}
+            {state.sections.map((section) => (
+              <option key={section.id} value={section.id}>
+                {section.nombre}
               </option>
             ))}
           </Select>
           <ToolbarSpacer />
-          <span className="muted text-sm">Datos de demostración</span>
         </Toolbar>
 
-        <DataTable
-          columns={columns}
-          rows={rows}
-          empty={
-            <EmptyState title="Sin productos en esta categoría">
-              La categoría todavía no tiene productos cargados.
-            </EmptyState>
-          }
-          actions={(product) => (
-            <div className="row">
-              <Button size="sm" onClick={() => navigate(`/productos/${product.id}/editar`)}>
-                Editar
-              </Button>
-              <DeleteButton
-                title="Eliminar plato"
-                onConfirm={() => {
-                  // TODO(equipo-carta): eliminar el producto en la API y refrescar el listado.
-                }}
-              >
-                ¿Querés eliminar <strong>{product.name}</strong> de la carta? Esta acción no se puede
-                deshacer.
-              </DeleteButton>
-            </div>
-          )}
-        />
-
-        <Pagination
-          page={1}
-          pageSize={10}
-          total={rows.length}
-          onPageChange={() => {
-            // TODO(equipo-carta): implementar la paginación contra la API.
-          }}
-        />
+        {state.loading ? (
+          <p className="muted">Cargando productos...</p>
+        ) : (
+          <DataTable
+            columns={columns}
+            rows={products}
+            empty={
+              <EmptyState title="Sin productos en esta categoría">
+                La categoría todavía no tiene productos activos cargados.
+              </EmptyState>
+            }
+            actions={(product) => (
+              <div className="row">
+                <Button
+                  size="sm"
+                  onClick={() => navigate(`/productos/${state.activeTab}/${product.id}/editar`)}
+                  disabled={state.deletingId === product.id}
+                >
+                  Editar
+                </Button>
+                <DeleteButton
+                  title={`Eliminar ${SINGULAR[state.activeTab]}`}
+                  onConfirm={() => {
+                    void remove(product.id)
+                  }}
+                >
+                  ¿Querés eliminar <strong>{product.nombre}</strong> de la carta? Esta acción no se
+                  puede deshacer.
+                </DeleteButton>
+              </div>
+            )}
+          />
+        )}
       </Card>
     </>
   )

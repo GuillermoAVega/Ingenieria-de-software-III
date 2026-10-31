@@ -101,6 +101,14 @@ export const routes: RouteDefinition[] = [
     render: () => <ProductFormPage />,
   },
   {
+    path: '/productos/:tipo/nuevo',
+    render: (params) => <ProductFormPage tipo={params.tipo} />,
+  },
+  {
+    path: '/productos/:tipo/:id/editar',
+    render: (params) => <ProductFormPage tipo={params.tipo} id={params.id} />,
+  },
+  {
     path: '/productos/:id/editar',
     render: (params) => <ProductFormPage id={params.id} />,
   },

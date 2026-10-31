@@ -46,6 +46,10 @@ export type PostreRespuesta = ProductoBaseRespuesta & {
   tipo: 'postre'
 }
 
+export function getPlatos(): Promise<PlatoRespuesta[]> {
+  return apiFetch<PlatoRespuesta[]>('/productos/platos')
+}
+
 export function getPlato(id: number): Promise<PlatoRespuesta> {
   return apiFetch<PlatoRespuesta>(`/productos/platos/${id}`)
 }
@@ -62,6 +66,10 @@ export function deletePlato(id: number): Promise<void> {
   return apiFetch<void>(`/productos/platos/${id}`, { method: 'DELETE' })
 }
 
+export function getBebidas(): Promise<BebidaRespuesta[]> {
+  return apiFetch<BebidaRespuesta[]>('/productos/bebidas')
+}
+
 export function getBebida(id: number): Promise<BebidaRespuesta> {
   return apiFetch<BebidaRespuesta>(`/productos/bebidas/${id}`)
 }
@@ -76,6 +84,10 @@ export function updateBebida(id: number, data: BebidaPayload): Promise<BebidaRes
 
 export function deleteBebida(id: number): Promise<void> {
   return apiFetch<void>(`/productos/bebidas/${id}`, { method: 'DELETE' })
+}
+
+export function getPostres(): Promise<PostreRespuesta[]> {
+  return apiFetch<PostreRespuesta[]>('/productos/postres')
 }
 
 export function getPostre(id: number): Promise<PostreRespuesta> {

@@ -19,6 +19,11 @@ def crear_bebida(datos: BebidaCrear, sesion: Session = Depends(get_db)):
     return servicios_bebidas.crear_bebida(sesion, datos)
 
 
+@router.get("", response_model=list[BebidaRespuesta])
+def listar_bebidas(sesion: Session = Depends(get_db)):
+    return servicios_bebidas.listar_bebidas(sesion)
+
+
 @router.get("/{producto_id:int}", response_model=BebidaRespuesta)
 def obtener_bebida(producto_id: int, sesion: Session = Depends(get_db)):
     return services.obtener(sesion, Bebida, producto_id)

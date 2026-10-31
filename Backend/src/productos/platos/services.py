@@ -7,6 +7,10 @@ from src.productos.platos.models import Plato
 from src.productos.platos.schemas import PlatoActualizar, PlatoCrear
 
 
+def listar_platos(sesion: Session) -> list[Plato]:
+    return services.listar(sesion, Plato)
+
+
 def crear_plato(sesion: Session, datos: PlatoCrear) -> Plato:
     return services.crear_producto(
         sesion, Plato, datos, cant_personas=datos.cant_personas

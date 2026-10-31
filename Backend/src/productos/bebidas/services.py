@@ -7,6 +7,10 @@ from src.productos.bebidas.models import Bebida
 from src.productos.bebidas.schemas import BebidaActualizar, BebidaCrear
 
 
+def listar_bebidas(sesion: Session) -> list[Bebida]:
+    return services.listar(sesion, Bebida)
+
+
 def crear_bebida(sesion: Session, datos: BebidaCrear) -> Bebida:
     return services.crear_producto(
         sesion, Bebida, datos, es_alcoholica=datos.es_alcoholica

@@ -7,6 +7,10 @@ from src.productos.postres.models import Postre
 from src.productos.postres.schemas import PostreActualizar, PostreCrear
 
 
+def listar_postres(sesion: Session) -> list[Postre]:
+    return services.listar(sesion, Postre)
+
+
 def crear_postre(sesion: Session, datos: PostreCrear) -> Postre:
     return services.crear_producto(sesion, Postre, datos)
 

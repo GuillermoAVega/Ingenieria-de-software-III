@@ -12,7 +12,7 @@ export function SectionFormPage({ id }: { id?: string }) {
 }
 
 function SectionForm({ id }: { id?: string }) {
-  const { state, isEditing, isDemo, updateField, submit } = useSectionForm(id)
+  const { state, isEditing, updateField, submit } = useSectionForm(id)
 
   return (
     <>
@@ -20,12 +20,6 @@ function SectionForm({ id }: { id?: string }) {
         title={isEditing ? 'Editar sección' : 'Nueva sección'}
         subtitle="Definí el nombre, el subtítulo y el orden de la sección."
       />
-
-      {isDemo && (
-        <Alert tone="warning" title="Datos de demostración">
-          Esta sección no existe en la API. Al guardar se creará una sección nueva.
-        </Alert>
-      )}
 
       {state.error && (
         <Alert tone="danger" title="No se pudo guardar la sección">

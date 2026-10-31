@@ -33,6 +33,16 @@ def obtener(sesion: Session, modelo: type[Producto], producto_id: int) -> Produc
     return producto
 
 
+def listar(sesion: Session, modelo: type[Producto]) -> list[Producto]:
+    """Devuelve los productos activos del subtipo `modelo`, ordenados por id."""
+    consulta = (
+        select(modelo)
+        .where(Producto.dado_de_baja.is_(False))
+        .order_by(Producto.id)
+    )
+    return list(sesion.scalars(consulta))
+
+
 def verificar_nombre_unico(
     sesion: Session, nombre: str, excluir_id: int | None = None
 ) -> None:

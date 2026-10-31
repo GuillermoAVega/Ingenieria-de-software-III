@@ -19,6 +19,11 @@ def crear_plato(datos: PlatoCrear, sesion: Session = Depends(get_db)):
     return servicios_platos.crear_plato(sesion, datos)
 
 
+@router.get("", response_model=list[PlatoRespuesta])
+def listar_platos(sesion: Session = Depends(get_db)):
+    return servicios_platos.listar_platos(sesion)
+
+
 @router.get("/{producto_id:int}", response_model=PlatoRespuesta)
 def obtener_plato(producto_id: int, sesion: Session = Depends(get_db)):
     return services.obtener(sesion, Plato, producto_id)

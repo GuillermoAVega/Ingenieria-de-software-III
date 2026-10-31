@@ -1,6 +1,6 @@
 # Especificación de la Baja Lógica de Productos
 
-Especificación delta para el cambio `productos-backend`. Los cambios de estado se realizan mediante DELETE lógico o mediante PUT con `dado_de_baja`; no existe un endpoint de estado dedicado. Los listados, la lectura polimórfica y el parámetro `?incluir_bajas` están fuera de alcance (véase product-catalog); el estado de un producto se verifica con `GET /productos/<subtype>/{id}`, que siempre devuelve el producto con `dado_de_baja` visible. Nota no funcional: la lógica de baja/reactivación se comparte en una única función de servicio, sin duplicarse por subtipo.
+Especificación delta para el cambio `productos-backend`. Los cambios de estado se realizan mediante DELETE lógico o mediante PUT con `dado_de_baja`; no existe un endpoint de estado dedicado. Los listados de platos, bebidas y postres existen y devuelven solo productos activos; la lectura polimórfica y el parámetro `?incluir_bajas` están fuera de alcance (véase product-catalog). El estado de un producto se verifica con `GET /productos/<subtype>/{id}`, que siempre devuelve el producto con `dado_de_baja` visible. Nota no funcional: la lógica de baja/reactivación se comparte en una única función de servicio, sin duplicarse por subtipo.
 
 ## ADDED Requirements
 

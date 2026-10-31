@@ -4,7 +4,6 @@ import type { ApiFieldErrors } from '../../api/client'
 import { ApiError, getErrorMessage, getFieldErrors } from '../../api/client'
 import { navigate } from '../../app/navigation'
 import { createSection, getSection, updateSection } from './api'
-import { DEMO_SECTIONS } from './demo'
 
 export type SectionFormValues = {
   nombre: string
@@ -22,12 +21,10 @@ type SectionFormState = SectionFormValues & {
 export function useSectionForm(id?: string) {
   const numericId = id !== undefined ? Number(id) : null
   const isEditing = numericId !== null && Number.isInteger(numericId) && numericId > 0
-  const isDemo = Boolean(id) && !isEditing
-  const demoSection = !isEditing && id ? DEMO_SECTIONS.find((candidate) => candidate.id === id) : undefined
 
   const [state, setState] = useState<SectionFormState>(() => ({
-    nombre: demoSection?.name ?? '',
-    subtitulo: demoSection?.description ?? '',
+    nombre: '',
+    subtitulo: '',
     posicion: '1',
     loading: isEditing,
     saving: false,
@@ -118,7 +115,6 @@ export function useSectionForm(id?: string) {
   return {
     state,
     isEditing,
-    isDemo,
     updateField,
     submit,
   }

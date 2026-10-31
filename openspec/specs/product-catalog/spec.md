@@ -2,7 +2,7 @@
 
 Especificación delta para el cambio `productos-backend`. Códigos de estado: 422 = validación de esquema/campos, 404 = id inexistente, 409 = conflicto de regla de negocio. Los ids de componentes referenciados en los cuerpos de menú/combo que no existen o son del tipo incorrecto devuelven **422**; los componentes que existen con el tipo correcto pero están inactivos devuelven **409**.
 
-**Alcance**: este cambio cubre únicamente el ABM (alta, baja, modificación) de cada subtipo y la consulta por id por subtipo (`GET /productos/<subtype>/{id}`). Quedan explícitamente FUERA DE ALCANCE y NO DEBEN implementarse: `GET /productos` (listado polimórfico), `GET /productos/{id}` (consulta polimórfica por id), `GET /productos/<subtype>` (listados por subtipo) y el parámetro `?incluir_bajas`.
+**Alcance**: este cambio cubre el ABM (alta, baja, modificación) de cada subtipo, la consulta por id por subtipo (`GET /productos/<subtype>/{id}`) y el listado de los subtipos simples (`GET /productos/platos`, `/bebidas`, `/postres`). Quedan explícitamente FUERA DE ALCANCE y NO DEBEN implementarse: `GET /productos` (listado polimórfico), `GET /productos/{id}` (consulta polimórfica por id), los listados de menús ejecutivos y combos (`GET /productos/menus-ejecutivos`, `GET /productos/combos`) y el parámetro `?incluir_bajas`.
 
 ## ADDED Requirements
 
@@ -25,12 +25,27 @@ Especificación delta para el cambio `productos-backend`. Códigos de estado: 42
 - ENTONCES no se lanza ningún error (incluido `AmbiguousForeignKeysError`)
 
 ### Requirement: Rutas ABM por subtipo
-La API DEBE exponer `/productos/platos`, `/productos/bebidas`, `/productos/postres`, `/productos/menus-ejecutivos`, `/productos/combos`, cada una con alta (POST), obtención por id (`GET /productos/<subtype>/{id}`), modificación (PUT) y baja lógica (DELETE, véase product-logical-delete). La API NO DEBE exponer listados (`GET /productos`, `GET /productos/<subtype>`), consulta polimórfica por id (`GET /productos/{id}`) ni el parámetro `?incluir_bajas`. POST DEBE devolver 201. `GET /productos/<subtype>/{id}` DEBE devolver el producto aunque esté dado de baja (con `dado_de_baja` visible) y DEBE devolver 404 si el id no existe o pertenece a otro subtipo. El PUT DEBE ser un reemplazo completo: un campo opcional omitido (incluido `seccion_id`) DEBE interpretarse como `null`, salvo `dado_de_baja`, que, si se omite, DEBE conservar el estado actual del producto. Cuando fallen varias reglas a la vez, la prioridad de los errores DEBE ser, en este orden: 422 (esquema/campos) → 404 (id inexistente) → 409 (combo vencido) → 422 (referencias inexistentes o de tipo incorrecto: ids de componentes y `seccion_id`) → 409 (componentes inactivos) → 409 (`nombre` duplicado). Las reglas que no aplican a un subtipo se omiten sin alterar el orden relativo de las restantes. En el alta, el orden es el mismo sin el paso 404 y con el rechazo por `fecha_hasta` vencida (422) en el paso de referencias.
+La API DEBE exponer `/productos/platos`, `/productos/bebidas`, `/productos/postres`, `/productos/menus-ejecutivos`, `/productos/combos`, cada una con alta (POST), obtención por id (`GET /productos/<subtype>/{id}`), modificación (PUT) y baja lógica (DELETE, véase product-logical-delete). Además, `/productos/platos`, `/productos/bebidas` y `/productos/postres` DEBEN exponer el listado `GET /productos/<subtype>`, que devuelve solo los productos activos (`dado_de_baja = false`) ordenados por id ascendente. La API NO DEBE exponer `GET /productos` (listado polimórfico), consulta polimórfica por id (`GET /productos/{id}`), listados de menús ejecutivos ni combos, ni el parámetro `?incluir_bajas`. POST DEBE devolver 201. `GET /productos/<subtype>/{id}` DEBE devolver el producto aunque esté dado de baja (con `dado_de_baja` visible) y DEBE devolver 404 si el id no existe o pertenece a otro subtipo. El PUT DEBE ser un reemplazo completo: un campo opcional omitido (incluido `seccion_id`) DEBE interpretarse como `null`, salvo `dado_de_baja`, que, si se omite, DEBE conservar el estado actual del producto. Cuando fallen varias reglas a la vez, la prioridad de los errores DEBE ser, en este orden: 422 (esquema/campos) → 404 (id inexistente) → 409 (combo vencido) → 422 (referencias inexistentes o de tipo incorrecto: ids de componentes y `seccion_id`) → 409 (componentes inactivos) → 409 (`nombre` duplicado). Las reglas que no aplican a un subtipo se omiten sin alterar el orden relativo de las restantes. En el alta, el orden es el mismo sin el paso 404 y con el rechazo por `fecha_hasta` vencida (422) en el paso de referencias.
 
 #### Scenario: Crear plato
 - DADO un cuerpo de Plato válido
 - CUANDO un cliente llama a `POST /productos/platos`
 - ENTONCES 201 y se devuelve el Plato creado con un id
+
+#### Scenario: Listar platos activos
+- DADO dos Platos activos y un Plato dado de baja
+- CUANDO un cliente llama a `GET /productos/platos`
+- ENTONCES 200 con los dos Platos activos ordenados por id y sin el dado de baja
+
+#### Scenario: Listar un subtipo vacío
+- DADO que no existe ninguna Bebida
+- CUANDO un cliente llama a `GET /productos/bebidas`
+- ENTONCES 200 con `[]`
+
+#### Scenario: El listado no mezcla subtipos
+- DADO un Postre activo y ningún Plato
+- CUANDO un cliente llama a `GET /productos/platos`
+- ENTONCES 200 con `[]`
 
 #### Scenario: Id de subtipo incorrecto
 - DADO una Bebida con id 3

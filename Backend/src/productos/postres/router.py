@@ -19,6 +19,11 @@ def crear_postre(datos: PostreCrear, sesion: Session = Depends(get_db)):
     return servicios_postres.crear_postre(sesion, datos)
 
 
+@router.get("", response_model=list[PostreRespuesta])
+def listar_postres(sesion: Session = Depends(get_db)):
+    return servicios_postres.listar_postres(sesion)
+
+
 @router.get("/{producto_id:int}", response_model=PostreRespuesta)
 def obtener_postre(producto_id: int, sesion: Session = Depends(get_db)):
     return services.obtener(sesion, Postre, producto_id)

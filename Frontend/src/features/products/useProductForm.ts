@@ -3,15 +3,27 @@ import type { FormEvent } from 'react'
 import type { ApiFieldErrors } from '../../api/client'
 import { ApiError, getErrorMessage, getFieldErrors } from '../../api/client'
 import { navigate } from '../../app/navigation'
-import { createPlato, getPlato, updatePlato } from './api'
-import { DEMO_PRODUCTS } from './demo'
+import {
+  createBebida,
+  createPlato,
+  createPostre,
+  getBebida,
+  getPlato,
+  getPostre,
+  updateBebida,
+  updatePlato,
+  updatePostre,
+} from './api'
 import { getSections } from '../sections/api'
 import type { SeccionRespuesta } from '../sections/api'
+
+export type ProductType = 'platos' | 'bebidas' | 'postres'
 
 export type ProductFormValues = {
   nombre: string
   precio: string
   cantPersonas: string
+  esAlcoholica: boolean
   seccionId: string
   descripcion: string
 }
@@ -26,25 +38,35 @@ type ProductFormState = ProductFormValues & {
   fieldErrors: ApiFieldErrors
 }
 
-export function useProductForm(id?: string) {
+const initialState: ProductFormState = {
+  nombre: '',
+  precio: '',
+  cantPersonas: '1',
+  esAlcoholica: false,
+  seccionId: '',
+  descripcion: '',
+  sections: [],
+  sectionsLoading: true,
+  sectionsError: null,
+  loading: false,
+  saving: false,
+  error: null,
+  fieldErrors: {},
+}
+
+function getProduct(tipo: ProductType, id: number) {
+  if (tipo === 'bebidas') return getBebida(id)
+  if (tipo === 'postres') return getPostre(id)
+  return getPlato(id)
+}
+
+export function useProductForm(tipo: ProductType, id?: string) {
   const numericId = id !== undefined ? Number(id) : null
   const isEditing = numericId !== null && Number.isInteger(numericId) && numericId > 0
-  const isDemo = Boolean(id) && !isEditing
-  const demoProduct = !isEditing && id ? DEMO_PRODUCTS.find((candidate) => candidate.id === id) : undefined
 
   const [state, setState] = useState<ProductFormState>(() => ({
-    nombre: demoProduct?.name ?? '',
-    precio: demoProduct ? String(demoProduct.price) : '',
-    cantPersonas: '1',
-    seccionId: '',
-    descripcion: '',
-    sections: [],
-    sectionsLoading: true,
-    sectionsError: null,
+    ...initialState,
     loading: isEditing,
-    saving: false,
-    error: null,
-    fieldErrors: {},
   }))
 
   useEffect(() => {
@@ -78,21 +100,24 @@ export function useProductForm(id?: string) {
     }
 
     let cancelled = false
-    const platoId = numericId
+    const productoId = numericId
 
-    async function loadPlato() {
+    async function loadProduct() {
       setState((previous) => ({ ...previous, loading: true, error: null }))
       try {
-        const plato = await getPlato(platoId)
+        const product = await getProduct(tipo, productoId)
         if (cancelled) return
 
         setState((previous) => ({
           ...previous,
-          nombre: plato.nombre,
-          precio: plato.precio,
-          cantPersonas: String(plato.cant_personas),
-          seccionId: plato.seccion_id === null ? '' : String(plato.seccion_id),
-          descripcion: plato.descripcion ?? '',
+          nombre: product.nombre,
+          precio: product.precio,
+          cantPersonas:
+            product.tipo === 'plato' ? String(product.cant_personas) : previous.cantPersonas,
+          esAlcoholica:
+            product.tipo === 'bebida' ? product.es_alcoholica : previous.esAlcoholica,
+          seccionId: product.seccion_id === null ? '' : String(product.seccion_id),
+          descripcion: product.descripcion ?? '',
         }))
       } catch (requestError) {
         if (cancelled) return
@@ -108,14 +133,14 @@ export function useProductForm(id?: string) {
       }
     }
 
-    void loadPlato()
+    void loadProduct()
 
     return () => {
       cancelled = true
     }
-  }, [isEditing, numericId])
+  }, [isEditing, numericId, tipo])
 
-  const updateField = (field: keyof ProductFormValues, value: string) => {
+  const updateField = (field: keyof ProductFormValues, value: string | boolean) => {
     setState((previous) => ({ ...previous, [field]: value }))
   }
 
@@ -127,19 +152,34 @@ export function useProductForm(id?: string) {
 
     setState((previous) => ({ ...previous, saving: true, error: null, fieldErrors: {} }))
 
-    const payload = {
+    const base = {
       nombre: state.nombre.trim(),
       precio: Number(state.precio),
       descripcion: state.descripcion.trim() || null,
-      cant_personas: Number(state.cantPersonas),
       seccion_id: state.seccionId.trim() ? Number(state.seccionId) : null,
     }
 
     try {
-      if (isEditing && numericId !== null) {
-        await updatePlato(numericId, payload)
+      if (tipo === 'bebidas') {
+        const payload = { ...base, es_alcoholica: state.esAlcoholica }
+        if (isEditing && numericId !== null) {
+          await updateBebida(numericId, payload)
+        } else {
+          await createBebida(payload)
+        }
+      } else if (tipo === 'postres') {
+        if (isEditing && numericId !== null) {
+          await updatePostre(numericId, base)
+        } else {
+          await createPostre(base)
+        }
       } else {
-        await createPlato(payload)
+        const payload = { ...base, cant_personas: Number(state.cantPersonas) }
+        if (isEditing && numericId !== null) {
+          await updatePlato(numericId, payload)
+        } else {
+          await createPlato(payload)
+        }
       }
       navigate('/productos')
     } catch (requestError) {
@@ -147,7 +187,7 @@ export function useProductForm(id?: string) {
         ...previous,
         error:
           requestError instanceof ApiError && requestError.status === 404
-            ? 'El plato que querés editar ya no existe.'
+            ? 'El producto que querés editar ya no existe.'
             : getErrorMessage(requestError),
         fieldErrors: getFieldErrors(requestError),
       }))
@@ -159,7 +199,6 @@ export function useProductForm(id?: string) {
   return {
     state,
     isEditing,
-    isDemo,
     updateField,
     submit,
   }
