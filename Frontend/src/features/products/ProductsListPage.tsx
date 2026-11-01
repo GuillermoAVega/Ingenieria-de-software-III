@@ -62,12 +62,15 @@ export function ProductsListPage() {
         title="Productos"
         subtitle="Carta vigente, precios y secciones de cada producto."
         actions={
-          <Button
-            variant="primary"
-            onClick={() => navigate(`/productos/${state.activeTab}/nuevo`)}
-          >
-            Nuevo {SINGULAR[state.activeTab]}
-          </Button>
+          <>
+            <Button onClick={() => navigate('/menu-del-dia/nuevo')}>Nuevo menú del día</Button>
+            <Button
+              variant="primary"
+              onClick={() => navigate(`/productos/${state.activeTab}/nuevo`)}
+            >
+              Nuevo {SINGULAR[state.activeTab]}
+            </Button>
+          </>
         }
       />
 

@@ -9,6 +9,7 @@ import { ReservationFormPage } from '../features/reservations/ReservationFormPag
 import { BillingListPage } from '../features/billing/BillingListPage'
 import { ProductsListPage } from '../features/products/ProductsListPage'
 import { ProductFormPage } from '../features/products/ProductFormPage'
+import { DailyMenuFormPage } from '../features/daily-menu/DailyMenuFormPage'
 import { SectionsListPage } from '../features/sections/SectionsListPage'
 import { SectionFormPage } from '../features/sections/SectionFormPage'
 import { PromotionsListPage } from '../features/promotions/PromotionsListPage'
@@ -111,6 +112,10 @@ export const routes: RouteDefinition[] = [
   {
     path: '/productos/:id/editar',
     render: (params) => <ProductFormPage id={params.id} />,
+  },
+  {
+    path: '/menu-del-dia/nuevo',
+    render: () => <DailyMenuFormPage />,
   },
   {
     path: '/secciones',
