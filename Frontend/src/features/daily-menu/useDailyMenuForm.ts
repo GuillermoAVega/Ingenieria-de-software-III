@@ -1,23 +1,25 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { ApiFieldErrors } from '../../api/client'
-import { getErrorMessage, getFieldErrors } from '../../api/client'
+import { ApiError, getErrorMessage, getFieldErrors } from '../../api/client'
+import { navigate } from '../../app/navigation'
 import { getPlatos } from '../products/api'
 import type { PlatoRespuesta } from '../products/api'
-import { createProductoMenu } from './api'
-import type { ProductoMenuRespuesta } from './api'
+import { createProductoMenu, getProductoMenu, updateProductoMenuFecha } from './api'
+import type { ProductoMenuDetalle } from './api'
 
 export type DailyMenuFormField = 'fecha' | 'productoId'
 
 type DailyMenuFormState = {
   fecha: string
   productoId: string
+  producto: ProductoMenuDetalle | null
   platos: PlatoRespuesta[]
+  platosLoading: boolean
   loading: boolean
   saving: boolean
   error: string | null
   fieldErrors: ApiFieldErrors
-  created: ProductoMenuRespuesta | null
 }
 
 /** Fecha local de hoy en formato YYYY-MM-DD (sin corrimiento por zona horaria). */
@@ -28,21 +30,25 @@ export function getTodayInputValue(): string {
   return `${now.getFullYear()}-${month}-${day}`
 }
 
-function createInitialState(): DailyMenuFormState {
+function createInitialState(isEditing: boolean): DailyMenuFormState {
   return {
     fecha: getTodayInputValue(),
     productoId: '',
+    producto: null,
     platos: [],
-    loading: true,
+    platosLoading: true,
+    loading: isEditing,
     saving: false,
     error: null,
     fieldErrors: {},
-    created: null,
   }
 }
 
-export function useDailyMenuForm() {
-  const [state, setState] = useState<DailyMenuFormState>(createInitialState)
+export function useDailyMenuForm(id?: string) {
+  const numericId = id !== undefined ? Number(id) : null
+  const isEditing = numericId !== null && Number.isInteger(numericId) && numericId > 0
+
+  const [state, setState] = useState<DailyMenuFormState>(() => createInitialState(isEditing))
 
   useEffect(() => {
     let cancelled = false
@@ -51,12 +57,13 @@ export function useDailyMenuForm() {
       try {
         const platos = await getPlatos()
         if (cancelled) return
-        setState((previous) => ({ ...previous, platos, loading: false }))
+        setState((previous) => ({ ...previous, platos, platosLoading: false }))
       } catch (requestError) {
         if (cancelled) return
         setState((previous) => ({
           ...previous,
           platos: [],
+          platosLoading: false,
           loading: false,
           error: getErrorMessage(requestError),
         }))
@@ -70,6 +77,49 @@ export function useDailyMenuForm() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!isEditing || numericId === null) {
+      return
+    }
+
+    let cancelled = false
+    const menuId = numericId
+
+    async function loadMenu() {
+      setState((previous) => ({ ...previous, loading: true, error: null }))
+      try {
+        const menu = await getProductoMenu(menuId)
+        if (cancelled) return
+        setState((previous) => ({
+          ...previous,
+          fecha: menu.fecha,
+          productoId: String(menu.producto_id),
+          producto: menu,
+        }))
+      } catch (requestError) {
+        if (cancelled) return
+        setState((previous) => ({
+          ...previous,
+          error:
+            requestError instanceof ApiError && requestError.status === 404
+              ? 'El menú del día que querés editar ya no existe.'
+              : getErrorMessage(requestError),
+          fieldErrors: getFieldErrors(requestError),
+        }))
+      } finally {
+        if (!cancelled) {
+          setState((previous) => ({ ...previous, loading: false }))
+        }
+      }
+    }
+
+    void loadMenu()
+
+    return () => {
+      cancelled = true
+    }
+  }, [isEditing, numericId])
+
   const updateField = (field: DailyMenuFormField, value: string) => {
     setState((previous) => {
       const fieldErrors = { ...previous.fieldErrors }
@@ -77,13 +127,13 @@ export function useDailyMenuForm() {
       if (field === 'productoId') {
         delete fieldErrors.producto_id
       }
-      return { ...previous, [field]: value, fieldErrors, created: null }
+      return { ...previous, [field]: value, fieldErrors }
     })
   }
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (state.loading || state.saving) {
+    if (state.loading || state.saving || (isEditing && numericId === null)) {
       return
     }
 
@@ -91,7 +141,7 @@ export function useDailyMenuForm() {
     if (!state.fecha) {
       fieldErrors.fecha = 'Elegí la fecha del menú.'
     }
-    if (!state.productoId) {
+    if (!isEditing && !state.productoId) {
       fieldErrors.producto_id = 'Elegí un plato para el menú del día.'
     }
     if (Object.keys(fieldErrors).length > 0) {
@@ -104,15 +154,18 @@ export function useDailyMenuForm() {
       saving: true,
       error: null,
       fieldErrors: {},
-      created: null,
     }))
 
     try {
-      const created = await createProductoMenu({
-        producto_id: Number(state.productoId),
-        fecha: state.fecha,
-      })
-      setState((previous) => ({ ...previous, created, productoId: '' }))
+      if (isEditing && numericId !== null) {
+        await updateProductoMenuFecha(numericId, state.fecha)
+      } else {
+        await createProductoMenu({
+          producto_id: Number(state.productoId),
+          fecha: state.fecha,
+        })
+      }
+      navigate('/menus')
     } catch (requestError) {
       setState((previous) => ({
         ...previous,
@@ -124,21 +177,10 @@ export function useDailyMenuForm() {
     }
   }
 
-  const reset = () => {
-    setState((previous) => ({
-      ...previous,
-      fecha: getTodayInputValue(),
-      productoId: '',
-      error: null,
-      fieldErrors: {},
-      created: null,
-    }))
-  }
-
   return {
     state,
+    isEditing,
     updateField,
     submit,
-    reset,
   }
 }

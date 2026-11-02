@@ -15,10 +15,21 @@ from src.productos_menu.exceptions import (
 from src.productos_menu.schemas import (
     ProductoMenuActualizar,
     ProductoMenuCrear,
+    ProductoMenuDetalleRespuesta,
     ProductoMenuRespuesta,
 )
 
 router = APIRouter(prefix=PREFIJO)
+
+
+@router.get("", response_model=list[ProductoMenuDetalleRespuesta])
+def listar_productos_menu(sesion: Session = Depends(get_db)):
+    return services.listar_productos_menu(sesion)
+
+
+@router.get("/{producto_menu_id:int}", response_model=ProductoMenuDetalleRespuesta)
+def obtener_producto_menu(producto_menu_id: int, sesion: Session = Depends(get_db)):
+    return services.obtener_producto_menu(sesion, producto_menu_id)
 
 
 @router.post("", response_model=ProductoMenuRespuesta, status_code=201)

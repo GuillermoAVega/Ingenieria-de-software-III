@@ -1,6 +1,6 @@
 from datetime import date
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import AliasPath, BaseModel, ConfigDict, Field
 
 
 class ProductoMenuCrear(BaseModel):
@@ -21,3 +21,21 @@ class ProductoMenuRespuesta(BaseModel):
     id: int
     producto_id: int
     fecha: date
+
+
+class ProductoMenuDetalleRespuesta(BaseModel):
+    """Ítem de listado/consulta: incluye el producto asociado ya resuelto.
+
+    Es exclusivo de los `GET`; el alta y la modificación conservan
+    `ProductoMenuRespuesta` (`id`, `producto_id`, `fecha`).
+    """
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    producto_id: int
+    fecha: date
+    producto_nombre: str = Field(validation_alias=AliasPath("producto", "nombre"))
+    producto_tipo: str = Field(validation_alias=AliasPath("producto", "tipo"))
+    producto_dado_de_baja: bool = Field(
+        validation_alias=AliasPath("producto", "dado_de_baja")
+    )

@@ -19,6 +19,11 @@ def crear_menu(datos: MenuCrear, sesion: Session = Depends(get_db)):
     return servicios_menus.crear_menu(sesion, datos)
 
 
+@router.get("", response_model=list[MenuRespuesta])
+def listar_menus(sesion: Session = Depends(get_db)):
+    return services.listar(sesion, MenuEjecutivo)
+
+
 @router.get("/{producto_id:int}", response_model=MenuRespuesta)
 def obtener_menu(producto_id: int, sesion: Session = Depends(get_db)):
     return services.obtener(sesion, MenuEjecutivo, producto_id)

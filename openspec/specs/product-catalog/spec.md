@@ -2,7 +2,7 @@
 
 Especificación delta para el cambio `productos-backend`. Códigos de estado: 422 = validación de esquema/campos, 404 = id inexistente, 409 = conflicto de regla de negocio. Los ids de componentes referenciados en los cuerpos de menú/combo que no existen o son del tipo incorrecto devuelven **422**; los componentes que existen con el tipo correcto pero están inactivos devuelven **409**.
 
-**Alcance**: este cambio cubre el ABM (alta, baja, modificación) de cada subtipo, la consulta por id por subtipo (`GET /productos/<subtype>/{id}`) y el listado de los subtipos simples (`GET /productos/platos`, `/bebidas`, `/postres`). Quedan explícitamente FUERA DE ALCANCE y NO DEBEN implementarse: `GET /productos` (listado polimórfico), `GET /productos/{id}` (consulta polimórfica por id), los listados de menús ejecutivos y combos (`GET /productos/menus-ejecutivos`, `GET /productos/combos`) y el parámetro `?incluir_bajas`.
+**Alcance**: este cambio cubre el ABM (alta, baja, modificación) de cada subtipo, la consulta por id por subtipo (`GET /productos/<subtype>/{id}`) y el listado de los subtipos simples y de los menús ejecutivos (`GET /productos/platos`, `/bebidas`, `/postres`, `/menus-ejecutivos`). Quedan explícitamente FUERA DE ALCANCE y NO DEBEN implementarse: `GET /productos` (listado polimórfico), `GET /productos/{id}` (consulta polimórfica por id), el listado de combos (`GET /productos/combos`) y el parámetro `?incluir_bajas`.
 
 ## ADDED Requirements
 
@@ -25,7 +25,7 @@ Especificación delta para el cambio `productos-backend`. Códigos de estado: 42
 - ENTONCES no se lanza ningún error (incluido `AmbiguousForeignKeysError`)
 
 ### Requirement: Rutas ABM por subtipo
-La API DEBE exponer `/productos/platos`, `/productos/bebidas`, `/productos/postres`, `/productos/menus-ejecutivos`, `/productos/combos`, cada una con alta (POST), obtención por id (`GET /productos/<subtype>/{id}`), modificación (PUT) y baja lógica (DELETE, véase product-logical-delete). Además, `/productos/platos`, `/productos/bebidas` y `/productos/postres` DEBEN exponer el listado `GET /productos/<subtype>`, que devuelve solo los productos activos (`dado_de_baja = false`) ordenados por id ascendente. La API NO DEBE exponer `GET /productos` (listado polimórfico), consulta polimórfica por id (`GET /productos/{id}`), listados de menús ejecutivos ni combos, ni el parámetro `?incluir_bajas`. POST DEBE devolver 201. `GET /productos/<subtype>/{id}` DEBE devolver el producto aunque esté dado de baja (con `dado_de_baja` visible) y DEBE devolver 404 si el id no existe o pertenece a otro subtipo. El PUT DEBE ser un reemplazo completo: un campo opcional omitido (incluido `seccion_id`) DEBE interpretarse como `null`, salvo `dado_de_baja`, que, si se omite, DEBE conservar el estado actual del producto. Cuando fallen varias reglas a la vez, la prioridad de los errores DEBE ser, en este orden: 422 (esquema/campos) → 404 (id inexistente) → 409 (combo vencido) → 422 (referencias inexistentes o de tipo incorrecto: ids de componentes y `seccion_id`) → 409 (componentes inactivos) → 409 (`nombre` duplicado). Las reglas que no aplican a un subtipo se omiten sin alterar el orden relativo de las restantes. En el alta, el orden es el mismo sin el paso 404 y con el rechazo por `fecha_hasta` vencida (422) en el paso de referencias.
+La API DEBE exponer `/productos/platos`, `/productos/bebidas`, `/productos/postres`, `/productos/menus-ejecutivos`, `/productos/combos`, cada una con alta (POST), obtención por id (`GET /productos/<subtype>/{id}`), modificación (PUT) y baja lógica (DELETE, véase product-logical-delete). Además, `/productos/platos`, `/productos/bebidas`, `/productos/postres` y `/productos/menus-ejecutivos` DEBEN exponer el listado `GET /productos/<subtype>`, que devuelve solo los productos activos (`dado_de_baja = false`) ordenados por id ascendente. La API NO DEBE exponer `GET /productos` (listado polimórfico), consulta polimórfica por id (`GET /productos/{id}`), el listado de combos ni el parámetro `?incluir_bajas`. POST DEBE devolver 201. `GET /productos/<subtype>/{id}` DEBE devolver el producto aunque esté dado de baja (con `dado_de_baja` visible) y DEBE devolver 404 si el id no existe o pertenece a otro subtipo. El PUT DEBE ser un reemplazo completo: un campo opcional omitido (incluido `seccion_id`) DEBE interpretarse como `null`, salvo `dado_de_baja`, que, si se omite, DEBE conservar el estado actual del producto. Cuando fallen varias reglas a la vez, la prioridad de los errores DEBE ser, en este orden: 422 (esquema/campos) → 404 (id inexistente) → 409 (combo vencido) → 422 (referencias inexistentes o de tipo incorrecto: ids de componentes y `seccion_id`) → 409 (componentes inactivos) → 409 (`nombre` duplicado). Las reglas que no aplican a un subtipo se omiten sin alterar el orden relativo de las restantes. En el alta, el orden es el mismo sin el paso 404 y con el rechazo por `fecha_hasta` vencida (422) en el paso de referencias.
 
 #### Scenario: Crear plato
 - DADO un cuerpo de Plato válido
@@ -197,6 +197,29 @@ Plato DEBE requerir `cant_personas` (int >= 1). Postre DEBE aceptar solo los cam
 - DADO un cuerpo de Postre con los campos comunes y `seccion_id` de una sección existente
 - CUANDO un cliente llama a `POST /productos/postres`
 - ENTONCES 201 y la respuesta incluye ese `seccion_id`
+
+### Requirement: Listado de menús ejecutivos activos
+`GET /productos/menus-ejecutivos` DEBE devolver 200 con la lista de menús ejecutivos activos (`dado_de_baja = false`), ordenados por `id` ascendente, con la misma forma de `MenuRespuesta` que la consulta por id. NO DEBE exponer menús dados de baja, NO DEBE mezclar otros subtipos y NO DEBE aceptar `?incluir_bajas`.
+
+#### Scenario: CAT-S-29 Listado vacío
+- DADO que no existe ningún menú ejecutivo
+- CUANDO un cliente llama a `GET /productos/menus-ejecutivos`
+- ENTONCES 200 y el cuerpo es una lista vacía
+
+#### Scenario: CAT-S-30 Sólo menús activos
+- DADO un menú ejecutivo activo y otro dado de baja
+- CUANDO un cliente llama a `GET /productos/menus-ejecutivos`
+- ENTONCES la respuesta contiene únicamente el menú activo
+
+#### Scenario: CAT-S-31 Orden por id ascendente
+- DADO dos menús ejecutivos activos
+- CUANDO un cliente llama a `GET /productos/menus-ejecutivos`
+- ENTONCES los ítems aparecen ordenados por `id` ascendente
+
+#### Scenario: CAT-S-32 El listado no mezcla otros subtipos
+- DADO un menú ejecutivo activo y platos o postres sueltos
+- CUANDO un cliente llama a `GET /productos/menus-ejecutivos`
+- ENTONCES todos los ítems tienen `tipo = "menu_ejecutivo"` y sólo aparecen menús ejecutivos
 
 ### Requirement: Composición de MenuEjecutivo
 Un MenuEjecutivo DEBE referenciar un Plato existente y activo mediante `plato_id` y un Postre existente y activo mediante `postre_id`. Un id inexistente o de tipo incorrecto DEBE devolver 422. Un componente existente pero inactivo DEBE devolver 409. La verificación de los componentes y la escritura DEBEN ocurrir en una sola transacción.

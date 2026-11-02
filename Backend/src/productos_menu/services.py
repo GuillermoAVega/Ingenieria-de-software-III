@@ -3,7 +3,7 @@ from datetime import date
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from src.productos import registro  # noqa: F401  (carga los mappers de todos los subtipos)
 from src.productos.models import Producto
@@ -24,6 +24,20 @@ def obtener_producto_menu(sesion: Session, producto_menu_id: int) -> ProductoMen
         sesion.rollback()
         raise ProductoMenuNoEncontrado()
     return registro_menu
+
+
+def listar_productos_menu(sesion: Session) -> list[ProductoMenu]:
+    """Lista todos los menús del día, del más reciente al más antiguo.
+
+    Incluye los menús cuyo producto fue dado de baja (historial). Carga el
+    producto asociado en la misma consulta para evitar N+1 al serializar.
+    """
+    consulta = (
+        select(ProductoMenu)
+        .options(selectinload(ProductoMenu.producto))
+        .order_by(ProductoMenu.fecha.desc())
+    )
+    return list(sesion.scalars(consulta))
 
 
 def _verificar_producto_activo(sesion: Session, producto: Producto) -> None:
