@@ -22,6 +22,13 @@ from src.mozo.router import router as mozo_router
 from src.sector.router import router as sector_router
 from src.atencion.router import router as atencion_router
 from fastapi.middleware.cors import CORSMiddleware
+from src.productos import registro  # noqa: F401  (carga los mappers antes de create_all)
+from src.productos.router import MANEJADORES_EXCEPCIONES as MANEJADORES_PRODUCTOS
+from src.productos.router import router as router_productos
+from src.productos_menu.router import MANEJADORES_EXCEPCIONES as MANEJADORES_PRODUCTOS_MENU
+from src.productos_menu.router import router as router_productos_menu
+from src.secciones.router import MANEJADORES_EXCEPCIONES as MANEJADORES_SECCIONES
+from src.secciones.router import router as router_secciones
 
 load_dotenv()
 
@@ -59,3 +66,14 @@ app.include_router(atencion_router)
 app.include_router(clientes_router)
 app.include_router(mesas_router)
 app.include_router(reservas_router)
+app.include_router(router_productos)
+app.include_router(router_secciones)
+app.include_router(router_productos_menu)
+
+for manejadores in (
+    MANEJADORES_PRODUCTOS,
+    MANEJADORES_SECCIONES,
+    MANEJADORES_PRODUCTOS_MENU,
+):
+    for tipo_excepcion, manejador in manejadores.items():
+        app.add_exception_handler(tipo_excepcion, manejador)

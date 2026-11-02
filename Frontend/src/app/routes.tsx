@@ -10,6 +10,9 @@ import { ReservationDetailPage } from '../features/reservations/ReservationDetai
 import { BillingListPage } from '../features/billing/BillingListPage'
 import { ProductsListPage } from '../features/products/ProductsListPage'
 import { ProductFormPage } from '../features/products/ProductFormPage'
+import { DailyMenuFormPage } from '../features/daily-menu/DailyMenuFormPage'
+import { ExecutiveMenuFormPage } from '../features/executive-menus/ExecutiveMenuFormPage'
+import { MenusPage } from '../features/menus/MenusPage'
 import { SectionsListPage } from '../features/sections/SectionsListPage'
 import { SectionFormPage } from '../features/sections/SectionFormPage'
 import { PromotionsListPage } from '../features/promotions/PromotionsListPage'
@@ -107,8 +110,42 @@ export const routes: RouteDefinition[] = [
     render: () => <ProductFormPage />,
   },
   {
+    path: '/productos/:tipo/nuevo',
+    render: (params) => <ProductFormPage tipo={params.tipo} />,
+  },
+  {
+    path: '/productos/:tipo/:id/editar',
+    render: (params) => <ProductFormPage tipo={params.tipo} id={params.id} />,
+  },
+  {
     path: '/productos/:id/editar',
     render: (params) => <ProductFormPage id={params.id} />,
+  },
+  {
+    path: '/menus',
+    nav: { group: 'CARTA', label: 'Menús' },
+    render: () => <MenusPage />,
+  },
+  {
+    path: '/menus/dia/nuevo',
+    render: () => <DailyMenuFormPage />,
+  },
+  {
+    path: '/menus/dia/:id/editar',
+    render: (params) => <DailyMenuFormPage id={params.id} />,
+  },
+  {
+    path: '/menus/ejecutivos/nuevo',
+    render: () => <ExecutiveMenuFormPage />,
+  },
+  {
+    path: '/menus/ejecutivos/:id/editar',
+    render: (params) => <ExecutiveMenuFormPage id={params.id} />,
+  },
+  {
+    // Alias de la ruta anterior de alta de menú del día
+    path: '/menu-del-dia/nuevo',
+    render: () => <DailyMenuFormPage />,
   },
   {
     path: '/secciones',

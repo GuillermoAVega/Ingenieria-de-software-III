@@ -1,44 +1,56 @@
 /**
  * EQUIPO: Carta
  * FUNCIONALIDAD: Listado de secciones
- * COMPLETAR:
- * 1. Reemplazar DEMO_SECTIONS por la llamada a la API.
- * 2. Implementar búsqueda y paginación.
- * 3. Conectar Editar y Eliminar con la API.
+ * La lógica vive en `useSectionsList`; la pantalla solo renderiza.
  */
-import { Button, Card, DataTable, DeleteButton, Input, PageHeader, Pagination, Toolbar, ToolbarSpacer } from '../../ui/ui'
+import {
+  Alert,
+  Button,
+  Card,
+  DataTable,
+  DeleteButton,
+  EmptyState,
+  Input,
+  PageHeader,
+  Toolbar,
+} from '../../ui/ui'
 import type { DataTableColumn } from '../../ui/ui'
 import { navigate } from '../../app/navigation'
-import { DEMO_SECTIONS } from './demo'
-import type { Section } from './types'
+import { useSectionsList } from './useSectionsList'
+import type { SeccionRespuesta } from './api'
 
-const columns: DataTableColumn<Section>[] = [
+const columns: DataTableColumn<SeccionRespuesta>[] = [
   {
-    key: 'name',
+    key: 'nombre',
     header: 'Nombre',
-    render: (section) => <span className="cell-main">{section.name}</span>,
+    render: (section) => <span className="cell-main">{section.nombre}</span>,
   },
   {
-    key: 'floor',
-    header: 'Planta',
+    key: 'subtitulo',
+    header: 'Subtítulo',
+    render: (section) => section.subtitulo ?? '—',
   },
   {
-    key: 'condition',
-    header: 'Condición',
-  },
-  {
-    key: 'tableCount',
-    header: 'Mesas',
+    key: 'posicion',
+    header: 'Posición',
     num: true,
+  },
+  {
+    key: 'productos',
+    header: 'Productos',
+    num: true,
+    render: (section) => section.productos_ids.length,
   },
 ]
 
 export function SectionsListPage() {
+  const { state, sections, updateSearch, remove } = useSectionsList()
+
   return (
     <>
       <PageHeader
         title="Secciones"
-        subtitle="Organización de los sectores que agrupan mesas y productos de la carta."
+        subtitle="Sectores de la carta y productos asignados a cada uno."
         actions={
           <Button variant="primary" onClick={() => navigate('/secciones/nueva')}>
             Nueva sección
@@ -46,46 +58,54 @@ export function SectionsListPage() {
         }
       />
 
+      {state.error && (
+        <Alert tone="danger" title="No se pudieron cargar las secciones">
+          {state.error}
+        </Alert>
+      )}
+
       <Card flush>
         <Toolbar>
           <Input
             placeholder="Buscar sección..."
-            onChange={() => {
-              // TODO(equipo-carta): filtrar secciones por texto.
-            }}
+            value={state.search}
+            onChange={(event) => updateSearch(event.target.value)}
           />
-          <ToolbarSpacer />
-          <span className="muted text-sm">Datos de demostración</span>
         </Toolbar>
 
-        <DataTable
-          columns={columns}
-          rows={DEMO_SECTIONS}
-          actions={(section) => (
-            <div className="row">
-              <Button size="sm" onClick={() => navigate(`/secciones/${section.id}/editar`)}>
-                Editar
-              </Button>
-              <DeleteButton
-                title="Eliminar sección"
-                onConfirm={() => {
-                  // TODO(equipo-carta): eliminar la sección en la API.
-                }}
-              >
-                ¿Querés eliminar <strong>{section.name}</strong>?
-              </DeleteButton>
-            </div>
-          )}
-        />
-
-        <Pagination
-          page={1}
-          pageSize={10}
-          total={DEMO_SECTIONS.length}
-          onPageChange={() => {
-            // TODO(equipo-carta): implementar la paginación contra la API.
-          }}
-        />
+        {state.loading ? (
+          <p className="muted">Cargando secciones...</p>
+        ) : (
+          <DataTable
+            columns={columns}
+            rows={sections}
+            empty={
+              <EmptyState title="Sin secciones">
+                Todavía no hay secciones cargadas en la carta.
+              </EmptyState>
+            }
+            actions={(section) => (
+              <div className="row">
+                <Button
+                  size="sm"
+                  onClick={() => navigate(`/secciones/${section.id}/editar`)}
+                  disabled={state.deletingId === section.id}
+                >
+                  Editar
+                </Button>
+                <DeleteButton
+                  title="Eliminar sección"
+                  onConfirm={() => {
+                    void remove(section.id)
+                  }}
+                >
+                  ¿Querés eliminar <strong>{section.nombre}</strong>? Los productos asignados quedarán
+                  sin sección.
+                </DeleteButton>
+              </div>
+            )}
+          />
+        )}
       </Card>
     </>
   )
