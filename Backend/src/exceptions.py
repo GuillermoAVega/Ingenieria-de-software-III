@@ -8,7 +8,8 @@ class DetailedHTTPException(HTTPException):
     DETAIL = "Error del servidor"
 
     def __init__(self, **kwargs: Dict[str, Any]) -> None:
-        super().__init__(status_code=self.STATUS_CODE, detail=self.DETAIL, **kwargs)
+        detail = kwargs.pop("detail", self.DETAIL)
+        super().__init__(status_code=self.STATUS_CODE, detail=detail, **kwargs)
 
 
 class PermissionDenied(DetailedHTTPException):

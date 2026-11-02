@@ -8,6 +8,22 @@ from src.reserva.estados import EstadoReserva
 from src.reserva.models import Reserva
 
 
+def obtener_mesas_disponibles(
+    db: Session,
+    mesa_ids: list[int],
+) -> list[Mesa]:
+    mesas = db.scalars(
+        select(Mesa).where(
+            Mesa.id.in_(mesa_ids),
+            Mesa.estado.is_(True),
+            Mesa.disponible.is_(True),
+        )
+    ).all()
+    if len(mesas) != len(set(mesa_ids)):
+        raise BadRequest(detail="Una o más mesas no están disponibles")
+    return mesas
+
+
 def crear_comanda_desde_reserva(
     db: Session,
     reserva_id: int,

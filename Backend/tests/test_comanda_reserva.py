@@ -1,7 +1,11 @@
 from datetime import date, time
 
+import pytest
+
 from src.cliente.models import Cliente
 from src.comanda.services import crear_comanda_desde_reserva
+from src.comanda.services import obtener_mesas_disponibles
+from src.exceptions import BadRequest
 from src.detalleReserva.models import DetalleReserva
 from src.mesa.models import Mesa
 from src.reserva.estados import EstadoReserva
@@ -43,3 +47,13 @@ def test_crear_comanda_desde_reserva_copia_datos_y_detalles(sesion):
     assert comanda.mesa_ids == [mesas[0].id, mesas[1].id]
     assert [(d.producto_id, d.cantidad) for d in comanda.detalles] == [(8, 2)]
     assert reserva.estado == EstadoReserva.CON_COMANDA
+
+
+def test_comanda_inmediata_requiere_mesas_disponibles(sesion):
+    sector = Sector(nombre="Salón", apto_fumadores=False, piso=1)
+    mesa = Mesa(capacidad=2, disponible=False, sector=sector)
+    sesion.add(mesa)
+    sesion.flush()
+
+    with pytest.raises(BadRequest, match="no están disponibles"):
+        obtener_mesas_disponibles(sesion, [mesa.id])

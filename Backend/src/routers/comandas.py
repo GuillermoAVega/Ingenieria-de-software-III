@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from src.database import get_db
-from src.comanda.services import crear_comanda_desde_reserva
+from src.comanda.services import crear_comanda_desde_reserva, obtener_mesas_disponibles
 from src.exceptions import BadRequest
 from src.models import Comanda, DetalleComanda, Factura
 from src.mesa.models import Mesa
@@ -27,9 +27,7 @@ def crear_comanda(datos: ComandaCreate, db: Session = Depends(get_db)):
         valores["hora"] = datos.hora or ahora.time().replace(microsecond=0)
     mesa_ids = datos.mesa_ids or ([datos.mesa_id] if datos.mesa_id is not None else [])
     mesa_ids = list(dict.fromkeys(mesa_ids))
-    mesas = db.scalars(select(Mesa).where(Mesa.id.in_(mesa_ids))).all()
-    if len(mesas) != len(mesa_ids):
-        raise BadRequest()
+    mesas = obtener_mesas_disponibles(db, mesa_ids)
     valores["mesa_id"] = mesa_ids[0]
     comanda = Comanda(**valores, mesas_asociadas=mesas)
     comanda.detalles = [DetalleComanda(**d.model_dump()) for d in datos.detalles]
