@@ -56,6 +56,7 @@ export type ReservationPayload = {
 
 export type ReservationUpdatePayload = ReservationPayload & {
   estado: ReservationStatus
+  mesa_ids: number[]
 }
 
 export type ReservationDetailPayload = {

@@ -4,7 +4,6 @@ import { Alert, Button, Card, Field, Input, PageHeader, Select, Textarea } from 
 import { navigate } from '../../app/navigation'
 import {
   addReservationDetail,
-  addReservationTable,
   createCustomer,
   createReservation,
   getReservation,
@@ -13,7 +12,6 @@ import {
   listReservationTables,
   listTables,
   removeReservationDetail,
-  removeReservationTable,
   updateReservation,
 } from './api'
 import type {
@@ -86,6 +84,11 @@ export function ReservationFormPage({ id }: { id?: string }) {
           listReservationDetails(reservationId),
         ])
         if (cancelled) return
+        setTables([
+          ...new Map(
+            [...tableRecords, ...reservationTables].map((table) => [table.id, table]),
+          ).values(),
+        ])
         setCustomerSelection(String(reservation.cliente_id))
         setDate(reservation.fecha)
         setTime(reservation.hora.slice(0, 5))
@@ -116,6 +119,15 @@ export function ReservationFormPage({ id }: { id?: string }) {
   }, [id])
 
   const tableById = useMemo(() => new Map(tables.map((table) => [table.id, table])), [tables])
+  const assignedCapacity = selectedTableIds.reduce(
+    (capacity, tableId) => capacity + (tableById.get(tableId)?.capacidad ?? 0),
+    0,
+  )
+  const tableAssignmentError = selectedTableIds.length === 0
+    ? 'Asigná al menos una mesa a la reserva.'
+    : assignedCapacity < guests
+      ? `La capacidad total de las mesas (${assignedCapacity}) no alcanza para ${guests} comensales.`
+      : null
   const availableProducts = useMemo(() => {
     const products = [...fakeProducts]
     for (const detail of details) {
@@ -139,18 +151,6 @@ export function ReservationFormPage({ id }: { id?: string }) {
     if (!productId || details.some((detail) => detail.productId === productId)) return
     setDetails((current) => [...current, { productId, quantity: 1 }])
     setProductToAdd('')
-  }
-
-  async function saveTableChanges(reservationId: number) {
-    const currentTables = await listReservationTables(reservationId)
-    const selectedIds = new Set(selectedTableIds)
-    const currentIds = new Set(currentTables.map((table) => table.id))
-    for (const tableId of currentIds) {
-      if (!selectedIds.has(tableId)) await removeReservationTable(reservationId, tableId)
-    }
-    for (const tableId of selectedIds) {
-      if (!currentIds.has(tableId)) await addReservationTable(reservationId, tableId)
-    }
   }
 
   async function saveDetailChanges(reservationId: number, nextDetails: ReservationDetailPayload[]) {
@@ -179,6 +179,8 @@ export function ReservationFormPage({ id }: { id?: string }) {
     setSaving(true)
 
     try {
+      if (tableAssignmentError) throw new Error(tableAssignmentError)
+
       let customerId = Number(customerSelection)
       if (customerSelection === newCustomerValue) {
         const customer = await createCustomer({
@@ -206,9 +208,12 @@ export function ReservationFormPage({ id }: { id?: string }) {
 
       if (id) {
         const reservationId = Number(id)
-        await saveTableChanges(reservationId)
+        await updateReservation(reservationId, {
+          ...payload,
+          estado: status,
+          mesa_ids: selectedTableIds,
+        })
         await saveDetailChanges(reservationId, detailsPayload)
-        await updateReservation(reservationId, { ...payload, estado: status })
       } else {
         await createReservation({
           ...payload,
@@ -242,7 +247,11 @@ export function ReservationFormPage({ id }: { id?: string }) {
             footer={
               <>
                 <Button onClick={() => navigate('/reservas')}>Cancelar</Button>
-                <Button variant="primary" type="submit" disabled={loading || loadFailed || saving || !canEdit}>
+                <Button
+                  variant="primary"
+                  type="submit"
+                  disabled={loading || loadFailed || saving || !canEdit || Boolean(tableAssignmentError)}
+                >
                   {saving ? 'Guardando...' : 'Guardar reserva'}
                 </Button>
               </>
@@ -396,6 +405,13 @@ export function ReservationFormPage({ id }: { id?: string }) {
                   </div>
                 ) : (
                   <p className="muted">No hay mesas asignadas.</p>
+                )}
+                {tableAssignmentError ? (
+                  <p className="error-text" role="alert">{tableAssignmentError}</p>
+                ) : (
+                  <p className="muted" role="status">
+                    Capacidad asignada: {assignedCapacity} para {guests} comensales.
+                  </p>
                 )}
               </Card>
 

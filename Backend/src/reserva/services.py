@@ -13,6 +13,7 @@ def _validar_relaciones(
     db: Session,
     cliente_id: int,
     mesa_ids: list[int],
+    cant_comensales: int,
 ) -> None:
     cliente = db.query(Cliente).filter(
         Cliente.id == cliente_id,
@@ -20,9 +21,19 @@ def _validar_relaciones(
     if cliente is None:
         raise exceptions.RecursoNoEncontrado("El cliente no existe")
 
+    _validar_capacidad_mesas(db, mesa_ids, cant_comensales)
+
+
+def _validar_capacidad_mesas(
+    db: Session,
+    mesa_ids: list[int],
+    cant_comensales: int,
+) -> None:
     ids_mesas_solicitadas = set(mesa_ids)
     if not ids_mesas_solicitadas:
-        return
+        raise exceptions.DatosReservaInvalidos(
+            "La reserva debe tener al menos una mesa asignada"
+        )
 
     mesas = db.query(Mesa).filter(
         Mesa.id.in_(ids_mesas_solicitadas),
@@ -31,6 +42,11 @@ def _validar_relaciones(
     if ids_mesas_existentes != ids_mesas_solicitadas:
         raise exceptions.RecursoNoEncontrado(
             "Una o más mesas no existen"
+        )
+    capacidad_total = sum(mesa.capacidad for mesa in mesas)
+    if capacidad_total < cant_comensales:
+        raise exceptions.DatosReservaInvalidos(
+            "La capacidad total de las mesas debe cubrir la cantidad de comensales"
         )
 
 
@@ -43,7 +59,12 @@ def crear_reserva(db: Session, reserva: schemas.ReservaCreate) -> models.Reserva
         DetalleReservaCreate.model_validate(detalle)
         for detalle in datos.pop("detalles")
     ]
-    _validar_relaciones(db, datos["cliente_id"], mesa_ids)
+    _validar_relaciones(
+        db,
+        datos["cliente_id"],
+        mesa_ids,
+        datos["cant_comensales"],
+    )
 
     reserva_db = models.Reserva(**datos)
     reserva_db.mesas_asociadas = [
@@ -87,10 +108,24 @@ def modificar_reserva(
 ) -> models.Reserva:
     reserva_db = obtener_reserva_modificable(db, reserva_id)
     datos = nuevos_datos.model_dump()
-    _validar_relaciones(db, datos["cliente_id"], [])
+    mesa_ids = datos.pop("mesa_ids")
+    _validar_relaciones(
+        db,
+        datos["cliente_id"],
+        mesa_ids,
+        datos["cant_comensales"],
+    )
 
     for atributo, valor in datos.items():
         setattr(reserva_db, atributo, valor)
+    mesas_actuales = {
+        asociacion.mesa_id: asociacion
+        for asociacion in reserva_db.mesas_asociadas
+    }
+    reserva_db.mesas_asociadas = [
+        mesas_actuales.get(mesa_id) or models.ReservaMesa(mesa_id=mesa_id)
+        for mesa_id in dict.fromkeys(mesa_ids)
+    ]
 
     db.commit()
     db.refresh(reserva_db)
@@ -168,7 +203,7 @@ def agregar_mesa_reserva(
 
 
 def quitar_mesa_reserva(db: Session, reserva_id: int, mesa_id: int) -> None:
-    obtener_reserva_modificable(db, reserva_id)
+    reserva_db = obtener_reserva_modificable(db, reserva_id)
     asociacion = db.query(models.ReservaMesa).filter(
         models.ReservaMesa.reserva_id == reserva_id,
         models.ReservaMesa.mesa_id == mesa_id,
@@ -178,5 +213,15 @@ def quitar_mesa_reserva(db: Session, reserva_id: int, mesa_id: int) -> None:
             "La mesa no está asociada a la reserva"
         )
 
+    mesas_restantes = [
+        asociacion_mesa.mesa_id
+        for asociacion_mesa in reserva_db.mesas_asociadas
+        if asociacion_mesa.mesa_id != mesa_id
+    ]
+    _validar_capacidad_mesas(
+        db,
+        mesas_restantes,
+        reserva_db.cant_comensales,
+    )
     db.delete(asociacion)
     db.commit()
