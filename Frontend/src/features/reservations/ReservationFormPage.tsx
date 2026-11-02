@@ -20,6 +20,7 @@ import type {
   ReservationStatus,
   TableRecord,
 } from './types'
+import { useReservationTableAvailability } from './useReservationTableAvailability'
 
 const newCustomerValue = 'nuevo'
 const fakeProducts = [
@@ -119,6 +120,13 @@ export function ReservationFormPage({ id }: { id?: string }) {
   }, [id])
 
   const tableById = useMemo(() => new Map(tables.map((table) => [table.id, table])), [tables])
+  const reservationTableIssues = useReservationTableAvailability(
+    date,
+    time,
+    selectedTableIds,
+    id ? Number(id) : undefined,
+  )
+  const formLoading = loading || reservationTableIssues.loading
   const assignedCapacity = selectedTableIds.reduce(
     (capacity, tableId) => capacity + (tableById.get(tableId)?.capacidad ?? 0),
     0,
@@ -180,6 +188,10 @@ export function ReservationFormPage({ id }: { id?: string }) {
 
     try {
       if (tableAssignmentError) throw new Error(tableAssignmentError)
+      if (reservationTableIssues.conflicts.length) {
+        const { tableId } = reservationTableIssues.conflicts[0]
+        throw new Error(`La mesa ${tableId} ya está reservada para esa fecha y hora.`)
+      }
 
       let customerId = Number(customerSelection)
       if (customerSelection === newCustomerValue) {
@@ -250,15 +262,25 @@ export function ReservationFormPage({ id }: { id?: string }) {
                 <Button
                   variant="primary"
                   type="submit"
-                  disabled={loading || loadFailed || saving || !canEdit || Boolean(tableAssignmentError)}
+                  disabled={
+                    formLoading ||
+                    loadFailed ||
+                    Boolean(reservationTableIssues.error) ||
+                    saving ||
+                    !canEdit ||
+                    Boolean(tableAssignmentError) ||
+                    reservationTableIssues.conflicts.length > 0
+                  }
                 >
                   {saving ? 'Guardando...' : 'Guardar reserva'}
                 </Button>
               </>
             }
           >
-            {error && <Alert tone="danger">{error}</Alert>}
-            {loading ? (
+            {(error || reservationTableIssues.error) && (
+              <Alert tone="danger">{error ?? reservationTableIssues.error}</Alert>
+            )}
+            {formLoading ? (
               <p className="muted">Cargando datos de la reserva...</p>
             ) : (
               <>
@@ -361,7 +383,7 @@ export function ReservationFormPage({ id }: { id?: string }) {
             )}
           </Card>
 
-          {!loading && canEdit && (
+          {!formLoading && canEdit && (
             <>
               <Card title="Mesas asignadas" subtitle="Podés asociar más de una mesa a la reserva.">
                 <div className="form-grid">
@@ -413,6 +435,16 @@ export function ReservationFormPage({ id }: { id?: string }) {
                     Capacidad asignada: {assignedCapacity} para {guests} comensales.
                   </p>
                 )}
+                {reservationTableIssues.conflicts.map(({ tableId, time: occupiedTime }) => (
+                  <Alert key={`${tableId}-${occupiedTime}`} tone="danger" title="Mesa ya reservada">
+                    La mesa {tableId} ya está reservada para las {occupiedTime}. Elegí otra mesa u horario.
+                  </Alert>
+                ))}
+                {reservationTableIssues.warnings.map(({ tableId, time: occupiedTime }) => (
+                  <Alert key={`${tableId}-${occupiedTime}`} tone="warning" title="Atención con la ocupación de la mesa">
+                    La mesa {tableId} estará ocupada desde las {occupiedTime} por otra reserva.
+                  </Alert>
+                ))}
               </Card>
 
               <Card title="Detalle de comanda" subtitle="Productos ficticios por ahora.">

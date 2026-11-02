@@ -119,3 +119,91 @@ def test_no_se_puede_quitar_mesa_si_rompe_la_capacidad(cliente, reserva_datos):
     assert cliente.get(f"/reservas/{reserva_id}").json()["mesa_ids"] == [
         datos["mesa_grande_id"]
     ]
+
+
+def test_no_se_puede_reservar_la_misma_mesa_en_la_misma_fecha_y_hora(
+    cliente,
+    reserva_datos,
+):
+    datos = reserva_datos
+    mesa_id = datos["mesa_grande_id"]
+    primera = cliente.post(
+        "/reservas",
+        json=_payload(datos["cliente_id"], [mesa_id]),
+    )
+    segunda = cliente.post(
+        "/reservas",
+        json=_payload(datos["cliente_id"], [mesa_id]),
+    )
+
+    assert primera.status_code == 201
+    assert segunda.status_code == 409
+    assert f"La mesa {mesa_id} ya está reservada" in segunda.json()["detail"]
+
+
+def test_modificar_reserva_no_permite_ocupar_una_mesa_ya_reservada(
+    cliente,
+    reserva_datos,
+):
+    datos = reserva_datos
+    mesa_id = datos["mesa_grande_id"]
+    existente = cliente.post(
+        "/reservas",
+        json=_payload(datos["cliente_id"], [mesa_id]),
+    )
+    a_modificar = cliente.post(
+        "/reservas",
+        json=_payload(datos["cliente_id"], [datos["mesa_pequena_id"]], 2),
+    )
+
+    respuesta = cliente.put(
+        f"/reservas/{a_modificar.json()['id']}",
+        json={
+            **_payload(datos["cliente_id"], [mesa_id]),
+            "estado": "pendiente",
+        },
+    )
+
+    assert existente.status_code == 201
+    assert a_modificar.status_code == 201
+    assert respuesta.status_code == 409
+    assert cliente.get(f"/reservas/{a_modificar.json()['id']}").json()["mesa_ids"] == [
+        datos["mesa_pequena_id"]
+    ]
+
+
+def test_una_mesa_puede_reservarse_en_otro_horario(cliente, reserva_datos):
+    datos = reserva_datos
+    mesa_id = datos["mesa_grande_id"]
+    primera = cliente.post(
+        "/reservas",
+        json=_payload(datos["cliente_id"], [mesa_id]),
+    )
+    otro_horario = _payload(datos["cliente_id"], [mesa_id])
+    otro_horario["hora"] = "21:00"
+
+    segunda = cliente.post("/reservas", json=otro_horario)
+
+    assert primera.status_code == 201
+    assert segunda.status_code == 201
+
+
+def test_agregar_mesa_no_permite_una_reserva_existente(cliente, reserva_datos):
+    datos = reserva_datos
+    existente = cliente.post(
+        "/reservas",
+        json=_payload(datos["cliente_id"], [datos["mesa_grande_id"]]),
+    )
+    a_modificar = cliente.post(
+        "/reservas",
+        json=_payload(datos["cliente_id"], [datos["mesa_pequena_id"]], 2),
+    )
+
+    respuesta = cliente.post(
+        f"/reservas/{a_modificar.json()['id']}/mesas",
+        json={"mesa_id": datos["mesa_grande_id"]},
+    )
+
+    assert existente.status_code == 201
+    assert a_modificar.status_code == 201
+    assert respuesta.status_code == 409

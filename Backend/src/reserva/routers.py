@@ -44,6 +44,11 @@ def crear_reserva(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(error),
         ) from error
+    except exceptions.RecursoYaExiste as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(error),
+        ) from error
 
 
 @router.put("/{reserva_id}", response_model=schemas.Reserva)
@@ -67,6 +72,11 @@ def modificar_reserva(
     except exceptions.DatosReservaInvalidos as error:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(error),
+        ) from error
+    except exceptions.RecursoYaExiste as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
             detail=str(error),
         ) from error
 

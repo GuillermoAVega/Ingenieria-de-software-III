@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime, time
 
 from sqlalchemy.orm import Session
 
@@ -22,6 +22,46 @@ def _validar_relaciones(
         raise exceptions.RecursoNoEncontrado("El cliente no existe")
 
     _validar_capacidad_mesas(db, mesa_ids, cant_comensales)
+
+
+def _validar_disponibilidad_mesas(
+    db: Session,
+    fecha: date,
+    hora: time,
+    mesa_ids: list[int],
+    excluir_reserva_id: int | None = None,
+) -> None:
+    ids_mesas_solicitadas = set(mesa_ids)
+    if not ids_mesas_solicitadas:
+        return
+
+    consulta = (
+        db.query(models.Reserva)
+        .join(
+            models.ReservaMesa,
+            models.ReservaMesa.reserva_id == models.Reserva.id,
+        )
+        .filter(
+            models.ReservaMesa.mesa_id.in_(ids_mesas_solicitadas),
+            models.Reserva.fecha == fecha,
+            models.Reserva.hora == hora,
+            models.Reserva.estado.in_(
+                (EstadoReserva.PENDIENTE, EstadoReserva.CON_COMANDA)
+            ),
+        )
+    )
+    if excluir_reserva_id is not None:
+        consulta = consulta.filter(models.Reserva.id != excluir_reserva_id)
+
+    reserva_existente = consulta.first()
+    if reserva_existente is not None:
+        mesa_compartida = ids_mesas_solicitadas.intersection(
+            reserva_existente.mesa_ids
+        )
+        mesa_id = min(mesa_compartida)
+        raise exceptions.RecursoYaExiste(
+            f"La mesa {mesa_id} ya está reservada para esa fecha y hora"
+        )
 
 
 def _validar_capacidad_mesas(
@@ -64,6 +104,12 @@ def crear_reserva(db: Session, reserva: schemas.ReservaCreate) -> models.Reserva
         datos["cliente_id"],
         mesa_ids,
         datos["cant_comensales"],
+    )
+    _validar_disponibilidad_mesas(
+        db,
+        datos["fecha"],
+        datos["hora"],
+        mesa_ids,
     )
 
     reserva_db = models.Reserva(**datos)
@@ -114,6 +160,13 @@ def modificar_reserva(
         datos["cliente_id"],
         mesa_ids,
         datos["cant_comensales"],
+    )
+    _validar_disponibilidad_mesas(
+        db,
+        datos["fecha"],
+        datos["hora"],
+        mesa_ids,
+        excluir_reserva_id=reserva_id,
     )
 
     for atributo, valor in datos.items():
@@ -183,10 +236,18 @@ def agregar_mesa_reserva(
     reserva_id: int,
     mesa_id: int,
 ) -> Mesa:
-    obtener_reserva_modificable(db, reserva_id)
+    reserva_db = obtener_reserva_modificable(db, reserva_id)
     mesa_db = db.query(Mesa).filter(Mesa.id == mesa_id).first()
     if mesa_db is None:
         raise exceptions.RecursoNoEncontrado("La mesa no existe")
+
+    _validar_disponibilidad_mesas(
+        db,
+        reserva_db.fecha,
+        reserva_db.hora,
+        [mesa_id],
+        excluir_reserva_id=reserva_id,
+    )
 
     asociacion = db.query(models.ReservaMesa).filter(
         models.ReservaMesa.reserva_id == reserva_id,
