@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -16,6 +18,10 @@ router = APIRouter(prefix="/comandas", tags=["Comandas"])
 @router.post("", response_model=ComandaOut, status_code=201)
 def crear_comanda(datos: ComandaCreate, db: Session = Depends(get_db)):
     valores = datos.model_dump(exclude={"detalles", "mesa_ids"})
+    if datos.reserva_id is None:
+        ahora = datetime.now()
+        valores["fecha"] = datos.fecha or ahora.date()
+        valores["hora"] = datos.hora or ahora.time().replace(microsecond=0)
     mesa_ids = datos.mesa_ids or ([datos.mesa_id] if datos.mesa_id is not None else [])
     mesa_ids = list(dict.fromkeys(mesa_ids))
     mesas = db.scalars(select(Mesa).where(Mesa.id.in_(mesa_ids))).all()

@@ -28,3 +28,13 @@ def test_comanda_con_reserva_puede_no_tener_mozo():
     comanda = ComandaCreate(**datos_base(reserva_id=7))
 
     assert comanda.mozo_id is None
+
+
+def test_comanda_inmediata_puede_omitir_fecha_y_hora():
+    datos = datos_base(mozo_id=3)
+    datos.pop("fecha")
+    datos.pop("hora")
+    comanda = ComandaCreate(**datos)
+
+    assert comanda.fecha is None
+    assert comanda.hora is None

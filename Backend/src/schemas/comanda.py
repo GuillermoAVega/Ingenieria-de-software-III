@@ -7,8 +7,8 @@ from src.schemas.detalle_comanda import DetalleComandaNested, DetalleComandaOut
 
 
 class ComandaCreate(BaseModel):
-    fecha: date
-    hora: time
+    fecha: date | None = None
+    hora: time | None = None
     mozo_id: int | None = None
     mesa_id: int | None = None
     mesa_ids: list[int] | None = Field(default=None, min_length=1)
