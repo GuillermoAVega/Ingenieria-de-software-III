@@ -120,13 +120,21 @@ export function ReservationFormPage({ id }: { id?: string }) {
   }, [id])
 
   const tableById = useMemo(() => new Map(tables.map((table) => [table.id, table])), [tables])
-  const reservationTableIssues = useReservationTableAvailability(
+  const availabilityTableIds = useMemo(
+    () => [...new Set([...tables.map((table) => table.id), ...selectedTableIds])],
+    [selectedTableIds, tables],
+  )
+  const tableAvailability = useReservationTableAvailability(
     date,
     time,
-    selectedTableIds,
+    availabilityTableIds,
     id ? Number(id) : undefined,
   )
-  const formLoading = loading || reservationTableIssues.loading
+  const reservationTableIssues = useMemo(() => ({
+    conflicts: tableAvailability.conflicts.filter(({ tableId }) => selectedTableIds.includes(tableId)),
+    warnings: tableAvailability.warnings.filter(({ tableId }) => selectedTableIds.includes(tableId)),
+  }), [selectedTableIds, tableAvailability.conflicts, tableAvailability.warnings])
+  const formLoading = loading || tableAvailability.loading
   const assignedCapacity = selectedTableIds.reduce(
     (capacity, tableId) => capacity + (tableById.get(tableId)?.capacidad ?? 0),
     0,
@@ -265,7 +273,7 @@ export function ReservationFormPage({ id }: { id?: string }) {
                   disabled={
                     formLoading ||
                     loadFailed ||
-                    Boolean(reservationTableIssues.error) ||
+                    Boolean(tableAvailability.error) ||
                     saving ||
                     !canEdit ||
                     Boolean(tableAssignmentError) ||
@@ -277,8 +285,8 @@ export function ReservationFormPage({ id }: { id?: string }) {
               </>
             }
           >
-            {(error || reservationTableIssues.error) && (
-              <Alert tone="danger">{error ?? reservationTableIssues.error}</Alert>
+            {(error || tableAvailability.error) && (
+              <Alert tone="danger">{error ?? tableAvailability.error}</Alert>
             )}
             {formLoading ? (
               <p className="muted">Cargando datos de la reserva...</p>
@@ -390,11 +398,23 @@ export function ReservationFormPage({ id }: { id?: string }) {
                   <Field label="Agregar mesa">
                     <Select value={tableToAdd} onChange={(event) => setTableToAdd(event.target.value)}>
                       <option value="">Seleccioná una mesa</option>
-                      {tables.filter((table) => table.estado && !selectedTableIds.includes(table.id)).map((table) => (
-                        <option key={table.id} value={table.id}>
-                          Mesa {table.id} · {table.capacidad} personas
-                        </option>
-                      ))}
+                      {tables
+                        .filter((table) => table.estado && !selectedTableIds.includes(table.id))
+                        .map((table) => {
+                          const conflict = tableAvailability.conflicts.find((issue) => issue.tableId === table.id)
+                          const warning = tableAvailability.warnings.find((issue) => issue.tableId === table.id)
+                          const availabilityLabel = conflict
+                            ? ` · Ya reservada a las ${conflict.time}`
+                            : warning
+                              ? ` · Atención: otra reserva a las ${warning.time}`
+                              : ''
+
+                          return (
+                            <option key={table.id} value={table.id} disabled={Boolean(conflict)}>
+                              Mesa {table.id} · {table.capacidad} personas{availabilityLabel}
+                            </option>
+                          )
+                        })}
                     </Select>
                   </Field>
                   <div className="field">

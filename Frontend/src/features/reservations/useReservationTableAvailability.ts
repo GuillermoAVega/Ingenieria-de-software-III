@@ -11,7 +11,7 @@ type AvailabilityState = {
 export function useReservationTableAvailability(
   date: string,
   time: string,
-  selectedTableIds: number[],
+  tableIds: number[],
   reservationId?: number,
 ) {
   const [state, setState] = useState<AvailabilityState>({
@@ -68,7 +68,7 @@ export function useReservationTableAvailability(
       const difference = (targetTime - reservationTime) / (60 * 1000)
       if (Math.abs(difference) > 4 * 60) continue
 
-      for (const tableId of selectedTableIds) {
+      for (const tableId of tableIds) {
         if (!reservation.mesa_ids.includes(tableId)) continue
         const issue = { tableId, time: reservation.hora.slice(0, 5) }
         if (difference === 0) {
@@ -80,7 +80,7 @@ export function useReservationTableAvailability(
     }
 
     return { conflicts, warnings }
-  }, [date, reservationId, selectedTableIds, state.reservations, time])
+  }, [date, reservationId, state.reservations, tableIds, time])
 
   return { ...issues, loading: state.loading, error: state.error }
 }
