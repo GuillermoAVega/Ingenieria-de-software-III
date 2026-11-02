@@ -1,7 +1,7 @@
 from datetime import date, time
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from src.schemas.detalle_comanda import DetalleComandaNested, DetalleComandaOut
 
@@ -10,7 +10,8 @@ class ComandaCreate(BaseModel):
     fecha: date
     hora: time
     mozo_id: int
-    mesa_id: int
+    mesa_id: int | None = None
+    mesa_ids: list[int] | None = Field(default=None, min_length=1)
     cliente_id: int | None = None
     reserva_id: int | None = None
     detalles: list[DetalleComandaNested] = []
@@ -21,6 +22,7 @@ class ComandaUpdate(BaseModel):
     hora: time | None = None
     mozo_id: int | None = None
     mesa_id: int | None = None
+    mesa_ids: list[int] | None = Field(default=None, min_length=1)
     cliente_id: int | None = None
     reserva_id: int | None = None
     estado: Literal["abierta", "cerrada"] | None = None
@@ -33,7 +35,8 @@ class ComandaOut(BaseModel):
     fecha: date
     hora: time
     mozo_id: int
-    mesa_id: int
+    mesa_id: int | None
+    mesa_ids: list[int] = []
     cliente_id: int | None
     reserva_id: int | None
     estado: str

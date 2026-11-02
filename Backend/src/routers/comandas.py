@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from src.database import get_db
 from src.exceptions import BadRequest
 from src.models import Comanda, DetalleComanda, Factura
+from src.mesa.models import Mesa
 from src.schemas.comanda import ComandaCreate, ComandaOut, ComandaUpdate
 from src.schemas.detalle_comanda import DetalleComandaOut
 from src.utils import obtener_activo_o_404
@@ -14,7 +15,14 @@ router = APIRouter(prefix="/comandas", tags=["Comandas"])
 
 @router.post("", response_model=ComandaOut, status_code=201)
 def crear_comanda(datos: ComandaCreate, db: Session = Depends(get_db)):
-    comanda = Comanda(**datos.model_dump(exclude={"detalles"}))
+    valores = datos.model_dump(exclude={"detalles", "mesa_ids"})
+    mesa_ids = datos.mesa_ids or ([datos.mesa_id] if datos.mesa_id is not None else [])
+    mesa_ids = list(dict.fromkeys(mesa_ids))
+    mesas = db.scalars(select(Mesa).where(Mesa.id.in_(mesa_ids))).all()
+    if len(mesas) != len(mesa_ids):
+        raise BadRequest()
+    valores["mesa_id"] = mesa_ids[0]
+    comanda = Comanda(**valores, mesas_asociadas=mesas)
     comanda.detalles = [DetalleComanda(**d.model_dump()) for d in datos.detalles]
     db.add(comanda)
     db.commit()
