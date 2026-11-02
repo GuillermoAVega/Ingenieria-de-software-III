@@ -76,6 +76,7 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
 }
 
 .brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px; font-size: 15px; font-weight: 600; }
+.brand-logo { width: 40px; height: 40px; border-radius: 50%; object-fit: contain; flex: none; }
 .brand-mark {
   width: 28px; height: 28px; border-radius: 7px;
   display: grid; place-items: center;
@@ -321,7 +322,12 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
 .layout-aside > .primary { flex: 999 1 480px; min-width: 0; }
 .layout-aside > .aside { flex: 1 1 300px; max-width: 360px; min-width: 0; }
 
-/* ---------- 12. Responsive ---------- */
+/* ---------- 12. Avisos flotantes ---------- */
+.toasts { position: fixed; right: 20px; bottom: 20px; display: flex; flex-direction: column; gap: 8px; z-index: 60; }
+.toast { background: var(--c-text); color: var(--c-surface); padding: 11px 16px; border-radius: var(--radius); max-width: 360px; box-shadow: var(--shadow-md); }
+.toast.error { background: var(--c-danger-solid); }
+
+/* ---------- 13. Responsive ---------- */
 @media (max-width: 820px) {
   .sidebar { max-width: none; border-right: 0; border-bottom: 1px solid var(--c-border); }
   .nav { flex-direction: row; flex-wrap: wrap; }

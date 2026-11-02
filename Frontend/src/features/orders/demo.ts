@@ -1,6 +1,31 @@
-import type { Order } from './types'
+export type DemoOrderItemStatus = 'pendiente' | 'entregado'
 
-export const DEMO_ORDERS: Order[] = [
+export type DemoOrderItem = {
+  id: string
+  name: string
+  quantity: number
+  unitPrice: number
+  note?: string
+  status: DemoOrderItemStatus
+}
+
+export type DemoOrder = {
+  id: string
+  table: string
+  sector: string
+  waiter: string
+  customer?: string
+  openedAt: string
+  subtotal: number
+  discountLabel?: string
+  discount: number
+  total: number
+  status: 'abierta' | 'cerrada'
+  reservation?: string
+  items: DemoOrderItem[]
+}
+
+export const DEMO_ORDERS: DemoOrder[] = [
   {
     id: '1042',
     table: 'Mesa 7',
