@@ -76,7 +76,7 @@ export const routes: RouteDefinition[] = [
   },
   {
     path: '/comandas/:id',
-    render: (params) => <OrderDetailPage id={params.id} />,
+    render: (params) => <OrderDetailPage key={params.id} id={params.id} />,
   },
   {
     path: '/reservas',

@@ -253,7 +253,8 @@ export function AppShell({
     <div className="app">
       <aside className="sidebar">
         <div className="brand">
-          <span className="brand-mark">R</span>Restó
+          <img className="brand-logo" src="/logo.png" alt="Sabor de Mar" />
+          <span>Sabor de Mar</span>
         </div>
         <nav className="nav" aria-label="Principal">
           {nav.map((group) => (

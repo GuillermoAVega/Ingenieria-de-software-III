@@ -9,15 +9,15 @@
 import { Badge, Button, Card, DataTable, PageHeader, Stat } from '../../ui/ui'
 import type { DataTableColumn } from '../../ui/ui'
 import { navigate } from '../../app/navigation'
-import { DEMO_ORDERS } from '../orders/demo'
-import type { Order } from '../orders/types'
+import { DEMO_ORDERS } from './ordersDemo'
+import type { DemoOrder } from './ordersDemo'
 import { DEMO_RESERVATIONS } from '../reservations/demo'
 
 const formatCurrency = (value: number) => `$ ${value.toLocaleString('es-AR')}`
 
 const upcomingReservations = DEMO_RESERVATIONS.filter((reservation) => reservation.status === 'pendiente')
 
-const orderColumns: DataTableColumn<Order>[] = [
+const orderColumns: DataTableColumn<DemoOrder>[] = [
   {
     key: 'id',
     header: 'Comanda',

@@ -1,18 +1,29 @@
 /**
  * EQUIPO: Operación
  * FUNCIONALIDAD: Listado de comandas
- * COMPLETAR:
- * 1. Reemplazar DEMO_ORDERS por la llamada a la API.
- * 2. Implementar búsqueda, filtro por estado y paginación.
- * 3. Conectar las acciones de fila con el detalle real de la comanda.
+ * La lógica vive en `useOrdersList`; la pantalla solo renderiza.
  */
-import { Badge, Button, Card, DataTable, Input, PageHeader, Pagination, Select, Toolbar, ToolbarSpacer } from '../../ui/ui'
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  DataTable,
+  DeleteButton,
+  EmptyState,
+  Input,
+  PageHeader,
+  Pagination,
+  Select,
+  Toolbar,
+  ToolbarSpacer,
+} from '../../ui/ui'
 import type { DataTableColumn } from '../../ui/ui'
 import { navigate } from '../../app/navigation'
-import { DEMO_ORDERS } from './demo'
+import { formatDate, formatTime } from '../../utils/format'
+import { ORDER_STATUS_LABEL, ORDER_STATUS_TONE } from './status'
+import { useOrdersList } from './useOrdersList'
 import type { Order } from './types'
-
-const formatCurrency = (value: number) => `$ ${value.toLocaleString('es-AR')}`
 
 const columns: DataTableColumn<Order>[] = [
   {
@@ -21,42 +32,49 @@ const columns: DataTableColumn<Order>[] = [
     render: (order) => <span className="cell-main">#{order.id}</span>,
   },
   {
-    key: 'table',
-    header: 'Mesa / mozo',
-    render: (order) => (
-      <>
-        <div className="cell-main">{order.table}</div>
-        <div className="cell-sub">{order.waiter}</div>
-      </>
-    ),
+    key: 'mesa',
+    header: 'Mesa',
+    render: (order) => `Mesa ${order.mesa_id}`,
   },
   {
-    key: 'openedAt',
+    key: 'mozo',
+    header: 'Mozo',
+    render: (order) => `Mozo ${order.mozo_id}`,
+  },
+  {
+    key: 'fecha',
+    header: 'Fecha',
+    render: (order) => formatDate(order.fecha),
+  },
+  {
+    key: 'hora',
     header: 'Hora',
+    render: (order) => formatTime(order.hora),
   },
   {
-    key: 'total',
-    header: 'Total',
+    key: 'items',
+    header: 'Ítems',
     num: true,
-    render: (order) => formatCurrency(order.total),
+    render: (order) => order.detalles.length,
   },
   {
-    key: 'status',
+    key: 'estado',
     header: 'Estado',
     render: (order) => (
-      <Badge tone={order.status === 'abierta' ? 'warning' : 'success'}>
-        {order.status === 'abierta' ? 'Abierta' : 'Cerrada'}
-      </Badge>
+      <Badge tone={ORDER_STATUS_TONE[order.estado]}>{ORDER_STATUS_LABEL[order.estado]}</Badge>
     ),
   },
 ]
 
 export function OrdersListPage() {
+  const { state, orders, total, page, pageSize, updateSearch, updateStatus, changePage, remove } =
+    useOrdersList()
+
   return (
     <>
       <PageHeader
         title="Comandas"
-        subtitle="Seguimiento de las comandas abiertas y cerradas del servicio."
+        subtitle="Pedidos de cada mesa, abiertos y cerrados."
         actions={
           <Button variant="primary" onClick={() => navigate('/comandas/nueva')}>
             Nueva comanda
@@ -64,45 +82,63 @@ export function OrdersListPage() {
         }
       />
 
+      {state.error && (
+        <Alert tone="danger" title="No se pudieron cargar las comandas">
+          {state.error}
+        </Alert>
+      )}
+
       <Card flush>
         <Toolbar>
           <Input
-            placeholder="Buscar por mesa, mozo o número..."
-            onChange={() => {
-              // TODO(equipo-operacion): filtrar comandas por texto.
-            }}
+            placeholder="Buscar por número, mesa o mozo..."
+            value={state.search}
+            onChange={(event) => updateSearch(event.target.value)}
           />
-          <Select
-            defaultValue=""
-            onChange={() => {
-              // TODO(equipo-operacion): filtrar comandas por estado.
-            }}
-          >
+          <Select value={state.statusFilter} onChange={(event) => updateStatus(event.target.value)}>
             <option value="">Todos los estados</option>
             <option value="abierta">Abiertas</option>
             <option value="cerrada">Cerradas</option>
           </Select>
           <ToolbarSpacer />
-          <span className="muted text-sm">Datos de demostración</span>
+          <span className="muted text-sm">{total} comandas</span>
         </Toolbar>
 
-        <DataTable
-          columns={columns}
-          rows={DEMO_ORDERS}
-          actions={(order) => (
-            <Button size="sm" onClick={() => navigate(`/comandas/${order.id}`)}>
-              Ver
-            </Button>
-          )}
-        />
+        {state.loading ? (
+          <p className="muted">Cargando comandas...</p>
+        ) : (
+          <DataTable
+            columns={columns}
+            rows={orders}
+            empty={
+              <EmptyState title="Sin comandas para mostrar">
+                No hay comandas que coincidan con los filtros elegidos.
+              </EmptyState>
+            }
+            actions={(order) => (
+              <div className="row">
+                <Button size="sm" onClick={() => navigate(`/comandas/${order.id}`)}>
+                  Ver
+                </Button>
+                <DeleteButton
+                  title="Eliminar comanda"
+                  onConfirm={() => {
+                    void remove(order.id)
+                  }}
+                >
+                  ¿Querés eliminar la comanda <strong>#{order.id}</strong>?
+                </DeleteButton>
+              </div>
+            )}
+          />
+        )}
 
         <Pagination
-          page={1}
-          pageSize={10}
-          total={DEMO_ORDERS.length}
-          onPageChange={() => {
-            // TODO(equipo-operacion): implementar la paginación contra la API.
-          }}
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          onPageChange={changePage}
+          label={`Página ${page} · ${total} comandas`}
         />
       </Card>
     </>
