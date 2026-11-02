@@ -6,6 +6,14 @@ from src.database import engine
 from src.models import ModeloBase
 
 # importamos los routers desde nuestros modulos
+from src.routers import (
+    comandas,
+    comprobantes_pago,
+    detalles_comanda,
+    detalles_factura,
+    facturas,
+    medios_pago,
+)
 from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
@@ -33,4 +41,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(medios_pago.router)
+app.include_router(comandas.router)
+app.include_router(detalles_comanda.router)
+app.include_router(facturas.router)
+app.include_router(detalles_factura.router)
+app.include_router(comprobantes_pago.router)
 

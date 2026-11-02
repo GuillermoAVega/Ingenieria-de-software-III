@@ -18,9 +18,12 @@ Sistema de gestión para un restaurante.
 │       ├── __init__.py
 │       ├── main.py
 │       ├── database.py
-│       ├── models.py
-│       ├── schemas.py
-│       └── exceptions.py
+│       ├── exceptions.py
+│       ├── utils.py
+│       ├── models/      # un módulo por entidad
+│       ├── schemas/
+│       └── routers/
+│   └── tests/           # pytest
 └── Frontend/
     ├── package.json
     ├── vite.config.ts
