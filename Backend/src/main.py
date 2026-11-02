@@ -21,6 +21,14 @@ from src.atencion import models as atencion_models
 from src.mozo.router import router as mozo_router
 from src.sector.router import router as sector_router
 from src.atencion.router import router as atencion_router
+from src.routers import (
+    comandas,
+    comprobantes_pago,
+    detalles_comanda,
+    detalles_factura,
+    facturas,
+    medios_pago,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from src.productos import registro  # noqa: F401  (carga los mappers antes de create_all)
 from src.productos.router import MANEJADORES_EXCEPCIONES as MANEJADORES_PRODUCTOS
@@ -69,6 +77,12 @@ app.include_router(reservas_router)
 app.include_router(router_productos)
 app.include_router(router_secciones)
 app.include_router(router_productos_menu)
+app.include_router(medios_pago.router)
+app.include_router(comandas.router)
+app.include_router(detalles_comanda.router)
+app.include_router(facturas.router)
+app.include_router(detalles_factura.router)
+app.include_router(comprobantes_pago.router)
 
 for manejadores in (
     MANEJADORES_PRODUCTOS,
@@ -77,3 +91,5 @@ for manejadores in (
 ):
     for tipo_excepcion, manejador in manejadores.items():
         app.add_exception_handler(tipo_excepcion, manejador)
+
+
