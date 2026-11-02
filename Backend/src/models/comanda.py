@@ -22,7 +22,7 @@ class Comanda(ModeloBase):
     activo = Column(Boolean, nullable=False, default=True)
 
     # FK pendiente: Mozo, Mesa, Cliente, Reserva (otros grupos)
-    mozo_id = Column(Integer, nullable=False)
+    mozo_id = Column(Integer, nullable=True)
     mesa_id = Column(Integer, nullable=False)
     cliente_id = Column(Integer, nullable=True)
     reserva_id = Column(Integer, nullable=True)
