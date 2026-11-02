@@ -1,7 +1,7 @@
 from datetime import date, time
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from src.schemas.detalle_comanda import DetalleComandaNested, DetalleComandaOut
 
@@ -9,12 +9,20 @@ from src.schemas.detalle_comanda import DetalleComandaNested, DetalleComandaOut
 class ComandaCreate(BaseModel):
     fecha: date
     hora: time
-    mozo_id: int
+    mozo_id: int | None = None
     mesa_id: int | None = None
     mesa_ids: list[int] | None = Field(default=None, min_length=1)
     cliente_id: int | None = None
     reserva_id: int | None = None
     detalles: list[DetalleComandaNested] = []
+
+    @model_validator(mode="after")
+    def validar_mozo_segun_reserva(self):
+        if self.reserva_id is None and self.mozo_id is None:
+            raise ValueError("El mozo es obligatorio para una comanda sin reserva")
+        if self.reserva_id is not None and self.mozo_id is not None:
+            raise ValueError("Una comanda con reserva no puede tener mozo asignado")
+        return self
 
 
 class ComandaUpdate(BaseModel):
@@ -34,7 +42,7 @@ class ComandaOut(BaseModel):
     id: int
     fecha: date
     hora: time
-    mozo_id: int
+    mozo_id: int | None
     mesa_id: int | None
     mesa_ids: list[int] = []
     cliente_id: int | None
