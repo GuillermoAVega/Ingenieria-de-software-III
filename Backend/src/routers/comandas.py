@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from src.database import get_db
+from src.comanda.services import crear_comanda_desde_reserva
 from src.exceptions import BadRequest
 from src.models import Comanda, DetalleComanda, Factura
 from src.mesa.models import Mesa
@@ -17,6 +18,8 @@ router = APIRouter(prefix="/comandas", tags=["Comandas"])
 
 @router.post("", response_model=ComandaOut, status_code=201)
 def crear_comanda(datos: ComandaCreate, db: Session = Depends(get_db)):
+    if datos.reserva_id is not None:
+        return crear_comanda_desde_reserva(db, datos.reserva_id)
     valores = datos.model_dump(exclude={"detalles", "mesa_ids"})
     if datos.reserva_id is None:
         ahora = datetime.now()
