@@ -3,11 +3,13 @@ import type { ApiFieldErrors } from '../../api/client'
 import { getErrorMessage, getFieldErrors } from '../../api/client'
 import { createOrderItem, deleteOrderItem, updateOrderItem } from './api'
 import type { OrderItem } from './types'
+import type { OrderProductOption } from './useOrderCatalog'
 
 type OrderItemModal = { mode: 'new' } | { mode: 'edit'; item: OrderItem }
 
 type OrderItemFormValues = {
   productoId: string
+  productoQuery: string
   cantidad: string
   observaciones: string
 }
@@ -24,6 +26,7 @@ type OrderItemsState = OrderItemFormValues & {
 const initialState: OrderItemsState = {
   modal: null,
   productoId: '',
+  productoQuery: '',
   cantidad: '1',
   observaciones: '',
   saving: false,
@@ -33,7 +36,7 @@ const initialState: OrderItemsState = {
   deliveryUpdatingId: null,
 }
 
-export function useOrderItems(comandaId: number, onChanged: () => void) {
+export function useOrderItems(comandaId: number, onChanged: () => void, products: OrderProductOption[]) {
   const [state, setState] = useState<OrderItemsState>(initialState)
 
   const openNew = () => {
@@ -41,6 +44,7 @@ export function useOrderItems(comandaId: number, onChanged: () => void) {
       ...previous,
       modal: { mode: 'new' },
       productoId: '',
+      productoQuery: '',
       cantidad: '1',
       observaciones: '',
       error: null,
@@ -53,6 +57,7 @@ export function useOrderItems(comandaId: number, onChanged: () => void) {
       ...previous,
       modal: { mode: 'edit', item },
       productoId: String(item.producto_id),
+      productoQuery: products.find((product) => product.id === item.producto_id)?.name ?? `Producto #${item.producto_id}`,
       cantidad: String(item.cantidad),
       observaciones: item.observaciones ?? '',
       error: null,
@@ -65,11 +70,24 @@ export function useOrderItems(comandaId: number, onChanged: () => void) {
   }
 
   const updateField = (field: keyof OrderItemFormValues, value: string) => {
+    if (field === 'productoQuery') {
+      const match = products.find((product) => product.name.toLocaleLowerCase() === value.trim().toLocaleLowerCase())
+      setState((previous) => ({ ...previous, productoQuery: value, productoId: match ? String(match.id) : '' }))
+      return
+    }
     setState((previous) => ({ ...previous, [field]: value }))
   }
 
   const save = async () => {
     if (!state.modal || state.saving) return
+
+    if (!state.productoId) {
+      setState((previous) => ({
+        ...previous,
+        error: 'Seleccioná un producto existente de la lista.',
+      }))
+      return
+    }
 
     const payload = {
       producto_id: Number(state.productoId),

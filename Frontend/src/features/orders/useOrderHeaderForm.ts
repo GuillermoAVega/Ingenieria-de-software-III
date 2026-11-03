@@ -50,7 +50,7 @@ export function useOrderHeaderForm(order: Order, onSaved: () => void) {
     try {
       await updateOrder(order.id, {
         mesa_id: Number(state.mesaId),
-        mozo_id: Number(state.mozoId),
+        mozo_id: state.mozoId.trim() ? Number(state.mozoId) : null,
         cliente_id: state.clienteId.trim() ? Number(state.clienteId) : null,
         reserva_id: state.reservaId.trim() ? Number(state.reservaId) : null,
       })

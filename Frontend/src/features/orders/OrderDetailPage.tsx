@@ -15,6 +15,7 @@ import {
   Input,
   KeyValue,
   Modal,
+  Select,
   PageHeader,
 } from '../../ui/ui'
 import type { DataTableColumn } from '../../ui/ui'
@@ -24,6 +25,7 @@ import { ORDER_STATUS_LABEL, ORDER_STATUS_TONE } from './status'
 import { useOrderDetail } from './useOrderDetail'
 import { useOrderHeaderForm } from './useOrderHeaderForm'
 import { useOrderItems } from './useOrderItems'
+import { useOrderCatalog } from './useOrderCatalog'
 import type { Order, OrderItem } from './types'
 
 export function OrderDetailPage({ id }: { id: string }) {
@@ -42,7 +44,8 @@ export function OrderDetailPage({ id }: { id: string }) {
 
 function OrderDetail({ id }: { id: number }) {
   const detail = useOrderDetail(id)
-  const items = useOrderItems(id, detail.reload)
+  const catalog = useOrderCatalog()
+  const items = useOrderItems(id, detail.reload, catalog.state.products)
   const order = detail.state.order
 
   if (detail.state.loading && !order) {
@@ -72,7 +75,7 @@ function OrderDetail({ id }: { id: number }) {
     {
       key: 'producto',
       header: 'Producto',
-      render: (item) => <span className="cell-main">Producto #{item.producto_id}</span>,
+      render: (item) => <span className="cell-main">{catalog.state.products.find((product) => product.id === item.producto_id)?.name ?? `Producto #${item.producto_id}`}</span>,
     },
     {
       key: 'cantidad',
@@ -144,6 +147,7 @@ function OrderDetail({ id }: { id: number }) {
             key={`${order.id}-${order.mesa_id}-${order.mozo_id}-${order.cliente_id}-${order.reserva_id}`}
             order={order}
             onSaved={detail.reload}
+            catalog={catalog}
           />
 
           <Card
@@ -177,7 +181,7 @@ function OrderDetail({ id }: { id: number }) {
                       void items.remove(item)
                     }}
                   >
-                    ¿Querés quitar <strong>Producto #{item.producto_id}</strong> de la comanda?
+                    ¿Querés quitar <strong>{catalog.state.products.find((product) => product.id === item.producto_id)?.name ?? `Producto #${item.producto_id}`}</strong> de la comanda?
                   </DeleteButton>
                 </div>
               )}
@@ -276,12 +280,14 @@ function OrderDetail({ id }: { id: number }) {
         )}
         <Field label="Producto" required hint="Número de producto." error={items.state.fieldErrors.producto_id}>
           <Input
-            type="number"
-            min={1}
-            value={items.state.productoId}
-            onChange={(event) => items.updateField('productoId', event.target.value)}
+            list="order-product-options"
+            value={items.state.productoQuery}
+            onChange={(event) => items.updateField('productoQuery', event.target.value)}
             autoFocus
           />
+          <datalist id="order-product-options">
+            {catalog.state.products.map((product) => <option key={product.id} value={product.name}>{product.type}</option>)}
+          </datalist>
         </Field>
         <Field label="Cantidad" required error={items.state.fieldErrors.cantidad}>
           <Input
@@ -329,7 +335,7 @@ function OrderDetail({ id }: { id: number }) {
         )}
         <p className="hint">Ingresá el precio unitario de cada producto.</p>
         {order.detalles.map((item) => (
-          <Field key={item.id} label={`Producto #${item.producto_id} × ${item.cantidad}`}>
+          <Field key={item.id} label={`${catalog.state.products.find((product) => product.id === item.producto_id)?.name ?? `Producto #${item.producto_id}`} × ${item.cantidad}`}>
             <Input
               type="number"
               min={0}
@@ -345,9 +351,13 @@ function OrderDetail({ id }: { id: number }) {
   )
 }
 
-function OrderHeaderCard({ order, onSaved }: { order: Order; onSaved: () => void }) {
+function OrderHeaderCard({ order, onSaved, catalog }: { order: Order; onSaved: () => void; catalog: ReturnType<typeof useOrderCatalog> }) {
+  const availableWaiters = catalog.getAvailableWaiters(order)
   const { state, isDirty, updateField, submit } = useOrderHeaderForm(order, onSaved)
   const bloqueada = order.estado !== 'abierta'
+  const tableLabel = order.mesa_ids.length ? order.mesa_ids.map((mesaId) => `Mesa ${mesaId}`).join(', ') : 'Sin mesa'
+  const customer = catalog.state.customers.find((candidate) => candidate.id === order.cliente_id)
+  const customerLabel = customer ? `${customer.nombre} ${customer.apellido}` : order.cliente_id === null ? 'Sin cliente' : `Cliente #${order.cliente_id}`
 
   return (
     <Card
@@ -372,21 +382,18 @@ function OrderHeaderCard({ order, onSaved }: { order: Order; onSaved: () => void
       <div className="form-grid">
         <Field label="Mesa" hint="Número de mesa." error={state.fieldErrors.mesa_id}>
           <Input
-            type="number"
+            type="text"
             min={1}
-            value={state.mesaId}
-            onChange={(event) => updateField('mesaId', event.target.value)}
+            value={tableLabel}
+            readOnly
             disabled={bloqueada}
           />
         </Field>
         <Field label="Mozo" hint="Número de mozo." error={state.fieldErrors.mozo_id}>
-          <Input
-            type="number"
-            min={1}
-            value={state.mozoId}
-            onChange={(event) => updateField('mozoId', event.target.value)}
-            disabled={bloqueada}
-          />
+          <Select value={state.mozoId} onChange={(event) => updateField('mozoId', event.target.value)} disabled={bloqueada}>
+            <option value="">Sin mozo asignado</option>
+            {availableWaiters.map((waiter) => <option key={waiter.id} value={waiter.id}>{waiter.name}</option>)}
+          </Select>
         </Field>
         <Field
           label="Cliente"
@@ -394,10 +401,10 @@ function OrderHeaderCard({ order, onSaved }: { order: Order; onSaved: () => void
           error={state.fieldErrors.cliente_id}
         >
           <Input
-            type="number"
+            type="text"
             min={1}
-            value={state.clienteId}
-            onChange={(event) => updateField('clienteId', event.target.value)}
+            value={customerLabel}
+            readOnly
             disabled={bloqueada}
           />
         </Field>
@@ -407,10 +414,10 @@ function OrderHeaderCard({ order, onSaved }: { order: Order; onSaved: () => void
           error={state.fieldErrors.reserva_id}
         >
           <Input
-            type="number"
+            type="text"
             min={1}
-            value={state.reservaId}
-            onChange={(event) => updateField('reservaId', event.target.value)}
+            value={order.reserva_id === null ? 'Sin reserva' : `Reserva #${order.reserva_id}`}
+            readOnly
             disabled={bloqueada}
           />
         </Field>

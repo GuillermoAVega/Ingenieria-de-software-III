@@ -355,6 +355,16 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
   background: var(--c-surface-2);
 }
 .reservation-detail-main { font-weight: 500; }
+.readonly-field {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  background: var(--c-surface-2);
+  color: var(--c-text);
+}
 .reservation-detail-meta { color: var(--c-text-2); font-size: 13px; white-space: nowrap; }
 .reservation-detail-type { display: block; margin-top: 3px; color: var(--c-text-3); font-size: 12px; font-weight: 400; }
 .reservation-config-card { overflow: hidden; }
