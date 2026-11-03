@@ -1,4 +1,4 @@
-from datetime import date, time
+from datetime import date, datetime, time, timedelta
 
 import pytest
 
@@ -27,9 +27,10 @@ def test_crear_comanda_desde_reserva_copia_datos_y_detalles(sesion):
     ]
     sesion.add_all([cliente, sector, *mesas])
     sesion.flush()
+    momento_reserva = datetime.now().replace(microsecond=0) + timedelta(minutes=5)
     reserva = Reserva(
-        fecha=date(2026, 6, 15),
-        hora=time(20, 0),
+        fecha=momento_reserva.date(),
+        hora=momento_reserva.time(),
         cant_comensales=5,
         cliente_id=cliente.id,
         mesas_asociadas=[ReservaMesa(mesa_id=mesa.id) for mesa in mesas],
@@ -48,6 +49,27 @@ def test_crear_comanda_desde_reserva_copia_datos_y_detalles(sesion):
     assert [mesa.disponible for mesa in mesas] == [False, False]
     assert [(d.producto_id, d.cantidad) for d in comanda.detalles] == [(8, 2)]
     assert reserva.estado == EstadoReserva.CON_COMANDA
+
+
+def test_crear_comanda_desde_reserva_rechaza_fuera_de_ventana(sesion):
+    cliente = Cliente(dni="87654321", nombre="Ana", apellido="Pérez", telefono="654321")
+    sector = Sector(nombre="Salón", apto_fumadores=False, piso=1)
+    mesa = Mesa(capacidad=2, disponible=True, sector=sector)
+    sesion.add_all([cliente, sector, mesa])
+    sesion.flush()
+    momento_reserva = datetime.now() + timedelta(minutes=16)
+    reserva = Reserva(
+        fecha=momento_reserva.date(),
+        hora=momento_reserva.time().replace(microsecond=0),
+        cant_comensales=2,
+        cliente_id=cliente.id,
+        mesas_asociadas=[ReservaMesa(mesa_id=mesa.id)],
+    )
+    sesion.add(reserva)
+    sesion.commit()
+
+    with pytest.raises(BadRequest, match="15 minutos"):
+        crear_comanda_desde_reserva(sesion, reserva.id)
 
 
 def test_comanda_inmediata_requiere_mesas_disponibles(sesion):

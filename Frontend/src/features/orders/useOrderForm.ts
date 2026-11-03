@@ -3,14 +3,10 @@ import type { FormEvent } from 'react'
 import type { ApiFieldErrors } from '../../api/client'
 import { getErrorMessage, getFieldErrors } from '../../api/client'
 import { navigate } from '../../app/navigation'
-import { currentTime, todayISO } from '../../utils/format'
 import { createOrder } from './api'
 
 export type OrderFormValues = {
-  fecha: string
-  hora: string
   mesaId: string
-  mozoId: string
   clienteId: string
   reservaId: string
 }
@@ -23,10 +19,7 @@ type OrderFormState = OrderFormValues & {
 
 function createInitialState(): OrderFormState {
   return {
-    fecha: todayISO(),
-    hora: currentTime(),
     mesaId: '',
-    mozoId: '',
     clienteId: '',
     reservaId: '',
     saving: false,
@@ -35,8 +28,11 @@ function createInitialState(): OrderFormState {
   }
 }
 
-export function useOrderForm() {
-  const [state, setState] = useState<OrderFormState>(createInitialState)
+export function useOrderForm(reservationId?: string) {
+  const [state, setState] = useState<OrderFormState>(() => ({
+    ...createInitialState(),
+    reservaId: reservationId ?? '',
+  }))
 
   const updateField = (field: keyof OrderFormValues, value: string) => {
     setState((previous) => ({ ...previous, [field]: value }))
@@ -49,14 +45,13 @@ export function useOrderForm() {
     setState((previous) => ({ ...previous, saving: true, error: null, fieldErrors: {} }))
 
     try {
-      const order = await createOrder({
-        fecha: state.fecha,
-        hora: state.hora,
-        mesa_id: Number(state.mesaId),
-        mozo_id: Number(state.mozoId),
-        cliente_id: state.clienteId.trim() ? Number(state.clienteId) : null,
-        reserva_id: state.reservaId.trim() ? Number(state.reservaId) : null,
-      })
+      const order = await createOrder(reservationId
+        ? { reserva_id: Number(reservationId) }
+        : {
+            mesa_ids: [Number(state.mesaId)],
+            cliente_id: state.clienteId.trim() ? Number(state.clienteId) : null,
+            reserva_id: state.reservaId.trim() ? Number(state.reservaId) : null,
+          })
       navigate(`/comandas/${order.id}`)
     } catch (requestError) {
       setState((previous) => ({

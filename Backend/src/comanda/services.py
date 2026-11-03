@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -82,6 +82,13 @@ def crear_comanda_desde_reserva(
         raise NotFound(detail="La reserva no existe")
     if reserva.estado != EstadoReserva.PENDIENTE:
         raise BadRequest(detail="La reserva no está pendiente")
+
+    ahora = datetime.now()
+    fecha_hora_reserva = datetime.combine(reserva.fecha, reserva.hora)
+    if abs(ahora - fecha_hora_reserva) > timedelta(minutes=15):
+        raise BadRequest(
+            detail="La comanda solo puede crearse desde 15 minutos antes hasta 15 minutos despues de la reserva"
+        )
 
     existente = db.scalar(
         select(Comanda).where(

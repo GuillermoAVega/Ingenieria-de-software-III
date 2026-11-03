@@ -211,7 +211,7 @@ export function ReservationsListPage() {
                 Ver
               </Button>
               {reservation.status === 'pendiente' && (
-                <Button size="sm" aria-label={`Crear comanda para ${reservation.customer}`}>
+                <Button size="sm" aria-label={`Crear comanda para ${reservation.customer}`} onClick={() => navigate(`/comandas/nueva/reserva/${reservation.id}`)}>
                   Crear comanda
                 </Button>
               )}

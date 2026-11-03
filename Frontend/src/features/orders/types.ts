@@ -15,8 +15,9 @@ export type Order = {
   fecha: string
   hora: string
   estado: OrderStatus
-  mozo_id: number
-  mesa_id: number
+  mozo_id: number | null
+  mesa_id: number | null
+  mesa_ids: number[]
   cliente_id: number | null
   reserva_id: number | null
   activo: boolean
@@ -38,10 +39,11 @@ export type OrderItemUpdatePayload = Partial<OrderItemPayload> & {
 }
 
 export type OrderPayload = {
-  fecha: string
-  hora: string
-  mesa_id: number
-  mozo_id: number
+  fecha?: string
+  hora?: string
+  mesa_ids?: number[]
+  mozo_id?: number | null
+  mesa_id?: number | null
   cliente_id?: number | null
   reserva_id?: number | null
   detalles?: OrderItemPayload[]
