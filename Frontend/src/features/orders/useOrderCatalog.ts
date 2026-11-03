@@ -30,6 +30,13 @@ const initialState: OrderCatalogState = {
   products: [], customers: [], tables: [], sectors: [], waiters: [], attentions: [], loading: true, error: null,
 }
 
+const legacyProductOptions: OrderProductOption[] = [
+  { id: 1, name: 'Empanadas surtidas', type: 'Plato' },
+  { id: 2, name: 'Pizza muzzarella', type: 'Plato' },
+  { id: 3, name: 'Ensalada de estación', type: 'Plato' },
+  { id: 4, name: 'Flan casero', type: 'Postre' },
+]
+
 export function useOrderCatalog() {
   const [state, setState] = useState<OrderCatalogState>(initialState)
 
@@ -49,6 +56,7 @@ export function useOrderCatalog() {
             ...postres.map((product) => ({ id: product.id, name: product.nombre, type: 'Postre' })),
             ...menus.map((product) => ({ id: product.id, name: product.nombre, type: 'Menú ejecutivo' })),
             ...combos.map((product) => ({ id: product.id, name: product.nombre, type: 'Combo promocional' })),
+            ...legacyProductOptions,
           ].filter((product, index, all) => all.findIndex((candidate) => candidate.id === product.id) === index),
           customers, tables, sectors, waiters, attentions, loading: false, error: null,
         })
