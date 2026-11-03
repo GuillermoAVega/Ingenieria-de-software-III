@@ -102,11 +102,13 @@ function OrderDetail({ id }: { id: number }) {
         <Button
           size="sm"
           variant="ghost"
+          className="delivery-status-button"
           onClick={() => {
             void items.toggleDelivered(item)
           }}
           disabled={items.state.deliveryUpdatingId === item.id}
-          title="Cambiar estado de entrega"
+          title={item.entregado ? 'Marcar como pendiente' : 'Marcar como entregado'}
+          aria-label={item.entregado ? 'Marcar como pendiente' : 'Marcar como entregado'}
         >
           <Badge tone={item.entregado ? 'success' : 'warning'}>
             {item.entregado ? 'Entregado' : 'Pendiente'}
@@ -118,6 +120,7 @@ function OrderDetail({ id }: { id: number }) {
 
   return (
     <>
+      <div className="order-detail-header">
       <PageHeader
         breadcrumb={<Breadcrumb items={[{ label: 'Comandas', href: '#/comandas' }, { label: `#${order.id}` }]} />}
         title={
@@ -125,10 +128,11 @@ function OrderDetail({ id }: { id: number }) {
             Comanda #{order.id} <Badge tone={ORDER_STATUS_TONE[order.estado]}>{ORDER_STATUS_LABEL[order.estado]}</Badge>
           </>
         }
-        subtitle={`Mesa ${order.mesa_id} · ${formatDate(order.fecha)} · abierta a las ${formatTime(order.hora)}`}
+        subtitle={`Mesa ${order.mesa_id} · ${formatDate(order.fecha)} · ${formatTime(order.hora)}`}
         actions={
           <DeleteButton
             label="Eliminar comanda"
+            variant="danger"
             title="Eliminar comanda"
             confirmLabel="Eliminar comanda"
             onConfirm={() => {
@@ -140,6 +144,7 @@ function OrderDetail({ id }: { id: number }) {
           </DeleteButton>
         }
       />
+      </div>
 
       {detail.state.error && (
         <Alert tone="danger" title="No se pudo completar la operación">
@@ -147,7 +152,7 @@ function OrderDetail({ id }: { id: number }) {
         </Alert>
       )}
 
-      {detail.state.success && <Alert tone="success" title="Operación realizada">{detail.state.success}</Alert>}
+      {detail.state.success && <div className="order-notification"><Alert tone="success" title="Operación realizada">{detail.state.success}</Alert></div>}
 
       <div className="layout-aside">
         <div className="primary stack">
@@ -222,7 +227,7 @@ function OrderDetail({ id }: { id: number }) {
                 block
                 disabled={detail.state.statusSaving || order.detalles.length === 0}
                 onClick={() => {
-                  void detail.changeStatus('cerrada')
+                  detail.requestClose()
                 }}
               >
                 {detail.state.statusSaving ? 'Guardando...' : 'Cerrar comanda'}
@@ -254,7 +259,7 @@ function OrderDetail({ id }: { id: number }) {
             )}
 
             {!detail.state.invoice && abierta && (
-              <p className="hint">La factura se genera una vez cerrada la comanda.</p>
+              <p className="hint">{pendientes > 0 ? 'Entregá todos los productos para cerrar la comanda.' : 'La factura se genera una vez cerrada la comanda.'}</p>
             )}
           </Card>
         </aside>
@@ -291,9 +296,11 @@ function OrderDetail({ id }: { id: number }) {
             <Input
               value={items.state.productoQuery}
               onChange={(event) => items.updateField('productoQuery', event.target.value)}
+              onFocus={items.openProductList}
+              onBlur={items.closeProductList}
               autoFocus
             />
-            <div className="product-autocomplete-list">
+            {items.state.productListOpen && <div className="product-autocomplete-list">
               {catalog.state.products
                 .filter((product) => product.name.toLocaleLowerCase().includes(items.state.productoQuery.toLocaleLowerCase()))
                 .map((product) => (
@@ -302,13 +309,16 @@ function OrderDetail({ id }: { id: number }) {
                     key={product.id}
                     type="button"
                     onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => items.updateField('productoQuery', product.name)}
+                    onClick={() => {
+                      items.updateField('productoQuery', product.name)
+                      items.closeProductList()
+                    }}
                   >
                     <span>{product.name}</span>
                     <small>{product.type}</small>
                   </button>
                 ))}
-            </div>
+            </div>}
           </div>
         </Field>
         <Field label="Cantidad" required error={items.state.fieldErrors.cantidad}>
@@ -368,6 +378,25 @@ function OrderDetail({ id }: { id: number }) {
             />
           </Field>
         ))}
+      </Modal>
+
+      <Modal
+        open={detail.state.closeConfirmationOpen}
+        title="Hay productos pendientes"
+        onClose={detail.cancelClose}
+        footer={
+          <>
+            <Button onClick={detail.cancelClose} disabled={detail.state.statusSaving}>Cancelar</Button>
+            <Button variant="primary" onClick={() => void detail.confirmCloseWithPending()} disabled={detail.state.statusSaving}>
+              {detail.state.statusSaving ? 'Cerrando...' : 'Cerrar igualmente'}
+            </Button>
+          </>
+        }
+      >
+        <p>
+          Todavía hay {pendientes} {pendientes === 1 ? 'producto pendiente' : 'productos pendientes'} de entrega.
+          Si continuás, se marcarán automáticamente como entregados y la comanda se cerrará.
+        </p>
       </Modal>
     </>
   )

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { getErrorMessage } from '../../api/client'
 import { navigate } from '../../app/navigation'
 import { formatCurrency } from '../../utils/format'
-import { createInvoice, createInvoiceLine, deleteOrder, getOrder, getOrderInvoices, updateOrder } from './api'
+import { createInvoice, createInvoiceLine, deleteOrder, getOrder, getOrderInvoices, updateOrder, updateOrderItem } from './api'
 import type { Invoice, Order, OrderStatus } from './types'
 
 type OrderDetailState = {
@@ -18,6 +18,7 @@ type OrderDetailState = {
   invoiceSaving: boolean
   invoiceError: string | null
   success: string | null
+  closeConfirmationOpen: boolean
 }
 
 const initialState: OrderDetailState = {
@@ -33,6 +34,7 @@ const initialState: OrderDetailState = {
   invoiceSaving: false,
   invoiceError: null,
   success: null,
+  closeConfirmationOpen: false,
 }
 
 export function useOrderDetail(id: number) {
@@ -91,6 +93,36 @@ export function useOrderDetail(id: number) {
         statusSaving: false,
         error: getErrorMessage(requestError),
       }))
+    }
+  }
+
+  const requestClose = () => {
+    if (!state.order) return
+    const pendientes = state.order.detalles.some((detalle) => !detalle.entregado)
+    if (pendientes) {
+      setState((previous) => ({ ...previous, closeConfirmationOpen: true }))
+      return
+    }
+    void changeStatus('cerrada')
+  }
+
+  const cancelClose = () => {
+    setState((previous) => ({ ...previous, closeConfirmationOpen: false }))
+  }
+
+  const confirmCloseWithPending = async () => {
+    if (!state.order || state.statusSaving) return
+    const pendientes = state.order.detalles.filter((detalle) => !detalle.entregado)
+    setState((previous) => ({ ...previous, statusSaving: true, closeConfirmationOpen: false, error: null, success: null }))
+    try {
+      for (const detalle of pendientes) {
+        await updateOrderItem(detalle.id, { entregado: true })
+      }
+      await updateOrder(id, { estado: 'cerrada' })
+      setState((previous) => ({ ...previous, statusSaving: false, success: 'Comanda cerrada y productos pendientes marcados como entregados.' }))
+      reload()
+    } catch (requestError) {
+      setState((previous) => ({ ...previous, statusSaving: false, error: getErrorMessage(requestError) }))
     }
   }
 
@@ -189,6 +221,9 @@ export function useOrderDetail(id: number) {
     state,
     reload,
     changeStatus,
+    requestClose,
+    cancelClose,
+    confirmCloseWithPending,
     remove,
     openInvoiceModal,
     closeInvoiceModal,
