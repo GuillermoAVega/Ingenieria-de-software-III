@@ -320,6 +320,43 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
 }
+.reservation-detail-header {
+  padding: 18px 20px;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.reservation-detail-card .card-body { padding: 16px 20px; }
+.reservation-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 32px;
+}
+.reservation-detail-grid .kv {
+  min-height: 42px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--c-border);
+}
+.reservation-detail-grid .kv:last-child { grid-column: 1 / -1; border-bottom: 0; }
+.reservation-detail-grid .kv > span:first-child { color: var(--c-text-3); }
+.reservation-detail-grid .kv > span:last-child { color: var(--c-text); font-weight: 500; text-align: right; }
+.reservation-detail-list { display: flex; flex-direction: column; gap: 8px; }
+.reservation-detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 48px;
+  padding: 9px 12px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  background: var(--c-surface-2);
+}
+.reservation-detail-main { font-weight: 500; }
+.reservation-detail-meta { color: var(--c-text-2); font-size: 13px; white-space: nowrap; }
+.reservation-detail-type { display: block; margin-top: 3px; color: var(--c-text-3); font-size: 12px; font-weight: 400; }
 .reservation-config-card { overflow: hidden; }
 .reservation-section { overflow: hidden; }
 .reservation-section .card-header { background: var(--c-surface-2); }
