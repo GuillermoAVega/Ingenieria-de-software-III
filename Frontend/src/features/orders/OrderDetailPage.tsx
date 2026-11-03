@@ -75,7 +75,15 @@ function OrderDetail({ id }: { id: number }) {
     {
       key: 'producto',
       header: 'Producto',
-      render: (item) => <span className="cell-main">{catalog.state.products.find((product) => product.id === item.producto_id)?.name ?? `Producto #${item.producto_id}`}</span>,
+      render: (item) => {
+        const product = catalog.state.products.find((candidate) => candidate.id === item.producto_id)
+        return (
+          <span>
+            <span className="cell-main">{product?.name ?? `Producto #${item.producto_id}`}</span>
+            {product && <span className="cell-sub">{product.type}</span>}
+          </span>
+        )
+      },
     },
     {
       key: 'cantidad',

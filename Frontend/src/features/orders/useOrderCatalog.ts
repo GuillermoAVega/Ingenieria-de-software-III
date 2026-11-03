@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { getBebidas, getPlatos, getPostres } from '../products/api'
+import { getBebidas, getCombos, getMenusEjecutivos, getPlatos, getPostres } from '../products/api'
+import { getProductoMenus } from '../daily-menu/api'
 import { listCustomers } from '../reservations/api'
 import { listSectors, listTables } from '../tables/api'
 import type { SectorRecord, TableRecord } from '../tables/types'
@@ -36,15 +37,18 @@ export function useOrderCatalog() {
     let cancelled = false
     async function loadCatalog() {
       try {
-        const [platos, bebidas, postres, customers, tables, sectors, waiters, attentions] = await Promise.all([
-          getPlatos(), getBebidas(), getPostres(), listCustomers(), listTables(), listSectors(), listWaiters(), listAttentions(),
+        const [platos, bebidas, postres, menus, combos, menusDelDia, customers, tables, sectors, waiters, attentions] = await Promise.all([
+          getPlatos(), getBebidas(), getPostres(), getMenusEjecutivos(), getCombos(), getProductoMenus(), listCustomers(), listTables(), listSectors(), listWaiters(), listAttentions(),
         ])
         if (cancelled) return
         setState({
           products: [
+            ...menusDelDia.map((product) => ({ id: product.producto_id, name: product.producto_nombre, type: 'Menú del día' })),
             ...platos.map((product) => ({ id: product.id, name: product.nombre, type: 'Plato' })),
             ...bebidas.map((product) => ({ id: product.id, name: product.nombre, type: 'Bebida' })),
             ...postres.map((product) => ({ id: product.id, name: product.nombre, type: 'Postre' })),
+            ...menus.map((product) => ({ id: product.id, name: product.nombre, type: 'Menú ejecutivo' })),
+            ...combos.map((product) => ({ id: product.id, name: product.nombre, type: 'Combo promocional' })),
           ].filter((product, index, all) => all.findIndex((candidate) => candidate.id === product.id) === index),
           customers, tables, sectors, waiters, attentions, loading: false, error: null,
         })

@@ -46,6 +46,14 @@ export type PostreRespuesta = ProductoBaseRespuesta & {
   tipo: 'postre'
 }
 
+export type MenuEjecutivoRespuesta = ProductoBaseRespuesta & {
+  tipo: 'menu_ejecutivo'
+}
+
+export type ComboRespuesta = ProductoBaseRespuesta & {
+  tipo: 'combo_promocion'
+}
+
 export function getPlatos(): Promise<PlatoRespuesta[]> {
   return apiFetch<PlatoRespuesta[]>('/productos/platos')
 }
@@ -88,6 +96,14 @@ export function deleteBebida(id: number): Promise<void> {
 
 export function getPostres(): Promise<PostreRespuesta[]> {
   return apiFetch<PostreRespuesta[]>('/productos/postres')
+}
+
+export function getMenusEjecutivos(): Promise<MenuEjecutivoRespuesta[]> {
+  return apiFetch<MenuEjecutivoRespuesta[]>('/productos/menus-ejecutivos')
+}
+
+export function getCombos(): Promise<ComboRespuesta[]> {
+  return apiFetch<ComboRespuesta[]>('/productos/combos')
 }
 
 export function getPostre(id: number): Promise<PostreRespuesta> {

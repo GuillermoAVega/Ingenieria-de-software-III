@@ -14,6 +14,11 @@ from src.productos.combos.schemas import ComboActualizar, ComboCrear, ComboRespu
 router = APIRouter(prefix=PREFIJO)
 
 
+@router.get("", response_model=list[ComboRespuesta])
+def listar_combos(sesion: Session = Depends(get_db)):
+    return services.listar(sesion, ComboPromocion)
+
+
 @router.post("", response_model=ComboRespuesta, status_code=201)
 def crear_combo(
     datos: ComboCrear,
