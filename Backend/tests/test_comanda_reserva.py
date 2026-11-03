@@ -4,7 +4,7 @@ import pytest
 
 from src.cliente.models import Cliente
 from src.comanda.services import crear_comanda_desde_reserva
-from src.comanda.services import asignar_mozo_para_mesas, obtener_mesas_disponibles
+from src.comanda.services import asignar_mozo_para_mesas, liberar_mesas, obtener_mesas_disponibles
 from src.exceptions import BadRequest
 from src.detalleReserva.models import DetalleReserva
 from src.mesa.models import Mesa
@@ -45,6 +45,7 @@ def test_crear_comanda_desde_reserva_copia_datos_y_detalles(sesion):
     assert comanda.cliente_id == cliente.id
     assert comanda.mozo_id is None
     assert comanda.mesa_ids == [mesas[0].id, mesas[1].id]
+    assert [mesa.disponible for mesa in mesas] == [False, False]
     assert [(d.producto_id, d.cantidad) for d in comanda.detalles] == [(8, 2)]
     assert reserva.estado == EstadoReserva.CON_COMANDA
 
@@ -81,6 +82,21 @@ def test_comanda_inmediata_asigna_mozo_del_sector(sesion):
     sesion.flush()
 
     assert asignar_mozo_para_mesas(sesion, [mesa]) == mozo.id
+
+
+def test_facturar_puede_liberar_las_mesas_de_la_comanda(sesion):
+    sector = Sector(nombre="Salón", apto_fumadores=False, piso=1)
+    mesas = [
+        Mesa(capacidad=2, disponible=False, sector=sector),
+        Mesa(capacidad=2, disponible=False, sector=sector),
+    ]
+    sesion.add_all([sector, *mesas])
+    sesion.flush()
+
+    liberar_mesas(mesas)
+    sesion.flush()
+
+    assert [mesa.disponible for mesa in mesas] == [True, True]
 
 
 def test_comanda_inmediata_prefiere_mozo_con_menos_comandas_abiertas(sesion):

@@ -5,7 +5,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from src.database import get_db
-from src.comanda.services import crear_comanda_desde_reserva, obtener_mesas_disponibles
+from src.comanda.services import (
+    asignar_mozo_para_mesas,
+    crear_comanda_desde_reserva,
+    obtener_mesas_disponibles,
+)
 from src.exceptions import BadRequest
 from src.models import Comanda, DetalleComanda, Factura
 from src.mesa.models import Mesa
@@ -28,6 +32,9 @@ def crear_comanda(datos: ComandaCreate, db: Session = Depends(get_db)):
     mesa_ids = datos.mesa_ids or ([datos.mesa_id] if datos.mesa_id is not None else [])
     mesa_ids = list(dict.fromkeys(mesa_ids))
     mesas = obtener_mesas_disponibles(db, mesa_ids)
+    valores["mozo_id"] = asignar_mozo_para_mesas(db, mesas)
+    for mesa in mesas:
+        mesa.disponible = False
     valores["mesa_id"] = mesa_ids[0]
     comanda = Comanda(**valores, mesas_asociadas=mesas)
     comanda.detalles = [DetalleComanda(**d.model_dump()) for d in datos.detalles]

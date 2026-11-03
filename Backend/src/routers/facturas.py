@@ -5,7 +5,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from src.database import get_db
+from src.comanda.services import liberar_mesas
 from src.exceptions import BadRequest
+from src.mesa.models import Mesa
 from src.models import Comanda, Factura
 from src.schemas.comprobante_pago import ComprobantePagoOut
 from src.schemas.detalle_factura import DetalleFacturaOut
@@ -31,6 +33,12 @@ def crear_factura(datos: FacturaCreate, db: Session = Depends(get_db)):
         importe_total=0,
     )
     db.add(factura)
+    mesas = list(comanda.mesas_asociadas)
+    if not mesas and comanda.mesa_id is not None:
+        mesa = db.get(Mesa, comanda.mesa_id)
+        if mesa is not None:
+            mesas = [mesa]
+    liberar_mesas(mesas)
     db.commit()
     db.refresh(factura)
     return factura

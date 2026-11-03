@@ -11,6 +11,16 @@ from src.reserva.estados import EstadoReserva
 from src.reserva.models import Reserva
 
 
+def ocupar_mesas(mesas: list[Mesa]) -> None:
+    for mesa in mesas:
+        mesa.disponible = False
+
+
+def liberar_mesas(mesas: list[Mesa]) -> None:
+    for mesa in mesas:
+        mesa.disponible = True
+
+
 def obtener_mesas_disponibles(
     db: Session,
     mesa_ids: list[int],
@@ -103,6 +113,7 @@ def crear_comanda_desde_reserva(
             for detalle in reserva.detalles
         ],
     )
+    ocupar_mesas(mesas)
     db.add(comanda)
     reserva.estado = EstadoReserva.CON_COMANDA
     db.commit()
