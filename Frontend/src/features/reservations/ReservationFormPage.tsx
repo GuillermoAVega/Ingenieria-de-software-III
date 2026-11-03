@@ -6,11 +6,7 @@ import {
   addReservationDetail,
   createCustomer,
   createReservation,
-  getReservation,
-  listCustomers,
   listReservationDetails,
-  listReservationTables,
-  listTables,
   removeReservationDetail,
   updateReservation,
 } from './api'
@@ -22,6 +18,7 @@ import type {
 } from './types'
 import { useReservationTableAvailability } from './useReservationTableAvailability'
 import { ReservationAvailabilitySummary } from './ReservationAvailabilitySummary'
+import { useReservationFormData } from './useReservationFormData'
 
 const newCustomerValue = 'nuevo'
 const fakeProducts = [
@@ -42,6 +39,7 @@ function getErrorMessage(cause: unknown, fallback: string): string {
 
 export function ReservationFormPage({ id }: { id?: string }) {
   const isEditing = Boolean(id)
+  const formData = useReservationFormData(id)
   const [step, setStep] = useState<1 | 2>(isEditing ? 2 : 1)
   const [customers, setCustomers] = useState<CustomerRecord[]>([])
   const [tables, setTables] = useState<TableRecord[]>([])
@@ -60,66 +58,35 @@ export function ReservationFormPage({ id }: { id?: string }) {
   const [tableToAdd, setTableToAdd] = useState('')
   const [details, setDetails] = useState<DetailRow[]>([])
   const [productToAdd, setProductToAdd] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [loadFailed, setLoadFailed] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const loading = formData.loading
+  const loadFailed = formData.loadFailed
+
   useEffect(() => {
-    let cancelled = false
-
-    async function loadFormData() {
-      try {
-        const [customerRecords, tableRecords] = await Promise.all([listCustomers(), listTables()])
-        if (cancelled) return
-        setCustomers(customerRecords)
-        setTables(tableRecords)
-
-        if (!id) return
-        const reservationId = Number(id)
-        if (!Number.isInteger(reservationId) || reservationId < 1) {
-          throw new Error('El identificador de la reserva no es válido.')
-        }
-
-        const [reservation, reservationTables, reservationDetails] = await Promise.all([
-          getReservation(reservationId),
-          listReservationTables(reservationId),
-          listReservationDetails(reservationId),
-        ])
-        if (cancelled) return
-        setTables([
-          ...new Map(
-            [...tableRecords, ...reservationTables].map((table) => [table.id, table]),
-          ).values(),
-        ])
-        setCustomerSelection(String(reservation.cliente_id))
-        setDate(reservation.fecha)
-        setTime(reservation.hora.slice(0, 5))
-        setGuests(reservation.cant_comensales)
-        setStatus(reservation.estado)
-        setInitialStatus(reservation.estado)
-        setNotes(reservation.observaciones ?? '')
-        const tableIds = reservationTables.map((table) => table.id)
-        setSelectedTableIds(tableIds)
-        setDetails(reservationDetails.map((detail) => ({
-          productId: detail.producto_id,
-          quantity: detail.cantidad_producto,
-        })))
-      } catch (cause) {
-        if (!cancelled) {
-          setLoadFailed(true)
-          setError(getErrorMessage(cause, 'No se pudieron cargar los datos de la reserva.'))
-        }
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
+    if (!formData.reservation) {
+      setCustomers(formData.customers)
+      setTables(formData.tables)
+      return
     }
 
-    void loadFormData()
-    return () => {
-      cancelled = true
-    }
-  }, [id])
+    const reservation = formData.reservation
+    setCustomers(formData.customers)
+    setTables(formData.tables)
+    setCustomerSelection(String(reservation.cliente_id))
+    setDate(reservation.fecha)
+    setTime(reservation.hora.slice(0, 5))
+    setGuests(reservation.cant_comensales)
+    setStatus(reservation.estado)
+    setInitialStatus(reservation.estado)
+    setNotes(reservation.observaciones ?? '')
+    setSelectedTableIds(formData.reservationTables.map((table) => table.id))
+    setDetails(formData.reservationDetails.map((detail) => ({
+      productId: detail.producto_id,
+      quantity: detail.cantidad_producto,
+    })))
+  }, [formData])
 
   const tableById = useMemo(() => new Map(tables.map((table) => [table.id, table])), [tables])
   const availabilityTableIds = useMemo(
@@ -295,8 +262,8 @@ export function ReservationFormPage({ id }: { id?: string }) {
           <Card
             title="Datos de la reserva"
           >
-            {(error || tableAvailability.error) && (
-              <Alert tone="danger">{error ?? tableAvailability.error}</Alert>
+            {(error || formData.error || tableAvailability.error) && (
+              <Alert tone="danger">{error ?? formData.error ?? tableAvailability.error}</Alert>
             )}
             {formLoading ? (
               <p className="muted">Cargando datos de la reserva...</p>
