@@ -108,6 +108,23 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
 .page-title { font-size: 24px; line-height: 1.25; font-weight: 600; letter-spacing: -.01em; }
 .page-sub { margin-top: 4px; color: var(--c-text-2); }
 .page-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.order-detail-header {
+  padding: 18px 20px;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.order-notification {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  z-index: 20;
+  width: min(520px, calc(100vw - 40px));
+  transform: translateX(-50%);
+}
+.order-notification .alert { box-shadow: var(--shadow-md); }
+.aside .btn + .btn { margin-top: 10px; }
 
 /* ---------- 4. Cards ---------- */
 .card {
@@ -155,6 +172,13 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
 .btn-danger-ghost:hover { background: var(--c-danger-soft); color: var(--c-danger); }
 .btn-sm { min-height: 32px; padding: 0 12px; font-size: 13px; border-radius: var(--radius-sm); }
 .btn-block { width: 100%; }
+.delivery-status-button {
+  min-height: 28px;
+  padding: 0 4px;
+  border-radius: 999px;
+}
+.delivery-status-button:hover { background: var(--c-surface-2); }
+.delivery-status-button .badge { pointer-events: none; }
 
 /* ---------- 6. Formularios ---------- */
 .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
@@ -284,6 +308,16 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
   width: min(480px, 100%); display: flex; flex-direction: column;
   background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-md);
 }
+.invoice-modal { width: min(620px, 100%); }
+.invoice-modal .modal-body { display: flex; flex-direction: column; gap: 12px; }
+.invoice-modal .modal-body > .hint { margin: -2px 0 2px; }
+.invoice-modal .modal-body > .error-text { margin: -4px 0 0; }
+.invoice-modal .field { gap: 7px; margin-top: 2px; }
+.invoice-modal .field + .field { padding-top: 10px; border-top: 1px solid var(--c-border); }
+.invoice-modal .label { font-size: 13px; }
+.invoice-modal .invoice-price-readonly { min-height: 46px; padding: 0 14px; }
+.invoice-modal .kv-total { margin-top: 4px; padding: 16px 0 4px; font-size: 17px; }
+.invoice-modal .modal-footer { padding: 16px 24px; }
 .modal-header { padding: 20px 20px 0; font-size: 16px; font-weight: 600; }
 .modal-body { padding: 8px 20px 20px; color: var(--c-text-2); }
 .modal-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--c-border); }
@@ -365,6 +399,30 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
   background: var(--c-surface-2);
   color: var(--c-text);
 }
+.table-assignment-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 6px 8px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  background: var(--c-surface-2);
+}
+.table-assignment-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 9px;
+  border: 1px solid var(--c-border-strong);
+  border-radius: 999px;
+  background: var(--c-surface);
+  color: var(--c-text);
+  font-size: 13px;
+  font-weight: 500;
+}
+.table-assignment-chip small { color: var(--c-text-3); font-size: 12px; font-weight: 400; }
 .product-autocomplete { position: relative; }
 .product-autocomplete-list {
   position: absolute;
@@ -398,11 +456,48 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
 .product-autocomplete-option:hover,
 .product-autocomplete-option:focus-visible { background: var(--c-surface-2); }
 .product-autocomplete-option small { color: var(--c-text-3); font-size: 12px; }
+.invoice-price-readonly {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  background: var(--c-surface-2);
+  color: var(--c-text);
+  font-variant-numeric: tabular-nums;
+}
+.invoice-price-readonly strong { color: var(--c-text); font-weight: 600; white-space: nowrap; }
 .reservation-detail-meta { color: var(--c-text-2); font-size: 13px; white-space: nowrap; }
 .reservation-detail-type { display: block; margin-top: 3px; color: var(--c-text-3); font-size: 12px; font-weight: 400; }
 .reservation-config-card { overflow: hidden; }
 .reservation-section { overflow: hidden; }
 .reservation-section .card-header { background: var(--c-surface-2); }
+.reservation-availability-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  background: var(--c-surface-2);
+  color: var(--c-text-2);
+  font-size: 12.5px;
+}
+.reservation-availability-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.reservation-availability-heading strong { color: var(--c-text); font-size: 13px; }
+.reservation-availability-heading span { color: var(--c-text-3); white-space: nowrap; }
+.reservation-availability-row { display: grid; grid-template-columns: 108px minmax(0, 1fr); align-items: center; gap: 12px; }
+.reservation-availability-label { font-size: 12px; font-weight: 600; }
+.reservation-availability-success { color: var(--c-success); }
+.reservation-availability-warning { color: var(--c-warning); }
+.reservation-availability-danger { color: var(--c-danger); }
+.reservation-table-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.reservation-table-tag { padding: 5px 8px; border: 1px solid var(--c-border); border-radius: 999px; background: var(--c-surface); color: var(--c-text-2); font-size: 12px; }
+.reservation-availability-empty { color: var(--c-text-3); font-style: italic; }
 .reservation-action { justify-content: flex-end; }
 .reservation-selection {
   align-items: center;

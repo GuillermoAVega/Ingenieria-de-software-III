@@ -135,6 +135,15 @@ export function ReservationFormPage({ id }: { id?: string }) {
     conflicts: tableAvailability.conflicts.filter(({ tableId }) => selectedTableIds.includes(tableId)),
     warnings: tableAvailability.warnings.filter(({ tableId }) => selectedTableIds.includes(tableId)),
   }), [selectedTableIds, tableAvailability.conflicts, tableAvailability.warnings])
+  const scheduleTableAvailability = useMemo(() => {
+    const conflicts = new Set(tableAvailability.conflicts.map(({ tableId }) => tableId))
+    const warnings = new Set(tableAvailability.warnings.map(({ tableId }) => tableId))
+    return {
+      available: tables.filter((table) => table.estado && !selectedTableIds.includes(table.id) && !conflicts.has(table.id) && !warnings.has(table.id)),
+      warning: tables.filter((table) => table.estado && !selectedTableIds.includes(table.id) && !conflicts.has(table.id) && warnings.has(table.id)),
+      unavailable: tables.filter((table) => table.estado && !selectedTableIds.includes(table.id) && conflicts.has(table.id)),
+    }
+  }, [selectedTableIds, tableAvailability.conflicts, tableAvailability.warnings, tables])
   const formLoading = loading || tableAvailability.loading
 
   const assignedCapacity = selectedTableIds.reduce(
@@ -408,6 +417,40 @@ export function ReservationFormPage({ id }: { id?: string }) {
             >
             <div className="reservation-step">
               <Card className="reservation-section" title="Mesas asignadas" subtitle="Podés asociar más de una mesa a la reserva.">
+                <div className="reservation-availability-summary">
+                  <div className="reservation-availability-heading">
+                    <strong>Disponibilidad de mesas</strong>
+                    <span>{date || 'Fecha seleccionada'} {time ? `· ${time}` : ''}</span>
+                  </div>
+                  <div className="reservation-availability-row">
+                    <span className="reservation-availability-label reservation-availability-success">Libres</span>
+                    <div className="reservation-table-tags">
+                      {scheduleTableAvailability.available.length ? scheduleTableAvailability.available.map((table) => (
+                        <span className="reservation-table-tag" key={table.id}>Mesa {table.id} · {table.capacidad} personas</span>
+                      )) : <span className="reservation-availability-empty">No hay mesas libres</span>}
+                    </div>
+                  </div>
+                  {scheduleTableAvailability.warning.length > 0 && (
+                    <div className="reservation-availability-row">
+                      <span className="reservation-availability-label reservation-availability-warning">Advertencia</span>
+                      <div className="reservation-table-tags">
+                        {scheduleTableAvailability.warning.map((table) => (
+                          <span className="reservation-table-tag" key={table.id}>Mesa {table.id} · {table.capacidad} personas</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {scheduleTableAvailability.unavailable.length > 0 && (
+                    <div className="reservation-availability-row">
+                      <span className="reservation-availability-label reservation-availability-danger">No disponibles</span>
+                      <div className="reservation-table-tags">
+                        {scheduleTableAvailability.unavailable.map((table) => (
+                          <span className="reservation-table-tag" key={table.id}>Mesa {table.id} · {table.capacidad} personas</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
                 <div className="form-grid">
                   <Field label="Agregar mesa">
                     <Select value={tableToAdd} onChange={(event) => setTableToAdd(event.target.value)}>

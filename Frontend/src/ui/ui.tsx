@@ -505,6 +505,7 @@ export type DeleteButtonProps = {
   title: ReactNode
   confirmLabel?: string
   size?: ButtonSize
+  variant?: ButtonVariant
   children?: ReactNode
   onConfirm: () => void
 }
@@ -514,6 +515,7 @@ export function DeleteButton({
   title,
   confirmLabel = 'Eliminar',
   size = 'sm',
+  variant = 'danger-ghost',
   children,
   onConfirm,
 }: DeleteButtonProps) {
@@ -521,7 +523,7 @@ export function DeleteButton({
 
   return (
     <>
-      <Button variant="danger-ghost" size={size} onClick={() => setOpen(true)}>
+      <Button variant={variant} size={size} onClick={() => setOpen(true)}>
         {label}
       </Button>
       <ConfirmDialog
@@ -546,14 +548,15 @@ export type ModalProps = {
   children?: ReactNode
   footer?: ReactNode
   onClose: () => void
+  className?: string
 }
 
-export function Modal({ open, title, children, footer, onClose }: ModalProps) {
+export function Modal({ open, title, children, footer, onClose, className }: ModalProps) {
   if (!open) return null
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div
-        className="modal"
+        className={cx('modal', className)}
         role="dialog"
         aria-modal="true"
         aria-label={typeof title === 'string' ? title : 'Diálogo'}

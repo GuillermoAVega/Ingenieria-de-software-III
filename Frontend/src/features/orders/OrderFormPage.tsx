@@ -36,6 +36,9 @@ export function OrderFormPage({ reservationId }: { reservationId?: string }) {
                     return <span className="table-assignment-chip" key={id}>Mesa {id}<small>{table?.capacidad ?? 0} personas</small></span>
                   }) : <span className="muted">Sin combinación disponible</span>}
                 </div>
+                {state.comensales && !state.tablesLoading && !state.tablesError && state.mesaIds.length === 0 && (
+                  <span className="error-text">No hay mesas disponibles con capacidad suficiente para {state.comensales} comensales.</span>
+                )}
               </Field>
               <Field label="Cliente" hint="Opcional. Podés asociar un cliente." error={state.fieldErrors.cliente_id}>
                 <Select value={state.clienteId} onChange={(event) => updateField('clienteId', event.target.value)}>

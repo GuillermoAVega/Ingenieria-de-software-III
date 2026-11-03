@@ -24,7 +24,7 @@ router = APIRouter(prefix="/comandas", tags=["Comandas"])
 def crear_comanda(datos: ComandaCreate, db: Session = Depends(get_db)):
     if datos.reserva_id is not None:
         return crear_comanda_desde_reserva(db, datos.reserva_id)
-    valores = datos.model_dump(exclude={"detalles", "mesa_ids"})
+    valores = datos.model_dump(exclude={"detalles", "mesa_ids", "comensales"})
     if datos.reserva_id is None:
         ahora = datetime.now()
         valores["fecha"] = datos.fecha or ahora.date()
@@ -32,6 +32,8 @@ def crear_comanda(datos: ComandaCreate, db: Session = Depends(get_db)):
     mesa_ids = datos.mesa_ids or ([datos.mesa_id] if datos.mesa_id is not None else [])
     mesa_ids = list(dict.fromkeys(mesa_ids))
     mesas = obtener_mesas_disponibles(db, mesa_ids)
+    if datos.comensales is not None and sum(mesa.capacidad for mesa in mesas) < datos.comensales:
+        raise BadRequest(detail="La capacidad de las mesas seleccionadas no alcanza para todos los comensales")
     valores["mozo_id"] = asignar_mozo_para_mesas(db, mesas)
     for mesa in mesas:
         mesa.disponible = False
@@ -74,8 +76,12 @@ def modificar_comanda(id: int, datos: ComandaUpdate, db: Session = Depends(get_d
     nuevo_estado = cambios.get("estado")
     if comanda.estado == "cerrada" and set(cambios) - {"estado"}:
         raise BadRequest()  # reabrila antes de modificarla
-    if nuevo_estado == "cerrada" and not any(d.activo for d in comanda.detalles):
-        raise BadRequest()  # no se cierra una comanda sin productos
+    if nuevo_estado == "cerrada":
+        detalles_activos = [detalle for detalle in comanda.detalles if detalle.activo]
+        if not detalles_activos:
+            raise BadRequest(detail="No se puede cerrar una comanda sin productos")
+        if any(not detalle.entregado for detalle in detalles_activos):
+            raise BadRequest(detail="No se puede cerrar la comanda: hay productos pendientes de entrega")
     if nuevo_estado == "abierta" and comanda.factura and comanda.factura.activo:
         raise BadRequest()  # ya fue facturada
     for campo, valor in cambios.items():

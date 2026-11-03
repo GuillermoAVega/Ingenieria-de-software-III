@@ -70,6 +70,14 @@ function seleccionarMesas(tables: TableRecord[], guests: number): number[] {
   return mejorIds ?? []
 }
 
+function reservaEnVentana(reservation: ReservationRecord): boolean {
+  if (reservation.estado !== 'pendiente') return false
+  const now = new Date()
+  const reservationTime = new Date(`${reservation.fecha}T${reservation.hora}`)
+  const difference = (now.getTime() - reservationTime.getTime()) / 60000
+  return difference >= -15 && difference <= 30
+}
+
 export function useOrderForm(reservationId?: string) {
   const [state, setState] = useState<OrderFormState>(() => ({
     ...createInitialState(),
@@ -102,6 +110,38 @@ export function useOrderForm(reservationId?: string) {
         const mesaIds = seleccionarMesas(previous.tables, Number(value))
         return { ...previous, comensales: value, mesaIds, mesaId: mesaIds[0] ? String(mesaIds[0]) : '' }
       })
+      return
+    }
+    if (field === 'reservaId') {
+      const reservation = state.reservations.find((candidate) => candidate.id === Number(value) && reservaEnVentana(candidate))
+      if (!reservation) {
+        setState((previous) => ({ ...previous, reservaId: value }))
+        return
+      }
+      setState((previous) => ({
+        ...previous,
+        reservaId: value,
+        clienteId: String(reservation.cliente_id),
+        comensales: String(reservation.cant_comensales),
+        mesaIds: reservation.mesa_ids,
+        mesaId: reservation.mesa_ids[0] ? String(reservation.mesa_ids[0]) : '',
+      }))
+      return
+    }
+    if (field === 'clienteId') {
+      const reservation = state.reservations.find((candidate) => candidate.cliente_id === Number(value) && reservaEnVentana(candidate))
+      if (!reservation) {
+        setState((previous) => ({ ...previous, clienteId: value }))
+        return
+      }
+      setState((previous) => ({
+        ...previous,
+        clienteId: value,
+        reservaId: String(reservation.id),
+        comensales: String(reservation.cant_comensales),
+        mesaIds: reservation.mesa_ids,
+        mesaId: reservation.mesa_ids[0] ? String(reservation.mesa_ids[0]) : '',
+      }))
       return
     }
     setState((previous) => ({ ...previous, [field]: value }))

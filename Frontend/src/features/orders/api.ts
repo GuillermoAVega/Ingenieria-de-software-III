@@ -11,6 +11,7 @@ import type {
   OrderUpdatePayload,
 } from './types'
 
+
 export function getOrders(limit = 500): Promise<Order[]> {
   return apiFetch<Order[]>(`/comandas?limit=${limit}`)
 }
@@ -54,3 +55,4 @@ export function createInvoice(orderId: number): Promise<Invoice> {
 export function createInvoiceLine(data: InvoiceLinePayload): Promise<InvoiceLine> {
   return apiFetch<InvoiceLine>('/detalles-factura', { method: 'POST', body: data })
 }
+

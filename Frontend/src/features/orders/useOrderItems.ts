@@ -15,6 +15,7 @@ type OrderItemFormValues = {
 }
 
 type OrderItemsState = OrderItemFormValues & {
+  productListOpen: boolean
   modal: OrderItemModal | null
   saving: boolean
   error: string | null
@@ -27,6 +28,7 @@ const initialState: OrderItemsState = {
   modal: null,
   productoId: '',
   productoQuery: '',
+  productListOpen: false,
   cantidad: '1',
   observaciones: '',
   saving: false,
@@ -67,6 +69,14 @@ export function useOrderItems(comandaId: number, onChanged: () => void, products
 
   const closeModal = () => {
     setState((previous) => ({ ...previous, modal: null, saving: false, error: null }))
+  }
+
+  const openProductList = () => {
+    setState((previous) => ({ ...previous, productListOpen: true }))
+  }
+
+  const closeProductList = () => {
+    setState((previous) => ({ ...previous, productListOpen: false }))
   }
 
   const updateField = (field: keyof OrderItemFormValues, value: string) => {
@@ -150,6 +160,8 @@ export function useOrderItems(comandaId: number, onChanged: () => void, products
     openNew,
     openEdit,
     closeModal,
+    openProductList,
+    closeProductList,
     updateField,
     save,
     remove,

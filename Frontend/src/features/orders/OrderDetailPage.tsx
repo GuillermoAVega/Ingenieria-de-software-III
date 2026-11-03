@@ -70,6 +70,10 @@ function OrderDetail({ id }: { id: number }) {
   const invoiceComplete = order.detalles.every((item) =>
     Boolean(detail.state.invoicePrices[item.id]?.trim()),
   )
+  const invoiceTotal = order.detalles.reduce(
+    (total, item) => total + Number(detail.state.invoicePrices[item.id] || 0) * item.cantidad,
+    0,
+  )
 
   const itemColumns: DataTableColumn<OrderItem>[] = [
     {
@@ -252,7 +256,7 @@ function OrderDetail({ id }: { id: number }) {
               <Button
                 block
                 disabled={abierta}
-                onClick={detail.openInvoiceModal}
+                onClick={() => detail.openInvoiceModal(Object.fromEntries(catalog.state.products.map((product) => [product.id, product.price])))}
               >
                 Generar factura
               </Button>
@@ -341,6 +345,7 @@ function OrderDetail({ id }: { id: number }) {
 
       <Modal
         open={detail.state.invoiceModalOpen}
+        className="invoice-modal"
         title="Generar factura"
         onClose={detail.closeInvoiceModal}
         footer={
@@ -365,19 +370,22 @@ function OrderDetail({ id }: { id: number }) {
             {detail.state.invoiceError}
           </Alert>
         )}
-        <p className="hint">Ingresá el precio unitario de cada producto.</p>
-        {order.detalles.map((item) => (
-          <Field key={item.id} label={`${catalog.state.products.find((product) => product.id === item.producto_id)?.name ?? `Producto #${item.producto_id}`} × ${item.cantidad}`}>
-            <Input
-              type="number"
-              min={0}
-              step="0.01"
-              value={detail.state.invoicePrices[item.id] ?? ''}
-              onChange={(event) => detail.setInvoicePrice(item.id, event.target.value)}
-              placeholder="Precio unitario"
-            />
+        <p className="hint">Los precios se toman automáticamente de la carta.</p>
+        {!invoiceComplete && <p className="error-text">Todos los productos deben tener un precio cargado para generar la factura.</p>}
+        {order.detalles.map((item) => {
+          const product = catalog.state.products.find((candidate) => candidate.id === item.producto_id)
+          const unitPrice = detail.state.invoicePrices[item.id]
+          const subtotal = Number(unitPrice || 0) * item.cantidad
+          return (
+          <Field key={item.id} required label={product ? `${product.name} · ${product.type} · Cantidad: ${item.cantidad}` : `Producto #${item.producto_id} · Cantidad: ${item.cantidad}`}>
+            <div className="invoice-price-readonly">
+              <span>{unitPrice ? `Precio unitario: ${formatCurrency(Number(unitPrice))}` : 'Sin precio cargado'}</span>
+              {unitPrice && <strong>Subtotal: {formatCurrency(subtotal)}</strong>}
+            </div>
           </Field>
-        ))}
+          )
+        })}
+        <KeyValue label="Total de la factura" value={formatCurrency(invoiceTotal)} total />
       </Modal>
 
       <Modal
@@ -448,16 +456,17 @@ function OrderHeaderCard({ order, onSaved, catalog }: { order: Order; onSaved: (
         </Field>
         <Field
           label="Cliente"
-          hint="Opcional. Vacío = sin cliente asociado."
+          hint={order.reserva_id === null ? 'Opcional. Podés asociar un cliente.' : 'Cliente asociado a la reserva.'}
           error={state.fieldErrors.cliente_id}
         >
-          <Input
-            type="text"
-            min={1}
-            value={customerLabel}
-            readOnly
-            disabled={bloqueada}
-          />
+          {order.reserva_id === null ? (
+            <Select value={state.clienteId} onChange={(event) => updateField('clienteId', event.target.value)} disabled={bloqueada}>
+              <option value="">Sin cliente</option>
+              {catalog.state.customers.map((candidate) => (
+                <option key={candidate.id} value={candidate.id}>{candidate.nombre} {candidate.apellido}</option>
+              ))}
+            </Select>
+          ) : <div className="readonly-field">{customerLabel}</div>}
         </Field>
         <Field
           label="Reserva"

@@ -12,14 +12,13 @@ class ComandaCreate(BaseModel):
     mozo_id: int | None = None
     mesa_id: int | None = None
     mesa_ids: list[int] | None = Field(default=None, min_length=1)
+    comensales: int | None = Field(default=None, gt=0)
     cliente_id: int | None = None
     reserva_id: int | None = None
     detalles: list[DetalleComandaNested] = []
 
     @model_validator(mode="after")
     def validar_mozo_segun_reserva(self):
-        if self.reserva_id is None and self.mozo_id is None:
-            raise ValueError("El mozo es obligatorio para una comanda sin reserva")
         if self.reserva_id is not None and self.mozo_id is not None:
             raise ValueError("Una comanda con reserva no puede tener mozo asignado")
         return self

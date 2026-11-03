@@ -142,16 +142,17 @@ export function useOrderDetail(id: number) {
     }
   }
 
-  const openInvoiceModal = () => {
+  const openInvoiceModal = (productPrices: Record<number, string>) => {
     setState((previous) => ({
       ...previous,
       invoiceModalOpen: true,
       invoicePrices: Object.fromEntries(
-        (previous.order?.detalles ?? []).map((item) => [item.id, '']),
+        (previous.order?.detalles ?? []).map((item) => [item.id, productPrices[item.producto_id] ?? '']),
       ),
       invoiceError: null,
     }))
   }
+
 
   const closeInvoiceModal = () => {
     setState((previous) => ({ ...previous, invoiceModalOpen: false, invoiceError: null }))

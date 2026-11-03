@@ -42,6 +42,7 @@ export type OrderPayload = {
   fecha?: string
   hora?: string
   mesa_ids?: number[]
+  comensales?: number
   mozo_id?: number | null
   mesa_id?: number | null
   cliente_id?: number | null

@@ -13,6 +13,7 @@ export type OrderProductOption = {
   id: number
   name: string
   type: string
+  price: string
 }
 
 type OrderCatalogState = {
@@ -31,10 +32,10 @@ const initialState: OrderCatalogState = {
 }
 
 const legacyProductOptions: OrderProductOption[] = [
-  { id: 1, name: 'Empanadas surtidas', type: 'Plato' },
-  { id: 2, name: 'Pizza muzzarella', type: 'Plato' },
-  { id: 3, name: 'Ensalada de estación', type: 'Plato' },
-  { id: 4, name: 'Flan casero', type: 'Postre' },
+  { id: 1, name: 'Empanadas surtidas', type: 'Plato', price: '' },
+  { id: 2, name: 'Pizza muzzarella', type: 'Plato', price: '' },
+  { id: 3, name: 'Ensalada de estación', type: 'Plato', price: '' },
+  { id: 4, name: 'Flan casero', type: 'Postre', price: '' },
 ]
 
 export function useOrderCatalog() {
@@ -48,16 +49,20 @@ export function useOrderCatalog() {
           getPlatos(), getBebidas(), getPostres(), getMenusEjecutivos(), getCombos(), getProductoMenus(), listCustomers(), listTables(), listSectors(), listWaiters(), listAttentions(),
         ])
         if (cancelled) return
+        const baseProducts = [
+          ...platos.map((product) => ({ id: product.id, name: product.nombre, type: 'Plato', price: String(product.precio) })),
+          ...bebidas.map((product) => ({ id: product.id, name: product.nombre, type: 'Bebida', price: String(product.precio) })),
+          ...postres.map((product) => ({ id: product.id, name: product.nombre, type: 'Postre', price: String(product.precio) })),
+          ...menus.map((product) => ({ id: product.id, name: product.nombre, type: 'Menú ejecutivo', price: String(product.precio) })),
+          ...combos.map((product) => ({ id: product.id, name: product.nombre, type: 'Combo promocional', price: String(product.precio) })),
+        ]
+        const products = [
+          ...menusDelDia.map((product) => ({ id: product.producto_id, name: product.producto_nombre, type: 'Menú del día', price: baseProducts.find((candidate) => candidate.id === product.producto_id)?.price ?? '' })),
+          ...baseProducts,
+          ...legacyProductOptions,
+        ].filter((product, index, all) => all.findIndex((candidate) => candidate.id === product.id) === index)
         setState({
-          products: [
-            ...menusDelDia.map((product) => ({ id: product.producto_id, name: product.producto_nombre, type: 'Menú del día' })),
-            ...platos.map((product) => ({ id: product.id, name: product.nombre, type: 'Plato' })),
-            ...bebidas.map((product) => ({ id: product.id, name: product.nombre, type: 'Bebida' })),
-            ...postres.map((product) => ({ id: product.id, name: product.nombre, type: 'Postre' })),
-            ...menus.map((product) => ({ id: product.id, name: product.nombre, type: 'Menú ejecutivo' })),
-            ...combos.map((product) => ({ id: product.id, name: product.nombre, type: 'Combo promocional' })),
-            ...legacyProductOptions,
-          ].filter((product, index, all) => all.findIndex((candidate) => candidate.id === product.id) === index),
+          products,
           customers, tables, sectors, waiters, attentions, loading: false, error: null,
         })
       } catch (cause) {
