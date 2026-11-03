@@ -34,6 +34,10 @@ const statusTone: Record<ReservationStatus, BadgeTone> = {
   ausente: 'warning',
 }
 
+function formatReservationDate(value: string): string {
+  return new Date(`${value}T00:00:00`).toLocaleDateString('es-AR')
+}
+
 function toReservation(
   reservation: ReservationRecord,
   customers: Map<number, CustomerRecord>,
@@ -55,7 +59,11 @@ function toReservation(
 }
 
 const columns: DataTableColumn<Reservation>[] = [
-  { key: 'date', header: 'Fecha' },
+  {
+    key: 'date',
+    header: 'Fecha',
+    render: (reservation) => formatReservationDate(reservation.date),
+  },
   { key: 'time', header: 'Hora' },
   {
     key: 'customer',
@@ -184,7 +192,11 @@ export function ReservationsListPage() {
             <option value="ausente">Ausentes</option>
           </Select>
           <ToolbarSpacer />
-          <span className="muted text-sm">{loading ? 'Cargando...' : `${reservations.length} reservas`}</span>
+          <span className="muted text-sm">
+            {loading
+              ? 'Cargando...'
+              : `${reservations.length} ${reservations.length === 1 ? 'reserva' : 'reservas'}`}
+          </span>
         </Toolbar>
 
         {error && <Alert tone="danger">{error}</Alert>}
@@ -194,7 +206,7 @@ export function ReservationsListPage() {
           rows={visibleReservations}
           empty={<div className="empty"><span className="empty-title">{loading ? 'Cargando reservas...' : 'No hay reservas para mostrar'}</span></div>}
           actions={(reservation) => (
-            <div className="row">
+            <div className="reservation-list-actions">
               <Button size="sm" onClick={() => navigate(`/reservas/${reservation.id}`)}>
                 Ver
               </Button>

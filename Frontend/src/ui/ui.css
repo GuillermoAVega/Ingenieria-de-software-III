@@ -345,6 +345,14 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
   font-size: 12px;
 }
 .reservation-actions { margin-top: 4px; border: 1px solid var(--c-border); border-radius: var(--radius-lg); }
+.reservation-list-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.reservation-list-actions .btn { min-height: 34px; padding: 0 10px; }
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .grow { flex: 1; }
 .muted { color: var(--c-text-3); }
