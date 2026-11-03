@@ -287,15 +287,29 @@ function OrderDetail({ id }: { id: number }) {
           </Alert>
         )}
         <Field label="Producto" required hint="Número de producto." error={items.state.fieldErrors.producto_id}>
-          <Input
-            list="order-product-options"
-            value={items.state.productoQuery}
-            onChange={(event) => items.updateField('productoQuery', event.target.value)}
-            autoFocus
-          />
-          <datalist id="order-product-options">
-            {catalog.state.products.map((product) => <option key={product.id} value={product.name}>{product.type}</option>)}
-          </datalist>
+          <div className="product-autocomplete">
+            <Input
+              value={items.state.productoQuery}
+              onChange={(event) => items.updateField('productoQuery', event.target.value)}
+              autoFocus
+            />
+            <div className="product-autocomplete-list">
+              {catalog.state.products
+                .filter((product) => product.name.toLocaleLowerCase().includes(items.state.productoQuery.toLocaleLowerCase()))
+                .map((product) => (
+                  <button
+                    className="product-autocomplete-option"
+                    key={product.id}
+                    type="button"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => items.updateField('productoQuery', product.name)}
+                  >
+                    <span>{product.name}</span>
+                    <small>{product.type}</small>
+                  </button>
+                ))}
+            </div>
+          </div>
         </Field>
         <Field label="Cantidad" required error={items.state.fieldErrors.cantidad}>
           <Input

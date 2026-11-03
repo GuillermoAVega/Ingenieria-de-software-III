@@ -365,6 +365,39 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
   background: var(--c-surface-2);
   color: var(--c-text);
 }
+.product-autocomplete { position: relative; }
+.product-autocomplete-list {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 4px;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+}
+.product-autocomplete-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  gap: 2px;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--c-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.product-autocomplete-option:hover,
+.product-autocomplete-option:focus-visible { background: var(--c-surface-2); }
+.product-autocomplete-option small { color: var(--c-text-3); font-size: 12px; }
 .reservation-detail-meta { color: var(--c-text-2); font-size: 13px; white-space: nowrap; }
 .reservation-detail-type { display: block; margin-top: 3px; color: var(--c-text-3); font-size: 12px; font-weight: 400; }
 .reservation-config-card { overflow: hidden; }
