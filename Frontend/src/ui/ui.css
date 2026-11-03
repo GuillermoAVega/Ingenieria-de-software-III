@@ -230,7 +230,7 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
 .table .num { text-align: right; }
 .table .col-actions { width: 1%; text-align: right; white-space: nowrap; }
 .cell-main { font-weight: 500; }
-.cell-sub { font-size: 13px; color: var(--c-text-3); }
+.cell-sub { display: block; margin-top: 3px; font-size: 12px; color: var(--c-text-3); }
 .thumb { width: 40px; height: 40px; border-radius: var(--radius-sm); background: var(--c-neutral-soft); border: 1px solid var(--c-border); }
 
 .tabs { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--c-border); }
