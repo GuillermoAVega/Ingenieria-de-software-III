@@ -24,10 +24,10 @@ import { useReservationTableAvailability } from './useReservationTableAvailabili
 
 const newCustomerValue = 'nuevo'
 const fakeProducts = [
-  { id: 1, name: 'Empanadas surtidas' },
-  { id: 2, name: 'Pizza muzzarella' },
-  { id: 3, name: 'Ensalada de estación' },
-  { id: 4, name: 'Flan casero' },
+  { id: 1, name: 'Empanadas surtidas', type: 'Plato' },
+  { id: 2, name: 'Pizza muzzarella', type: 'Combo' },
+  { id: 3, name: 'Ensalada de estación', type: 'Plato' },
+  { id: 4, name: 'Flan casero', type: 'Postre' },
 ]
 
 type DetailRow = {
@@ -150,7 +150,7 @@ export function ReservationFormPage({ id }: { id?: string }) {
     const products = [...fakeProducts]
     for (const detail of details) {
       if (!products.some((product) => product.id === detail.productId)) {
-        products.push({ id: detail.productId, name: `Producto #${detail.productId}` })
+        products.push({ id: detail.productId, name: `Producto #${detail.productId}`, type: 'Producto' })
       }
     }
     return products
@@ -269,16 +269,14 @@ export function ReservationFormPage({ id }: { id?: string }) {
 
   return (
     <>
-      <PageHeader
-        title={step === 1 ? (isEditing ? 'Editar reserva' : 'Nueva reserva') : 'Configurar reserva'}
-        subtitle={
-          step === 2
-            ? 'Elegí las mesas y agregá productos anticipados de forma opcional.'
-            : isEditing
+      {step === 1 && <div className="reservation-page-header">
+        <PageHeader
+          title={isEditing ? 'Editar reserva' : 'Nueva reserva'}
+          subtitle={isEditing
             ? 'Actualizá el cliente, los datos, las mesas y el detalle de la reserva.'
-            : 'Registrá una reserva y elegí un cliente, una o varias mesas y sus productos.'
-        }
-      />
+            : 'Registrá una reserva y elegí un cliente, una o varias mesas y sus productos.'}
+        />
+      </div>}
 
       <form onSubmit={handleSubmit}>
         <div className="stack">
@@ -403,6 +401,11 @@ export function ReservationFormPage({ id }: { id?: string }) {
           )}
 
           {step === 2 && !formLoading && canEdit && (
+            <Card
+              className="reservation-config-card"
+              title="Configurar reserva"
+              subtitle="Elegí las mesas y agregá productos anticipados de forma opcional."
+            >
             <div className="reservation-step">
               <Card className="reservation-section" title="Mesas asignadas" subtitle="Podés asociar más de una mesa a la reserva.">
                 <div className="form-grid">
@@ -436,7 +439,7 @@ export function ReservationFormPage({ id }: { id?: string }) {
                   </div>
                 </div>
                 {selectedTableIds.length ? (
-                  <div className="stack">
+                  <div className="stack reservation-table-list">
                     {selectedTableIds.map((tableId) => {
                       const table = tableById.get(tableId)
                       return (
@@ -486,7 +489,7 @@ export function ReservationFormPage({ id }: { id?: string }) {
                       {availableProducts
                         .filter((product) => !details.some((detail) => detail.productId === product.id))
                         .map((product) => (
-                          <option key={product.id} value={product.id}>{product.name}</option>
+                          <option key={product.id} value={product.id}>{product.name} · {product.type}</option>
                         ))}
                     </Select>
                   </Field>
@@ -498,12 +501,15 @@ export function ReservationFormPage({ id }: { id?: string }) {
                   </div>
                 </div>
                 {details.length ? (
-                  <div className="stack">
+                  <div className="stack reservation-product-list">
                     {details.map((detail) => (
-                      <div className="row reservation-selection" key={detail.productId}>
+                      <div className="row reservation-selection reservation-product-selection" key={detail.productId}>
                         <span>
                           {availableProducts.find((product) => product.id === detail.productId)?.name
                             ?? `Producto #${detail.productId}`}
+                          <span className="reservation-product-type">
+                            {availableProducts.find((product) => product.id === detail.productId)?.type ?? 'Producto'}
+                          </span>
                         </span>
                         <Field label="Cantidad">
                           <Input
@@ -555,6 +561,7 @@ export function ReservationFormPage({ id }: { id?: string }) {
                 </Button>
               </div>
             </div>
+            </Card>
           )}
         </div>
       </form>
