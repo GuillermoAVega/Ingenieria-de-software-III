@@ -9,6 +9,38 @@ Guía de trabajo para agentes que modifiquen este repositorio.
 - `openspec/specs/`: especificaciones vigentes.
 - `openspec/changes/`: cambios propuestos y archivo histórico.
 
+## Modularidad y responsabilidad única
+
+Todo cambio nuevo y toda refactorización debe mantener el código modularizado, con la menor cantidad de código necesaria para resolver el problema.
+
+### Frontend
+
+- Las páginas deben coordinar la pantalla y renderizar; no deben contener reglas de negocio, llamadas HTTP ni transformaciones complejas.
+- La lógica de estado, carga, validación y envío debe vivir en hooks propios de la feature.
+- Las llamadas HTTP deben vivir en `api.ts` de la feature y usar `apiFetch` o el cliente compartido.
+- Los componentes visuales reutilizables deben extraerse a archivos propios dentro de la feature o de `ui` cuando sean realmente compartidos.
+- Los tipos y estados deben declararse junto a la feature que los usa; no duplicar tipos ni respuestas de API.
+- Las funciones de formato, selección y transformación reutilizables deben extraerse a módulos pequeños, puros y testeables.
+- No agregar componentes, hooks, estados, props, estilos ni funciones que no sean necesarios para el comportamiento solicitado.
+- No mantener código de demostración, imports, variables ni ramas sin uso en funcionalidades reales.
+- Una refactorización debe conservar el comportamiento existente; los cambios funcionales deben hacerse en un commit separado.
+
+### Backend
+
+- Los routers deben limitarse a recibir la petición, validar dependencias y delegar en servicios.
+- Las reglas de negocio deben vivir en servicios del dominio y no repetirse entre routers.
+- Los schemas definen contratos de entrada y salida; los modelos definen persistencia y relaciones.
+- Las consultas reutilizables deben extraerse a servicios o repositorios pequeños cuando eviten duplicación.
+- Cada módulo debe depender de contratos claros y evitar importar detalles internos de otra feature sin necesidad.
+- No crear funciones genéricas o abstracciones prematuras: extraer solo cuando exista responsabilidad duplicada o una unidad de comportamiento clara.
+
+### Forma de refactorizar
+
+- Refactorizar por feature y en pasos pequeños.
+- Antes de mover código, identificar qué responsabilidad se separa y mantener las interfaces públicas estables.
+- Verificar cada paso con los tests correspondientes y, en Frontend, con `npx tsc -b --pretty false`.
+- Revisar el diff para asegurar que el commit incluya solo la refactorización prevista.
+
 ## Frontend: estado y hooks
 
 ### Un único objeto de estado por componente o hook
