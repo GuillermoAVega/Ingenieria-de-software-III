@@ -4,7 +4,7 @@ import pytest
 
 from src.cliente.models import Cliente
 from src.comanda.services import crear_comanda_desde_reserva
-from src.comanda.services import obtener_mesas_disponibles
+from src.comanda.services import asignar_mozo_para_mesas, obtener_mesas_disponibles
 from src.exceptions import BadRequest
 from src.detalleReserva.models import DetalleReserva
 from src.mesa.models import Mesa
@@ -57,3 +57,66 @@ def test_comanda_inmediata_requiere_mesas_disponibles(sesion):
 
     with pytest.raises(BadRequest, match="no están disponibles"):
         obtener_mesas_disponibles(sesion, [mesa.id])
+
+
+def test_comanda_inmediata_asigna_mozo_del_sector(sesion):
+    from datetime import date
+
+    from src.atencion.models import Atencion
+    from src.mozo.models import Mozo
+
+    sector = Sector(nombre="Salón", apto_fumadores=False, piso=1)
+    mesa = Mesa(capacidad=2, disponible=True, sector=sector)
+    mozo = Mozo(nombre="Luis", nro_legajo=10)
+    sesion.add_all([sector, mesa, mozo])
+    sesion.flush()
+    sesion.add(
+        Atencion(
+            fecha_desde=date(2026, 1, 1),
+            fecha_hasta=None,
+            mozo_id=mozo.id,
+            sector_id=sector.id,
+        )
+    )
+    sesion.flush()
+
+    assert asignar_mozo_para_mesas(sesion, [mesa]) == mozo.id
+
+
+def test_comanda_inmediata_prefiere_mozo_con_menos_comandas_abiertas(sesion):
+    from datetime import date
+
+    from src.atencion.models import Atencion
+    from src.comanda.services import asignar_mozo_para_mesas
+    from src.mozo.models import Mozo
+    from src.models import Comanda
+
+    sector = Sector(nombre="Salón", apto_fumadores=False, piso=1)
+    mesa = Mesa(capacidad=2, disponible=True, sector=sector)
+    mozo_cargado = Mozo(nombre="Ana", nro_legajo=11)
+    mozo_libre = Mozo(nombre="Luis", nro_legajo=12)
+    sesion.add_all([sector, mesa, mozo_cargado, mozo_libre])
+    sesion.flush()
+    sesion.add_all(
+        [
+            Atencion(
+                fecha_desde=date(2026, 1, 1),
+                mozo_id=mozo_cargado.id,
+                sector_id=sector.id,
+            ),
+            Atencion(
+                fecha_desde=date(2026, 1, 1),
+                mozo_id=mozo_libre.id,
+                sector_id=sector.id,
+            ),
+            Comanda(
+                fecha=date(2026, 6, 15),
+                hora=time(20, 0),
+                mozo_id=mozo_cargado.id,
+                mesa_id=mesa.id,
+            ),
+        ]
+    )
+    sesion.flush()
+
+    assert asignar_mozo_para_mesas(sesion, [mesa]) == mozo_libre.id

@@ -1,8 +1,11 @@
+from datetime import date
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from src.exceptions import BadRequest, NotFound
 from src.mesa.models import Mesa
+from src.atencion.models import Atencion
 from src.models import Comanda, DetalleComanda
 from src.reserva.estados import EstadoReserva
 from src.reserva.models import Reserva
@@ -22,6 +25,42 @@ def obtener_mesas_disponibles(
     if len(mesas) != len(set(mesa_ids)):
         raise BadRequest(detail="Una o más mesas no están disponibles")
     return mesas
+
+
+def asignar_mozo_para_mesas(db: Session, mesas: list[Mesa]) -> int:
+    sector_ids = {mesa.sector_id for mesa in mesas}
+    if len(sector_ids) != 1:
+        raise BadRequest(
+            detail="Las mesas de una comanda deben pertenecer al mismo sector"
+        )
+
+    hoy = date.today()
+    atenciones = db.scalars(
+        select(Atencion)
+        .where(
+            Atencion.sector_id == next(iter(sector_ids)),
+            Atencion.estado.is_(True),
+            Atencion.fecha_desde <= hoy,
+            (Atencion.fecha_hasta.is_(None) | (Atencion.fecha_hasta >= hoy)),
+        )
+        .order_by(Atencion.id)
+    ).all()
+    if not atenciones:
+        raise BadRequest(detail="No hay un mozo asignado al sector de la mesa")
+
+    mozo_ids = [atencion.mozo_id for atencion in atenciones]
+    comandas_abiertas = db.scalars(
+        select(Comanda).where(
+            Comanda.mozo_id.in_(mozo_ids),
+            Comanda.activo.is_(True),
+            Comanda.estado == "abierta",
+        )
+    ).all()
+    tareas_por_mozo = {mozo_id: 0 for mozo_id in mozo_ids}
+    for comanda in comandas_abiertas:
+        tareas_por_mozo[comanda.mozo_id] += 1
+
+    return min(mozo_ids, key=lambda mozo_id: (tareas_por_mozo[mozo_id], mozo_id))
 
 
 def crear_comanda_desde_reserva(
