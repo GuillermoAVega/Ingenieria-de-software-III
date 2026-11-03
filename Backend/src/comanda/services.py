@@ -10,6 +10,9 @@ from src.models import Comanda, DetalleComanda
 from src.reserva.estados import EstadoReserva
 from src.reserva.models import Reserva
 
+MINUTOS_ANTES_COMANDA_RESERVA = 15
+MINUTOS_DESPUES_COMANDA_RESERVA = 30
+
 
 def ocupar_mesas(mesas: list[Mesa]) -> None:
     for mesa in mesas:
@@ -85,9 +88,11 @@ def crear_comanda_desde_reserva(
 
     ahora = datetime.now()
     fecha_hora_reserva = datetime.combine(reserva.fecha, reserva.hora)
-    if abs(ahora - fecha_hora_reserva) > timedelta(minutes=15):
+    desde = fecha_hora_reserva - timedelta(minutes=MINUTOS_ANTES_COMANDA_RESERVA)
+    hasta = fecha_hora_reserva + timedelta(minutes=MINUTOS_DESPUES_COMANDA_RESERVA)
+    if ahora < desde or ahora > hasta:
         raise BadRequest(
-            detail="La comanda solo puede crearse desde 15 minutos antes hasta 15 minutos despues de la reserva"
+            detail="La comanda solo puede crearse desde 15 minutos antes hasta 30 minutos despues de la reserva"
         )
 
     existente = db.scalar(

@@ -57,7 +57,7 @@ def test_crear_comanda_desde_reserva_rechaza_fuera_de_ventana(sesion):
     mesa = Mesa(capacidad=2, disponible=True, sector=sector)
     sesion.add_all([cliente, sector, mesa])
     sesion.flush()
-    momento_reserva = datetime.now() + timedelta(minutes=16)
+    momento_reserva = datetime.now() + timedelta(minutes=31)
     reserva = Reserva(
         fecha=momento_reserva.date(),
         hora=momento_reserva.time().replace(microsecond=0),
@@ -68,7 +68,7 @@ def test_crear_comanda_desde_reserva_rechaza_fuera_de_ventana(sesion):
     sesion.add(reserva)
     sesion.commit()
 
-    with pytest.raises(BadRequest, match="15 minutos"):
+    with pytest.raises(BadRequest, match="30 minutos"):
         crear_comanda_desde_reserva(sesion, reserva.id)
 
 

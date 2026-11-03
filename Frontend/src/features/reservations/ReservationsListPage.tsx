@@ -15,6 +15,7 @@ import {
 } from '../../ui/ui'
 import type { BadgeTone, DataTableColumn } from '../../ui/ui'
 import { navigate } from '../../app/navigation'
+import { createOrder } from '../orders/api'
 import { cancelReservation, listCustomers, listReservations, listTables } from './api'
 import type { Reservation, ReservationStatus, CustomerRecord, ReservationRecord, TableRecord } from './types'
 
@@ -95,6 +96,7 @@ export function ReservationsListPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [creatingReservationId, setCreatingReservationId] = useState<number | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -143,6 +145,20 @@ export function ReservationsListPage() {
       setRefreshKey((current) => current + 1)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'No se pudo cancelar la reserva.')
+    }
+  }
+
+  async function handleCreateOrder(reservation: Reservation) {
+    const reservationId = Number(reservation.id)
+    setError(null)
+    setCreatingReservationId(reservationId)
+    try {
+      const order = await createOrder({ reserva_id: reservationId })
+      navigate(`/comandas/${order.id}`)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'No se pudo crear la comanda desde la reserva.')
+    } finally {
+      setCreatingReservationId(null)
     }
   }
 
@@ -211,8 +227,13 @@ export function ReservationsListPage() {
                 Ver
               </Button>
               {reservation.status === 'pendiente' && (
-                <Button size="sm" aria-label={`Crear comanda para ${reservation.customer}`} onClick={() => navigate(`/comandas/nueva/reserva/${reservation.id}`)}>
-                  Crear comanda
+                <Button
+                  size="sm"
+                  aria-label={`Crear comanda para ${reservation.customer}`}
+                  disabled={creatingReservationId === Number(reservation.id)}
+                  onClick={() => void handleCreateOrder(reservation)}
+                >
+                  {creatingReservationId === Number(reservation.id) ? 'Creando...' : 'Crear comanda'}
                 </Button>
               )}
               {reservation.status === 'pendiente' && (
