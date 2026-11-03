@@ -41,6 +41,7 @@ function getErrorMessage(cause: unknown, fallback: string): string {
 
 export function ReservationFormPage({ id }: { id?: string }) {
   const isEditing = Boolean(id)
+  const [step, setStep] = useState<1 | 2>(isEditing ? 2 : 1)
   const [customers, setCustomers] = useState<CustomerRecord[]>([])
   const [tables, setTables] = useState<TableRecord[]>([])
   const [customerSelection, setCustomerSelection] = useState('')
@@ -135,6 +136,7 @@ export function ReservationFormPage({ id }: { id?: string }) {
     warnings: tableAvailability.warnings.filter(({ tableId }) => selectedTableIds.includes(tableId)),
   }), [selectedTableIds, tableAvailability.conflicts, tableAvailability.warnings])
   const formLoading = loading || tableAvailability.loading
+
   const assignedCapacity = selectedTableIds.reduce(
     (capacity, tableId) => capacity + (tableById.get(tableId)?.capacidad ?? 0),
     0,
@@ -167,6 +169,22 @@ export function ReservationFormPage({ id }: { id?: string }) {
     if (!productId || details.some((detail) => detail.productId === productId)) return
     setDetails((current) => [...current, { productId, quantity: 1 }])
     setProductToAdd('')
+  }
+
+  function continueReservation() {
+    if (!customerSelection || !date || !time || guests < 1) {
+      setError('Completá cliente, fecha, hora y cantidad de comensales para continuar.')
+      return
+    }
+    if (
+      customerSelection === newCustomerValue &&
+      (!customerDni.trim() || !customerFirstName.trim() || !customerLastName.trim() || !customerPhone.trim())
+    ) {
+      setError('Completá todos los datos del cliente nuevo para continuar.')
+      return
+    }
+    setError(null)
+    setStep(2)
   }
 
   async function saveDetailChanges(reservationId: number, nextDetails: ReservationDetailPayload[]) {
@@ -252,9 +270,11 @@ export function ReservationFormPage({ id }: { id?: string }) {
   return (
     <>
       <PageHeader
-        title={isEditing ? 'Editar reserva' : 'Nueva reserva'}
+        title={step === 1 ? (isEditing ? 'Editar reserva' : 'Nueva reserva') : 'Configurar reserva'}
         subtitle={
-          isEditing
+          step === 2
+            ? 'Elegí las mesas y agregá productos anticipados de forma opcional.'
+            : isEditing
             ? 'Actualizá el cliente, los datos, las mesas y el detalle de la reserva.'
             : 'Registrá una reserva y elegí un cliente, una o varias mesas y sus productos.'
         }
@@ -262,28 +282,10 @@ export function ReservationFormPage({ id }: { id?: string }) {
 
       <form onSubmit={handleSubmit}>
         <div className="stack">
+          {step === 1 && (
+            <>
           <Card
             title="Datos de la reserva"
-            footer={
-              <>
-                <Button onClick={() => navigate('/reservas')}>Cancelar</Button>
-                <Button
-                  variant="primary"
-                  type="submit"
-                  disabled={
-                    formLoading ||
-                    loadFailed ||
-                    Boolean(tableAvailability.error) ||
-                    saving ||
-                    !canEdit ||
-                    Boolean(tableAssignmentError) ||
-                    reservationTableIssues.conflicts.length > 0
-                  }
-                >
-                  {saving ? 'Guardando...' : 'Guardar reserva'}
-                </Button>
-              </>
-            }
           >
             {(error || tableAvailability.error) && (
               <Alert tone="danger">{error ?? tableAvailability.error}</Alert>
@@ -391,9 +393,18 @@ export function ReservationFormPage({ id }: { id?: string }) {
             )}
           </Card>
 
-          {!formLoading && canEdit && (
-            <>
-              <Card title="Mesas asignadas" subtitle="Podés asociar más de una mesa a la reserva.">
+          <div className="card-footer">
+            <Button onClick={() => navigate('/reservas')}>Cancelar</Button>
+            <Button variant="primary" onClick={continueReservation} disabled={formLoading || loadFailed || saving || !canEdit}>
+              Continuar reserva
+            </Button>
+          </div>
+            </>
+          )}
+
+          {step === 2 && !formLoading && canEdit && (
+            <div className="reservation-step">
+              <Card className="reservation-section" title="Mesas asignadas" subtitle="Podés asociar más de una mesa a la reserva.">
                 <div className="form-grid">
                   <Field label="Agregar mesa">
                     <Select value={tableToAdd} onChange={(event) => setTableToAdd(event.target.value)}>
@@ -417,7 +428,7 @@ export function ReservationFormPage({ id }: { id?: string }) {
                         })}
                     </Select>
                   </Field>
-                  <div className="field">
+                  <div className="field reservation-action">
                     <span className="label" aria-hidden="true">&nbsp;</span>
                     <Button type="button" onClick={addTable} disabled={!tableToAdd}>
                       Agregar mesa
@@ -429,7 +440,7 @@ export function ReservationFormPage({ id }: { id?: string }) {
                     {selectedTableIds.map((tableId) => {
                       const table = tableById.get(tableId)
                       return (
-                        <div className="row" key={tableId}>
+                        <div className="row reservation-selection" key={tableId}>
                           <span>
                             Mesa {tableId} · {table?.capacidad ?? '—'} personas
                           </span>
@@ -467,7 +478,7 @@ export function ReservationFormPage({ id }: { id?: string }) {
                 ))}
               </Card>
 
-              <Card title="Detalle de comanda" subtitle="Productos ficticios por ahora.">
+              <Card className="reservation-section" title="Productos anticipados (opcional)" subtitle="Podés agregarlos ahora o directamente desde la comanda.">
                 <div className="form-grid">
                   <Field label="Agregar producto">
                     <Select value={productToAdd} onChange={(event) => setProductToAdd(event.target.value)}>
@@ -479,7 +490,7 @@ export function ReservationFormPage({ id }: { id?: string }) {
                         ))}
                     </Select>
                   </Field>
-                  <div className="field">
+                  <div className="field reservation-action">
                     <span className="label" aria-hidden="true">&nbsp;</span>
                     <Button type="button" onClick={addDetail} disabled={!productToAdd}>
                       Agregar producto
@@ -489,7 +500,7 @@ export function ReservationFormPage({ id }: { id?: string }) {
                 {details.length ? (
                   <div className="stack">
                     {details.map((detail) => (
-                      <div className="row" key={detail.productId}>
+                      <div className="row reservation-selection" key={detail.productId}>
                         <span>
                           {availableProducts.find((product) => product.id === detail.productId)?.name
                             ?? `Producto #${detail.productId}`}
@@ -524,7 +535,26 @@ export function ReservationFormPage({ id }: { id?: string }) {
                   <p className="muted">No hay productos agregados al detalle.</p>
                 )}
               </Card>
-            </>
+              <div className="card-footer reservation-actions">
+                <Button onClick={() => navigate('/reservas')} disabled={saving}>Cancelar</Button>
+                {!isEditing && <Button onClick={() => setStep(1)} disabled={saving}>Volver</Button>}
+                <Button
+                  variant="primary"
+                  type="submit"
+                  disabled={
+                    formLoading ||
+                    loadFailed ||
+                    Boolean(tableAvailability.error) ||
+                    saving ||
+                    !canEdit ||
+                    Boolean(tableAssignmentError) ||
+                    reservationTableIssues.conflicts.length > 0
+                  }
+                >
+                  {saving ? 'Guardando...' : 'Guardar reserva'}
+                </Button>
+              </div>
+            </div>
           )}
         </div>
       </form>
