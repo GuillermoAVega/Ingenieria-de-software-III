@@ -33,6 +33,30 @@ type DetailRow = {
   quantity: number
 }
 
+function seleccionarMesasDisponibles(tables: TableRecord[], guests: number): number[] {
+  if (!Number.isInteger(guests) || guests < 1) return []
+  let bestIds: number[] | null = null
+  let bestCapacity = Number.POSITIVE_INFINITY
+
+  function search(index: number, ids: number[], capacity: number) {
+    if (capacity >= guests) {
+      if (capacity < bestCapacity || (capacity === bestCapacity && ids.length > (bestIds?.length ?? 0))) {
+        bestIds = ids
+        bestCapacity = capacity
+      }
+      return
+    }
+
+    for (let position = index; position < tables.length; position += 1) {
+      const table = tables[position]
+      search(position + 1, [...ids, table.id], capacity + table.capacidad)
+    }
+  }
+
+  search(0, [], 0)
+  return bestIds ?? []
+}
+
 function getErrorMessage(cause: unknown, fallback: string): string {
   return cause instanceof Error ? cause.message : fallback
 }
@@ -55,7 +79,6 @@ export function ReservationFormPage({ id }: { id?: string }) {
   const [initialStatus, setInitialStatus] = useState<ReservationStatus | null>(null)
   const [notes, setNotes] = useState('')
   const [selectedTableIds, setSelectedTableIds] = useState<number[]>([])
-  const [tableToAdd, setTableToAdd] = useState('')
   const [details, setDetails] = useState<DetailRow[]>([])
   const [productToAdd, setProductToAdd] = useState('')
   const [saving, setSaving] = useState(false)
@@ -134,13 +157,6 @@ export function ReservationFormPage({ id }: { id?: string }) {
   }, [details])
   const canEdit = !isEditing || initialStatus === 'pendiente'
 
-  function addTable() {
-    const tableId = Number(tableToAdd)
-    if (!tableId || selectedTableIds.includes(tableId)) return
-    setSelectedTableIds((current) => [...current, tableId])
-    setTableToAdd('')
-  }
-
   function addDetail() {
     const productId = Number(productToAdd)
     if (!productId || details.some((detail) => detail.productId === productId)) return
@@ -160,6 +176,7 @@ export function ReservationFormPage({ id }: { id?: string }) {
       setError('Completá todos los datos del cliente nuevo para continuar.')
       return
     }
+    setSelectedTableIds(seleccionarMesasDisponibles(scheduleTableAvailability.available, guests))
     setError(null)
     setStep(2)
   }
@@ -384,67 +401,34 @@ export function ReservationFormPage({ id }: { id?: string }) {
               subtitle="Elegí las mesas y agregá productos anticipados de forma opcional."
             >
             <div className="reservation-step">
-              <Card className="reservation-section" title="Mesas asignadas" subtitle="Podés asociar más de una mesa a la reserva.">
+              <Card className="reservation-section" title="Mesas asignadas" subtitle="Se asignan automáticamente según la cantidad de comensales y la disponibilidad.">
                 <ReservationAvailabilitySummary
                   date={date}
                   time={time}
                   available={scheduleTableAvailability.available}
                   warning={scheduleTableAvailability.warning}
                   unavailable={scheduleTableAvailability.unavailable}
+                  onSelectTable={(tableId) => setSelectedTableIds((current) => current.includes(tableId) ? current : [...current, tableId])}
                 />
-                <div className="form-grid">
-                  <Field label="Agregar mesa">
-                    <Select value={tableToAdd} onChange={(event) => setTableToAdd(event.target.value)}>
-                      <option value="">Seleccioná una mesa</option>
-                      {tables
-                        .filter((table) => table.estado && !selectedTableIds.includes(table.id))
-                        .map((table) => {
-                          const conflict = tableAvailability.conflicts.find((issue) => issue.tableId === table.id)
-                          const warning = tableAvailability.warnings.find((issue) => issue.tableId === table.id)
-                          const availabilityLabel = conflict
-                            ? ` · Ya reservada a las ${conflict.time}`
-                            : warning
-                              ? ` · Atención: otra reserva a las ${warning.time}`
-                              : ''
-
-                          return (
-                            <option key={table.id} value={table.id} disabled={Boolean(conflict)}>
-                              Mesa {table.id} · {table.capacidad} personas{availabilityLabel}
-                            </option>
-                          )
-                        })}
-                    </Select>
-                  </Field>
-                  <div className="field reservation-action">
-                    <span className="label" aria-hidden="true">&nbsp;</span>
-                    <Button type="button" onClick={addTable} disabled={!tableToAdd}>
-                      Agregar mesa
-                    </Button>
-                  </div>
-                </div>
                 {selectedTableIds.length ? (
-                  <div className="stack reservation-table-list">
+                  <div className="table-assignment-list reservation-table-list">
                     {selectedTableIds.map((tableId) => {
                       const table = tableById.get(tableId)
                       return (
-                        <div className="row reservation-selection" key={tableId}>
-                          <span>
-                            Mesa {tableId} · {table?.capacidad ?? '—'} personas
-                          </span>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="danger-ghost"
-                            onClick={() => setSelectedTableIds((current) => current.filter((value) => value !== tableId))}
-                          >
-                            Quitar
-                          </Button>
-                        </div>
+                        <button
+                          className="table-assignment-chip"
+                          key={tableId}
+                          type="button"
+                          onClick={() => setSelectedTableIds((current) => current.filter((value) => value !== tableId))}
+                          title="Quitar mesa asignada"
+                        >
+                          Mesa {tableId}<small>{table?.capacidad ?? '—'} personas · Quitar</small>
+                        </button>
                       )
                     })}
                   </div>
                 ) : (
-                  <p className="muted">No hay mesas asignadas.</p>
+                  <p className="muted">No hay una combinación de mesas disponible para esa cantidad de comensales.</p>
                 )}
                 {tableAssignmentError ? (
                   <p className="error-text" role="alert">{tableAssignmentError}</p>
