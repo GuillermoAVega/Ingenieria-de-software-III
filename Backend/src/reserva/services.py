@@ -147,6 +147,23 @@ def cancelar_reserva(db: Session, reserva_id: int) -> None:
     db.commit()
 
 
+def marcar_reserva_ausente(
+    db: Session,
+    reserva_id: int,
+) -> models.Reserva:
+    reserva_db = obtener_reserva(db, reserva_id)
+
+    if reserva_db.estado != EstadoReserva.PENDIENTE:
+        raise exceptions.EstadoReservaInvalido(
+            "Solo se pueden marcar como ausentes reservas pendientes"
+        )
+
+    reserva_db.estado = EstadoReserva.AUSENTE
+    db.commit()
+    db.refresh(reserva_db)
+    return reserva_db
+
+
 def modificar_reserva(
     db: Session,
     reserva_id: int,

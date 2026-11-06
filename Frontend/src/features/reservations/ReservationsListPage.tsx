@@ -16,7 +16,13 @@ import {
 import type { BadgeTone, DataTableColumn } from '../../ui/ui'
 import { navigate } from '../../app/navigation'
 import { createOrder } from '../orders/api'
-import { cancelReservation, listCustomers, listReservations, listTables } from './api'
+import {
+  cancelReservation,
+  listCustomers,
+  listReservations,
+  listTables,
+  markReservationAbsent,
+} from './api'
 import type { Reservation, ReservationStatus, CustomerRecord, ReservationRecord, TableRecord } from './types'
 
 const pageSize = 10
@@ -97,6 +103,7 @@ export function ReservationsListPage() {
   const [error, setError] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
   const [creatingReservationId, setCreatingReservationId] = useState<number | null>(null)
+  const [markingAbsentId, setMarkingAbsentId] = useState<number | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -127,7 +134,7 @@ export function ReservationsListPage() {
   const filteredReservations = useMemo(() => {
     const query = search.trim().toLocaleLowerCase()
     return reservations.filter((reservation) => {
-      const matchesSearch = [reservation.customer, reservation.phone]
+      const matchesSearch = [reservation.id, reservation.customer, reservation.phone]
         .some((value) => value.toLocaleLowerCase().includes(query))
       return matchesSearch &&
         (!date || reservation.date === date) &&
@@ -145,6 +152,22 @@ export function ReservationsListPage() {
       setRefreshKey((current) => current + 1)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'No se pudo cancelar la reserva.')
+    }
+  }
+
+  async function handleMarkAbsent(reservation: Reservation) {
+    if (markingAbsentId !== null) return
+    const reservationId = Number(reservation.id)
+    setError(null)
+    setMarkingAbsentId(reservationId)
+    try {
+      await markReservationAbsent(reservationId)
+      setLoading(true)
+      setRefreshKey((current) => current + 1)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'No se pudo marcar la reserva como ausente.')
+    } finally {
+      setMarkingAbsentId(null)
     }
   }
 
@@ -177,7 +200,7 @@ export function ReservationsListPage() {
       <Card flush>
         <Toolbar>
           <Input
-            placeholder="Buscar por cliente o teléfono..."
+            placeholder="Buscar por ID, cliente o teléfono..."
             value={search}
             onChange={(event) => {
               setSearch(event.target.value)
@@ -240,6 +263,16 @@ export function ReservationsListPage() {
                 <Button size="sm" onClick={() => navigate(`/reservas/${reservation.id}/editar`)}>
                   Editar
                 </Button>
+              )}
+              {reservation.status === 'pendiente' && (
+                <DeleteButton
+                  label={markingAbsentId === Number(reservation.id) ? 'Marcando...' : 'Marcar ausente'}
+                  title="Cancelar por ausencia"
+                  confirmLabel="Marcar ausente"
+                  onConfirm={() => void handleMarkAbsent(reservation)}
+                >
+                  ¿Marcar como ausente la reserva de <strong>{reservation.customer}</strong>?
+                </DeleteButton>
               )}
               {reservation.status === 'pendiente' && (
                 <DeleteButton

@@ -240,6 +240,22 @@ def quitar_detalle_reserva(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+@router.patch("/{reserva_id}/ausente", response_model=schemas.Reserva)
+def marcar_reserva_ausente(reserva_id: int, db: Session = Depends(get_db)):
+    try:
+        return services.marcar_reserva_ausente(db, reserva_id)
+    except exceptions.RecursoNoEncontrado as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(error),
+        ) from error
+    except exceptions.EstadoReservaInvalido as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(error),
+        ) from error
+
+
 @router.delete("/{reserva_id}", status_code=status.HTTP_204_NO_CONTENT)
 def cancelar_reserva(reserva_id: int, db: Session = Depends(get_db)):
     try:

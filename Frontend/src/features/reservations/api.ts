@@ -42,7 +42,7 @@ async function getJson<T>(path: string): Promise<T> {
   return (await response.json()) as T
 }
 
-async function sendJson<T>(path: string, method: 'POST' | 'PUT', body: unknown): Promise<T> {
+async function sendJson<T>(path: string, method: 'POST' | 'PUT' | 'PATCH', body: unknown): Promise<T> {
   const response = await request(path, { method, body: JSON.stringify(body) })
   return (await response.json()) as T
 }
@@ -72,6 +72,10 @@ export function updateReservation(id: number, payload: ReservationUpdatePayload)
 
 export function cancelReservation(id: number): Promise<void> {
   return remove(`/reservas/${id}`)
+}
+
+export function markReservationAbsent(id: number): Promise<ReservationRecord> {
+  return sendJson(`/reservas/${id}/ausente`, 'PATCH', {})
 }
 
 export function listCustomers(): Promise<CustomerRecord[]> {
