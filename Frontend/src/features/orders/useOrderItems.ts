@@ -3,7 +3,7 @@ import type { ApiFieldErrors } from '../../api/client'
 import { getErrorMessage, getFieldErrors } from '../../api/client'
 import { createOrderItem, deleteOrderItem, updateOrderItem } from './api'
 import type { OrderItem } from './types'
-import type { OrderProductOption } from './useOrderCatalog'
+import type { ProductOption } from '../products/productOptions'
 
 type OrderItemModal = { mode: 'new' } | { mode: 'edit'; item: OrderItem }
 
@@ -38,7 +38,7 @@ const initialState: OrderItemsState = {
   deliveryUpdatingId: null,
 }
 
-export function useOrderItems(comandaId: number, onChanged: () => void, products: OrderProductOption[]) {
+export function useOrderItems(comandaId: number, onChanged: () => void, products: ProductOption[]) {
   const [state, setState] = useState<OrderItemsState>(initialState)
 
   const openNew = () => {

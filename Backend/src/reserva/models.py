@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 from datetime import date, time
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Date, Enum as SqlEnum, ForeignKey, Integer, Text, Time
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models import ModeloBase
 from src.reserva.estados import EstadoReserva
+
+if TYPE_CHECKING:
+    from src.models import Comanda
 
 
 class Reserva(ModeloBase):
@@ -39,6 +43,10 @@ class Reserva(ModeloBase):
     mesas_asociadas: Mapped[list[ReservaMesa]] = relationship(
         back_populates="reserva",
         cascade="all, delete-orphan",
+    )
+    comanda: Mapped[Comanda | None] = relationship(
+        back_populates="reserva",
+        uselist=False,
     )
 
     @property

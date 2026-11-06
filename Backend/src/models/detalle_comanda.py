@@ -14,8 +14,8 @@ class DetalleComanda(ModeloBase):
     activo = Column(Boolean, nullable=False, default=True)
 
     comanda_id = Column(Integer, ForeignKey("comanda.id"), nullable=False)
-    # FK pendiente: Producto (otro grupo)
-    producto_id = Column(Integer, nullable=False)
+    producto_id = Column(Integer, ForeignKey("producto.id"), nullable=False)
 
     comanda = relationship("Comanda", back_populates="detalles")
+    producto = relationship("Producto", back_populates="detalles_comanda")
     detalles_factura = relationship("DetalleFactura", back_populates="detalle_comanda")

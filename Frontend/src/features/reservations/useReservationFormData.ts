@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { loadProductOptions } from '../products/productOptions'
+import type { ProductOption } from '../products/productOptions'
 import {
   getReservation,
   listCustomers,
@@ -11,6 +13,7 @@ import type { CustomerRecord, ReservationDetail, ReservationRecord, TableRecord 
 export type ReservationFormData = {
   customers: CustomerRecord[]
   tables: TableRecord[]
+  products: ProductOption[]
   reservation: ReservationRecord | null
   reservationTables: TableRecord[]
   reservationDetails: ReservationDetail[]
@@ -23,6 +26,7 @@ function initialState(): ReservationFormData {
   return {
     customers: [],
     tables: [],
+    products: [],
     reservation: null,
     reservationTables: [],
     reservationDetails: [],
@@ -44,11 +48,15 @@ export function useReservationFormData(id?: string): ReservationFormData {
 
     async function loadFormData() {
       try {
-        const [customers, tables] = await Promise.all([listCustomers(), listTables()])
+        const [customers, tables, products] = await Promise.all([
+          listCustomers(),
+          listTables(),
+          loadProductOptions().catch((): ProductOption[] => []),
+        ])
         if (cancelled) return
 
         if (!id) {
-          setState((previous) => ({ ...previous, customers, tables, loading: false }))
+          setState((previous) => ({ ...previous, customers, tables, products, loading: false }))
           return
         }
 
@@ -67,6 +75,7 @@ export function useReservationFormData(id?: string): ReservationFormData {
         setState({
           customers,
           tables: [...new Map([...tables, ...reservationTables].map((table) => [table.id, table])).values()],
+          products,
           reservation,
           reservationTables,
           reservationDetails,

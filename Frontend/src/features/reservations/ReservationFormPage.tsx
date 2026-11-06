@@ -21,12 +21,6 @@ import { ReservationAvailabilitySummary } from './ReservationAvailabilitySummary
 import { useReservationFormData } from './useReservationFormData'
 
 const newCustomerValue = 'nuevo'
-const fakeProducts = [
-  { id: 1, name: 'Empanadas surtidas', type: 'Plato' },
-  { id: 2, name: 'Pizza muzzarella', type: 'Combo' },
-  { id: 3, name: 'Ensalada de estación', type: 'Plato' },
-  { id: 4, name: 'Flan casero', type: 'Postre' },
-]
 
 type DetailRow = {
   productId: number
@@ -147,14 +141,14 @@ export function ReservationFormPage({ id }: { id?: string }) {
       ? `La capacidad total de las mesas (${assignedCapacity}) no alcanza para ${guests} comensales.`
       : null
   const availableProducts = useMemo(() => {
-    const products = [...fakeProducts]
+    const products = [...formData.products]
     for (const detail of details) {
       if (!products.some((product) => product.id === detail.productId)) {
-        products.push({ id: detail.productId, name: `Producto #${detail.productId}`, type: 'Producto' })
+        products.push({ id: detail.productId, name: `Producto #${detail.productId}`, type: 'Producto', price: '' })
       }
     }
     return products
-  }, [details])
+  }, [details, formData.products])
   const canEdit = !isEditing || initialStatus === 'pendiente'
 
   function addDetail() {
@@ -468,6 +462,7 @@ export function ReservationFormPage({ id }: { id?: string }) {
                     </Button>
                   </div>
                 </div>
+                {!formData.products.length && <p className="muted">No hay productos cargados para agregar.</p>}
                 {details.length ? (
                   <div className="stack reservation-product-list">
                     {details.map((detail) => (

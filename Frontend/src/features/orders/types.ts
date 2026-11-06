@@ -24,6 +24,10 @@ export type Order = {
   detalles: OrderItem[]
 }
 
+export type OrderListItem = Order & {
+  waiterName: string | null
+}
+
 export type OrderItemPayload = {
   producto_id: number
   cantidad: number

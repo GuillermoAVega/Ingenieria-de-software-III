@@ -6,6 +6,7 @@ from src.models import ModeloBase
 
 if TYPE_CHECKING:
     from src.atencion.models import Atencion
+    from src.models import Comanda
 
 
 class Mozo(ModeloBase):
@@ -17,5 +18,4 @@ class Mozo(ModeloBase):
     estado: Mapped[bool] = mapped_column(Boolean, default=True)
 
     atenciones: Mapped[list["Atencion"]] = relationship(back_populates="mozo")
-
-    # [TODO] incorporar relacion de mozo con comanda
+    comandas: Mapped[list["Comanda"]] = relationship(back_populates="mozo")

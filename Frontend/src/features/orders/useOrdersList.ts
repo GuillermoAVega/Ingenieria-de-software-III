@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
 import { getErrorMessage } from '../../api/client'
+import { listWaiters } from '../waiters/api'
+import type { Waiter } from '../waiters/types'
 import { deleteOrder, getOrders } from './api'
-import type { Order, OrderStatus } from './types'
+import type { Order, OrderListItem, OrderStatus } from './types'
 
 const PAGE_SIZE = 10
 
 type OrdersListState = {
   orders: Order[]
+  waiters: Waiter[]
   loading: boolean
   error: string | null
   statusFilter: '' | OrderStatus
@@ -18,6 +21,7 @@ type OrdersListState = {
 
 const initialState: OrdersListState = {
   orders: [],
+  waiters: [],
   loading: true,
   error: null,
   statusFilter: '',
@@ -36,11 +40,15 @@ export function useOrdersList() {
     async function loadOrders() {
       setState((previous) => ({ ...previous, loading: true, error: null }))
       try {
-        const orders = await getOrders()
+        const [orders, waiters] = await Promise.all([
+          getOrders(),
+          listWaiters().catch((): Waiter[] => []),
+        ])
         if (cancelled) return
         setState((previous) => ({
           ...previous,
           orders: [...orders].sort((first, second) => second.id - first.id),
+          waiters,
           loading: false,
         }))
       } catch (requestError) {
@@ -91,25 +99,32 @@ export function useOrdersList() {
     }
   }
 
+  const waiterNames = new Map(state.waiters.map((waiter) => [waiter.id, waiter.name]))
+  const orders: OrderListItem[] = state.orders.map((order) => ({
+    ...order,
+    waiterName: order.mozo_id === null ? null : waiterNames.get(order.mozo_id) ?? null,
+  }))
+
   const search = state.search.trim().toLowerCase()
-  const filteredOrders = state.orders.filter((order) => {
+  const filteredOrders = orders.filter((order) => {
     const matchesStatus = !state.statusFilter || order.estado === state.statusFilter
     const matchesSearch =
       !search ||
       String(order.id).includes(search) ||
       String(order.mesa_id).includes(search) ||
-      String(order.mozo_id).includes(search)
+      String(order.mozo_id).includes(search) ||
+      order.waiterName?.toLowerCase().includes(search)
     return matchesStatus && matchesSearch
   })
 
   const total = filteredOrders.length
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const page = Math.min(state.page, totalPages)
-  const orders = filteredOrders.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const visibleOrders = filteredOrders.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   return {
     state,
-    orders,
+    orders: visibleOrders,
     total,
     page,
     pageSize: PAGE_SIZE,

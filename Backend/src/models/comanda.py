@@ -21,15 +21,24 @@ class Comanda(ModeloBase):
     estado = Column(String(10), nullable=False, default="abierta")  # abierta | cerrada
     activo = Column(Boolean, nullable=False, default=True)
 
-    # FK pendiente: Mozo, Mesa, Cliente, Reserva (otros grupos)
-    mozo_id = Column(Integer, nullable=True)
-    mesa_id = Column(Integer, nullable=False)
+    # Un mozo puede tener varias comandas; las comandas de reserva no tienen mozo
+    mozo_id = Column(Integer, ForeignKey("mozos.id"), nullable=True)
+    mesa_id = Column(Integer, ForeignKey("mesas.id"), nullable=False)
     cliente_id = Column(Integer, nullable=True)
-    reserva_id = Column(Integer, nullable=True)
+    reserva_id = Column(Integer, ForeignKey("reservas.id"), nullable=True)
+
+    mozo = relationship("Mozo", back_populates="comandas")
+    mesa = relationship(
+        "Mesa",
+        foreign_keys=[mesa_id],
+        back_populates="comandas",
+    )
+    reserva = relationship("Reserva", back_populates="comanda")
 
     mesas_asociadas = relationship(
         "Mesa",
         secondary=comanda_mesas,
+        back_populates="comandas_asociadas",
     )
 
     detalles = relationship(

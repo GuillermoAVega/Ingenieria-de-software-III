@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Alert, Badge, Breadcrumb, Button, Card, KeyValue, PageHeader } from '../../ui/ui'
 import { navigate } from '../../app/navigation'
+import { loadProductOptions } from '../products/productOptions'
+import type { ProductOption } from '../products/productOptions'
 import { getReservation, listCustomers, listReservationDetails, listReservationTables } from './api'
 import type { CustomerRecord, ReservationDetail, ReservationRecord, ReservationStatus, TableRecord } from './types'
 
@@ -8,16 +10,13 @@ const statusLabel: Record<ReservationStatus, string> = {
   pendiente: 'Pendiente', con_comanda: 'Con comanda', cancelada: 'Cancelada', ausente: 'Ausente',
 }
 const statusTone = { pendiente: 'neutral', con_comanda: 'info', cancelada: 'danger', ausente: 'warning' } as const
-const fakeProductNames: Record<number, string> = {
-  1: 'Empanadas surtidas', 2: 'Pizza muzzarella', 3: 'Ensalada de estación', 4: 'Flan casero',
-}
-const fakeProductTypes: Record<number, string> = { 1: 'Plato', 2: 'Combo', 3: 'Plato', 4: 'Postre' }
 
 type ReservationDetails = {
   reservation: ReservationRecord
   customer: CustomerRecord | undefined
   tables: TableRecord[]
   details: ReservationDetail[]
+  products: ProductOption[]
 }
 
 export function ReservationDetailPage({ id }: { id: string }) {
@@ -31,11 +30,15 @@ export function ReservationDetailPage({ id }: { id: string }) {
       try {
         const reservationId = Number(id)
         if (!Number.isInteger(reservationId) || reservationId < 1) throw new Error('El identificador de la reserva no es válido.')
-        const [reservation, customers, tables, details] = await Promise.all([
-          getReservation(reservationId), listCustomers(), listReservationTables(reservationId), listReservationDetails(reservationId),
+        const [reservation, customers, tables, details, products] = await Promise.all([
+          getReservation(reservationId),
+          listCustomers(),
+          listReservationTables(reservationId),
+          listReservationDetails(reservationId),
+          loadProductOptions().catch((): ProductOption[] => []),
         ])
         if (cancelled) return
-        setData({ reservation, customer: customers.find((customer) => customer.id === reservation.cliente_id), tables, details })
+        setData({ reservation, customer: customers.find((customer) => customer.id === reservation.cliente_id), tables, details, products })
       } catch (cause) {
         if (!cancelled) setError(cause instanceof Error ? cause.message : 'No se pudo cargar la reserva.')
       } finally {
@@ -79,7 +82,22 @@ export function ReservationDetailPage({ id }: { id: string }) {
             {data.tables.length ? <div className="reservation-detail-list">{data.tables.map((table) => <div className="reservation-detail-row" key={table.id}><span className="reservation-detail-main">Mesa {table.id}</span><span className="reservation-detail-meta">Capacidad: {table.capacidad} personas</span></div>)}</div> : <p className="muted">No hay mesas asignadas.</p>}
           </Card>
           <Card className="reservation-detail-card" title="Productos anticipados" subtitle="Productos seleccionados para la reserva.">
-            {data.details.length ? <div className="reservation-detail-list">{data.details.map((detail) => <div className="reservation-detail-row" key={detail.producto_id}><span className="reservation-detail-main">{fakeProductNames[detail.producto_id] ?? `Producto #${detail.producto_id}`}<span className="reservation-detail-type">{fakeProductTypes[detail.producto_id] ?? 'Producto'}</span></span><span className="reservation-detail-meta">Cantidad: {detail.cantidad_producto}</span></div>)}</div> : <p className="muted">No hay productos anticipados.</p>}
+            {data.details.length ? (
+              <div className="reservation-detail-list">
+                {data.details.map((detail) => {
+                  const product = data.products.find((candidate) => candidate.id === detail.producto_id)
+                  return (
+                    <div className="reservation-detail-row" key={detail.producto_id}>
+                      <span className="reservation-detail-main">
+                        {product?.name ?? `Producto #${detail.producto_id}`}
+                        <span className="reservation-detail-type">{product?.type ?? 'Producto'}</span>
+                      </span>
+                      <span className="reservation-detail-meta">Cantidad: {detail.cantidad_producto}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : <p className="muted">No hay productos anticipados.</p>}
           </Card>
         </div>
       ) : null}

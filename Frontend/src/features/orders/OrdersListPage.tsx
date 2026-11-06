@@ -23,9 +23,9 @@ import { navigate } from '../../app/navigation'
 import { formatDate, formatTime } from '../../utils/format'
 import { ORDER_STATUS_LABEL, ORDER_STATUS_TONE } from './status'
 import { useOrdersList } from './useOrdersList'
-import type { Order } from './types'
+import type { OrderListItem } from './types'
 
-const columns: DataTableColumn<Order>[] = [
+const columns: DataTableColumn<OrderListItem>[] = [
   {
     key: 'id',
     header: 'Comanda',
@@ -39,7 +39,8 @@ const columns: DataTableColumn<Order>[] = [
   {
     key: 'mozo',
     header: 'Mozo',
-    render: (order) => `Mozo ${order.mozo_id}`,
+    render: (order) =>
+      order.waiterName ?? (order.mozo_id === null ? 'Sin mozo' : `Mozo #${order.mozo_id}`),
   },
   {
     key: 'fecha',

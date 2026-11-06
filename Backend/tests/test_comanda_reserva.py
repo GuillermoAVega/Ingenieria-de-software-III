@@ -13,19 +13,20 @@ from src.reserva.models import Reserva, ReservaMesa
 from src.sector.models import Sector
 
 
-def test_crear_comanda_desde_reserva_copia_datos_y_detalles(sesion):
+def test_crear_comanda_desde_reserva_copia_datos_y_detalles(sesion, crear_postre):
     cliente = Cliente(
         dni="12345678",
         nombre="Ana",
         apellido="Pérez",
         telefono="123456",
     )
+    postre = crear_postre()
     sector = Sector(nombre="Salón", apto_fumadores=False, piso=1)
     mesas = [
         Mesa(capacidad=2, disponible=True, sector=sector),
         Mesa(capacidad=4, disponible=True, sector=sector),
     ]
-    sesion.add_all([cliente, sector, *mesas])
+    sesion.add_all([cliente, postre, sector, *mesas])
     sesion.flush()
     momento_reserva = datetime.now().replace(microsecond=0) + timedelta(minutes=5)
     reserva = Reserva(
@@ -34,7 +35,7 @@ def test_crear_comanda_desde_reserva_copia_datos_y_detalles(sesion):
         cant_comensales=5,
         cliente_id=cliente.id,
         mesas_asociadas=[ReservaMesa(mesa_id=mesa.id) for mesa in mesas],
-        detalles=[DetalleReserva(producto_id=8, cantidad_producto=2)],
+        detalles=[DetalleReserva(producto=postre, cantidad_producto=2)],
     )
     sesion.add(reserva)
     sesion.commit()
@@ -47,7 +48,8 @@ def test_crear_comanda_desde_reserva_copia_datos_y_detalles(sesion):
     assert comanda.mozo_id is None
     assert comanda.mesa_ids == [mesas[0].id, mesas[1].id]
     assert [mesa.disponible for mesa in mesas] == [False, False]
-    assert [(d.producto_id, d.cantidad) for d in comanda.detalles] == [(8, 2)]
+    assert [(d.producto_id, d.cantidad) for d in comanda.detalles] == [(postre.id, 2)]
+    assert comanda.detalles[0].producto is postre
     assert reserva.estado == EstadoReserva.CON_COMANDA
 
 

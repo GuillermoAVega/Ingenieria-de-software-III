@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { getBebidas, getCombos, getMenusEjecutivos, getPlatos, getPostres } from '../products/api'
-import { getProductoMenus } from '../daily-menu/api'
+import { loadProductOptions } from '../products/productOptions'
+import type { ProductOption } from '../products/productOptions'
 import { listCustomers } from '../reservations/api'
 import { listSectors, listTables } from '../tables/api'
 import type { SectorRecord, TableRecord } from '../tables/types'
@@ -9,15 +9,8 @@ import type { Attention, Waiter } from '../waiters/types'
 import type { CustomerRecord } from '../reservations/types'
 import type { Order } from './types'
 
-export type OrderProductOption = {
-  id: number
-  name: string
-  type: string
-  price: string
-}
-
 type OrderCatalogState = {
-  products: OrderProductOption[]
+  products: ProductOption[]
   customers: CustomerRecord[]
   tables: TableRecord[]
   sectors: SectorRecord[]
@@ -31,13 +24,6 @@ const initialState: OrderCatalogState = {
   products: [], customers: [], tables: [], sectors: [], waiters: [], attentions: [], loading: true, error: null,
 }
 
-const legacyProductOptions: OrderProductOption[] = [
-  { id: 1, name: 'Empanadas surtidas', type: 'Plato', price: '' },
-  { id: 2, name: 'Pizza muzzarella', type: 'Plato', price: '' },
-  { id: 3, name: 'Ensalada de estación', type: 'Plato', price: '' },
-  { id: 4, name: 'Flan casero', type: 'Postre', price: '' },
-]
-
 export function useOrderCatalog() {
   const [state, setState] = useState<OrderCatalogState>(initialState)
 
@@ -45,22 +31,10 @@ export function useOrderCatalog() {
     let cancelled = false
     async function loadCatalog() {
       try {
-        const [platos, bebidas, postres, menus, combos, menusDelDia, customers, tables, sectors, waiters, attentions] = await Promise.all([
-          getPlatos(), getBebidas(), getPostres(), getMenusEjecutivos(), getCombos(), getProductoMenus(), listCustomers(), listTables(), listSectors(), listWaiters(), listAttentions(),
+        const [products, customers, tables, sectors, waiters, attentions] = await Promise.all([
+          loadProductOptions(), listCustomers(), listTables(), listSectors(), listWaiters(), listAttentions(),
         ])
         if (cancelled) return
-        const baseProducts = [
-          ...platos.map((product) => ({ id: product.id, name: product.nombre, type: 'Plato', price: String(product.precio) })),
-          ...bebidas.map((product) => ({ id: product.id, name: product.nombre, type: 'Bebida', price: String(product.precio) })),
-          ...postres.map((product) => ({ id: product.id, name: product.nombre, type: 'Postre', price: String(product.precio) })),
-          ...menus.map((product) => ({ id: product.id, name: product.nombre, type: 'Menú ejecutivo', price: String(product.precio) })),
-          ...combos.map((product) => ({ id: product.id, name: product.nombre, type: 'Combo promocional', price: String(product.precio) })),
-        ]
-        const products = [
-          ...menusDelDia.map((product) => ({ id: product.producto_id, name: product.producto_nombre, type: 'Menú del día', price: baseProducts.find((candidate) => candidate.id === product.producto_id)?.price ?? '' })),
-          ...baseProducts,
-          ...legacyProductOptions,
-        ].filter((product, index, all) => all.findIndex((candidate) => candidate.id === product.id) === index)
         setState({
           products,
           customers, tables, sectors, waiters, attentions, loading: false, error: null,

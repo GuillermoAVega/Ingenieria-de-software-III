@@ -6,6 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.models import ModeloBase
 
 if TYPE_CHECKING:
+    from src.models import Comanda
     from src.sector.models import Sector
 
 
@@ -22,3 +23,11 @@ class Mesa(ModeloBase):
     )
 
     sector: Mapped["Sector"] = relationship(back_populates="mesas")
+    comandas: Mapped[list["Comanda"]] = relationship(
+        foreign_keys="Comanda.mesa_id",
+        back_populates="mesa",
+    )
+    comandas_asociadas: Mapped[list["Comanda"]] = relationship(
+        secondary="comanda_mesas",
+        back_populates="mesas_asociadas",
+    )
