@@ -17,6 +17,7 @@ import { SectionsListPage } from '../features/sections/SectionsListPage'
 import { SectionFormPage } from '../features/sections/SectionFormPage'
 import { PromotionsListPage } from '../features/promotions/PromotionsListPage'
 import { PromotionFormPage } from '../features/promotions/PromotionFormPage'
+import { MenuViewPage } from '../features/menu-view/MenuViewPage'
 import { TablesAndSectorsPage } from '../features/tables/TablesAndSectorsPage'
 import { SectorFormPage } from '../features/tables/SectorFormPage'
 import { TableFormPage } from '../features/tables/TableFormPage'
@@ -104,6 +105,11 @@ export const routes: RouteDefinition[] = [
     path: '/productos',
     nav: { group: 'CARTA', label: 'Productos' },
     render: () => <ProductsListPage />,
+  },
+  {
+    path: '/ver-carta',
+    nav: { group: 'CARTA', label: 'Ver carta' },
+    render: () => <MenuViewPage />,
   },
   {
     path: '/productos/nuevo',

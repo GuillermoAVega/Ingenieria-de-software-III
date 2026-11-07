@@ -303,6 +303,49 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
 .mesa.is-busy { background: var(--c-accent-soft); border-color: #C6D9D1; }
 .mesa.is-reserved { background: var(--c-warning-soft); border-color: #E6D4AE; }
 
+.menu-view { display: flex; flex-direction: column; gap: 20px; }
+.menu-view-cover {
+  display: none; flex-direction: column; align-items: center; justify-content: center;
+  gap: 18px; min-height: 92vh; padding: 40px 24px 56px; text-align: center;
+  background: linear-gradient(180deg, var(--c-surface) 0%, var(--c-accent-soft) 100%);
+  border: 1px solid var(--c-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
+}
+.menu-view-cover-logo {
+  width: 140px; height: 140px; border-radius: 50%; object-fit: contain;
+  background: var(--c-surface); border: 4px solid var(--c-accent-soft);
+}
+.menu-view-cover-title {
+  font-size: clamp(2.2rem, 5vw, 4.2rem); line-height: 1; font-weight: 700;
+  letter-spacing: -.05em; color: var(--c-accent-ink);
+}
+.menu-view-cover-subtitle {
+  font-size: 0.82rem; font-weight: 600; letter-spacing: 0.24em; text-transform: uppercase;
+  color: var(--c-text-3);
+}
+.menu-view-category {
+  display: flex; flex-direction: column; gap: 20px; padding: 24px;
+  background: var(--c-surface); border: 1px solid var(--c-border);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
+}
+.menu-view-category-title {
+  padding-bottom: 12px; border-bottom: 2px solid var(--c-accent);
+  color: var(--c-accent-ink); font-size: 24px; font-weight: 600; letter-spacing: -.02em;
+}
+.menu-view-section { display: flex; flex-direction: column; gap: 8px; padding-left: 14px; border-left: 2px solid var(--c-accent-soft); }
+.menu-view-section-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; font-size: 17px; font-weight: 600; }
+.menu-view-section-title > span { color: var(--c-text); }
+.menu-view-description { color: var(--c-text-3); font-size: 13px; font-weight: 400; overflow-wrap: anywhere; }
+.menu-view-section-title .menu-view-description { font-size: 13px; }
+.menu-view-items { display: flex; flex-direction: column; gap: 0; margin: 0; padding: 0; list-style: none; }
+.menu-view-item {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 16px;
+  padding: 10px 0; border-top: 1px solid var(--c-border);
+  break-inside: avoid; page-break-inside: avoid;
+}
+.menu-view-item-info { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; }
+.menu-view-item-name { font-weight: 500; }
+.menu-view-price { flex: none; color: var(--c-accent-ink); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
 .bar-row { display: grid; grid-template-columns: minmax(110px, 200px) 1fr 64px; align-items: center; gap: 12px; }
 .bar { height: 8px; border-radius: 4px; background: var(--c-neutral-soft); overflow: hidden; }
 .bar > span { display: block; height: 100%; background: var(--c-accent); }
@@ -338,4 +381,57 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
   .content { padding: 20px 16px 40px; }
   .bar-row { grid-template-columns: 1fr 56px; }
   .bar-row .bar { grid-column: 1 / -1; grid-row: 2; }
+  .menu-view-category { padding: 18px 16px; }
+  .menu-view-category-title { font-size: 21px; }
+}
+
+@media print {
+  @page {
+    margin: 0;
+  }
+
+  .sidebar,
+  .page-actions,
+  .nav,
+  .user {
+    display: none !important;
+  }
+
+  .main {
+    display: block;
+  }
+
+  .content {
+    max-width: none;
+    padding: 0;
+  }
+
+  .content:has(.menu-view) > .page-header {
+    display: none;
+  }
+
+  .menu-view {
+    padding-top: 12mm;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+  }
+
+  .menu-view-cover {
+    display: flex; height: calc(100vh - 12mm); min-height: 0; margin: -12mm 0 0; padding: 8mm;
+    break-after: page; page-break-after: always;
+    box-shadow: none; border: 0; border-radius: 0;
+  }
+  .menu-view-cover-logo { width: 90px; height: 90px; }
+  .menu-view-cover-title { font-size: 2.6rem; }
+  .menu-view-cover-subtitle { font-size: 0.7rem; }
+
+  .menu-view-category {
+    margin: 0 12mm 12mm;
+    break-before: page; page-break-before: always;
+    box-shadow: none; border-color: var(--c-border-strong);
+  }
+  .menu-view-category:first-child { break-before: auto; page-break-before: auto; }
+  .menu-view-section {
+    break-inside: avoid; page-break-inside: avoid;
+  }
 }

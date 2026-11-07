@@ -25,6 +25,7 @@ npm run lint
 | Comandas | `#/comandas` | `src/features/orders/` | `OrdersListPage.tsx`, `OrderDetailPage.tsx`, `OrderFormPage.tsx`, `demo.ts`, `types.ts` |
 | Reservas | `#/reservas` | `src/features/reservations/` | `ReservationsListPage.tsx`, `ReservationFormPage.tsx`, `demo.ts`, `types.ts` |
 | Facturación | `#/facturacion` | `src/features/billing/` | `BillingListPage.tsx`, `demo.ts`, `types.ts` |
+| Ver carta | `#/ver-carta` | `src/features/menu-view/` | `MenuViewPage.tsx`, `useMenuView.ts`, `api.ts`, `types.ts` |
 | Productos | `#/productos` | `src/features/products/` | `ProductsListPage.tsx`, `ProductFormPage.tsx`, `demo.ts`, `types.ts` |
 | Secciones | `#/secciones` | `src/features/sections/` | `SectionsListPage.tsx`, `SectionFormPage.tsx`, `demo.ts`, `types.ts` |
 | Promociones | `#/promociones` | `src/features/promotions/` | `PromotionsListPage.tsx`, `PromotionFormPage.tsx`, `demo.ts`, `types.ts` |
