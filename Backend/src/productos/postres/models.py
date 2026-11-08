@@ -14,4 +14,4 @@ class Postre(Producto):
     menus = relationship(
         "MenuEjecutivo", foreign_keys="MenuEjecutivo.postre_id", back_populates="postre"
     )
-    combos = relationship("ComboPromocion", secondary="combo_postre", back_populates="postres")
+    combos = relationship("ComboPromocion", secondary="combo_postre", viewonly=True)

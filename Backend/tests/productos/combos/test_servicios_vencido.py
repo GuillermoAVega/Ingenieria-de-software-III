@@ -10,6 +10,7 @@ from src.productos.combos.exceptions import ComboVencidoInmutable
 from src.productos.combos.models import ComboPromocion
 from src.productos.combos.schemas import ComboActualizar
 from src.productos.exceptions import ProductoNoEncontrado
+from tests.productos.combos.ayudas import comp
 
 
 @pytest.fixture
@@ -37,9 +38,9 @@ def _datos(combo, **cambios):
         "imagen": combo.imagen,
         "fecha_desde": combo.fecha_desde,
         "fecha_hasta": combo.fecha_hasta,
-        "platos_ids": combo.platos_ids,
-        "bebidas_ids": combo.bebidas_ids,
-        "postres_ids": combo.postres_ids,
+        "platos": combo.platos,
+        "bebidas": combo.bebidas,
+        "postres": combo.postres,
     }
     datos.update(cambios)
     return ComboActualizar(**datos)
@@ -119,7 +120,7 @@ def test_vencido_inexistente_es_404_antes_que_vencido(sesion, combo_vencido, HOY
 
 
 def test_vencido_se_comprueba_antes_que_los_componentes(sesion, combo_vencido, HOY):
-    datos = _datos(combo_vencido, dado_de_baja=False, postres_ids=[999])
+    datos = _datos(combo_vencido, dado_de_baja=False, postres=comp(999))
 
     with pytest.raises(ComboVencidoInmutable):
         servicios_combos.actualizar_combo(sesion, combo_vencido.id, datos, HOY)
@@ -134,8 +135,8 @@ def test_vencido_se_comprueba_antes_que_los_componentes(sesion, combo_vencido, H
         {"imagen": "x.png"},
         {"fecha_desde": None},
         {"fecha_hasta": None},
-        {"platos_ids": []},
-        {"postres_ids": [999]},
+        {"platos": comp()},
+        {"postres": comp(999)},
     ],
     ids=lambda c: next(iter(c)),
 )
@@ -156,9 +157,9 @@ def test_sin_otros_cambios_ignora_el_orden_y_compara_precio_como_decimal(
     )
     combo_vencido.platos.append(plato_extra)
     sesion.commit()
-    ids_invertidos = list(reversed(combo_vencido.platos_ids))
+    ids_invertidos = list(reversed(combo_vencido.platos))
 
-    datos = _datos(combo_vencido, platos_ids=ids_invertidos, precio=Decimal("3000"))
+    datos = _datos(combo_vencido, platos=ids_invertidos, precio=Decimal("3000"))
 
     assert servicios_combos._sin_otros_cambios(combo_vencido, datos) is True
 

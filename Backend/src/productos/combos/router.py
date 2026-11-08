@@ -23,6 +23,11 @@ def crear_combo(
     return servicios_combos.crear_combo(sesion, datos, hoy)
 
 
+@router.get("", response_model=list[ComboRespuesta])
+def listar_combos(sesion: Session = Depends(get_db)):
+    return servicios_combos.listar_combos(sesion)
+
+
 @router.get("/{producto_id:int}", response_model=ComboRespuesta)
 def obtener_combo(producto_id: int, sesion: Session = Depends(get_db)):
     return services.obtener(sesion, ComboPromocion, producto_id)

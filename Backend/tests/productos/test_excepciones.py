@@ -45,8 +45,8 @@ def test_componente_inactivo_guarda_los_ids():
 
 
 def test_componente_invalido_guarda_campo_e_ids():
-    error = ComponenteInvalido("platos_ids", [9, 4])
-    assert error.campo == "platos_ids"
+    error = ComponenteInvalido("platos", [9, 4])
+    assert error.campo == "platos"
     assert error.ids == [9, 4]
     assert error.mensaje
 

@@ -5,7 +5,7 @@ from decimal import Decimal
 import pytest
 
 from src.productos.bebidas.models import Bebida
-from src.productos.combos.models import ComboPromocion
+from src.productos.combos.models import ComboPlato, ComboPromocion
 from src.productos.menus_ejecutivos.models import MenuEjecutivo
 from src.productos.platos.models import Plato
 from src.productos.postres.models import Postre
@@ -508,7 +508,8 @@ def _persistir_cinco_subtipos(
     hasta = date(2026, 6, 10) if vencido else date(2026, 6, 30)
     combo = ComboPromocion(nombre="Combo", nombre_normalizado="combo",
                            precio=Decimal("3000.00"), fecha_desde=date(2026, 6, 1),
-                           fecha_hasta=hasta, platos=[plato])
+                           fecha_hasta=hasta,
+                           componentes_platos=[ComboPlato(plato=plato, cantidad=1)])
     productos = {
         "plato": plato, "bebida": bebida, "postre": postre, "menu": menu, "combo": combo,
     }
@@ -878,9 +879,9 @@ def _cuerpo_producto(tipo, seccion_id, **extra):
         **comun,
         "fecha_desde": "2026-06-01",
         "fecha_hasta": extra.pop("fecha_hasta", "2026-06-30"),
-        "platos_ids": [extra.pop("plato_id")],
-        "bebidas_ids": [],
-        "postres_ids": [],
+        "platos": [{"id": extra.pop("plato_id"), "cantidad": 1}],
+        "bebidas": [],
+        "postres": [],
         **extra,
     }
 
@@ -983,7 +984,8 @@ def test_ids_10_get_incluye_combo_vencido_pero_activo(
     plato = _plato()
     combo = ComboPromocion(nombre="Combo", nombre_normalizado="combo",
                            precio=Decimal("3000.00"), fecha_desde=date(2026, 6, 1),
-                           fecha_hasta=date(2026, 6, 14), platos=[plato],
+                           fecha_hasta=date(2026, 6, 14),
+                           componentes_platos=[ComboPlato(plato=plato, cantidad=1)],
                            seccion_id=seccion_id)
     combo_id = persistir(combo)
 

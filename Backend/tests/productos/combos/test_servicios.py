@@ -16,6 +16,7 @@ from src.productos.exceptions import (
     SeccionInexistente,
 )
 from src.productos.models import Producto
+from tests.productos.combos.ayudas import comp
 
 
 @pytest.fixture
@@ -33,9 +34,9 @@ def _datos(HOY, **cambios):
         "precio": Decimal("3000.00"),
         "fecha_desde": HOY,
         "fecha_hasta": HOY + timedelta(days=10),
-        "platos_ids": [],
-        "bebidas_ids": [],
-        "postres_ids": [],
+        "platos": comp(),
+        "bebidas": comp(),
+        "postres": comp(),
     }
     datos.update(cambios)
     return ComboCrear(**datos)
@@ -73,9 +74,9 @@ def test_cat_34_crear_combo_con_componentes_activos_persiste(sesion, componentes
         _datos(
             HOY,
             nombre="  Combo Verano ",
-            platos_ids=[plato.id],
-            bebidas_ids=[bebida.id],
-            postres_ids=[postre.id],
+            platos=comp(plato.id),
+            bebidas=comp(bebida.id),
+            postres=comp(postre.id),
         ),
         HOY,
     )
@@ -85,20 +86,20 @@ def test_cat_34_crear_combo_con_componentes_activos_persiste(sesion, componentes
     assert guardado.nombre_normalizado == "combo verano"
     assert guardado.precio == Decimal("3000.00")
     assert guardado.fecha_desde == HOY
-    assert guardado.platos_ids == [plato.id]
-    assert guardado.bebidas_ids == [bebida.id]
-    assert guardado.postres_ids == [postre.id]
+    assert guardado.platos == comp(plato.id)
+    assert guardado.bebidas == comp(bebida.id)
+    assert guardado.postres == comp(postre.id)
     assert guardado.dado_de_baja is False
 
 
 def test_cat_36_crear_combo_con_un_solo_componente_en_una_lista(sesion, componentes, HOY):
     _, bebida, _ = componentes
 
-    combo = servicios_combos.crear_combo(sesion, _datos(HOY, bebidas_ids=[bebida.id]), HOY)
+    combo = servicios_combos.crear_combo(sesion, _datos(HOY, bebidas=comp(bebida.id)), HOY)
 
-    assert combo.platos_ids == []
-    assert combo.bebidas_ids == [bebida.id]
-    assert combo.postres_ids == []
+    assert combo.platos == comp()
+    assert combo.bebidas == comp(bebida.id)
+    assert combo.postres == comp()
 
 
 @pytest.mark.parametrize("id_ajeno", ["plato", "inexistente"])
@@ -110,10 +111,10 @@ def test_cat_38_bebidas_ids_con_id_de_otro_tipo_o_inexistente(
 
     with pytest.raises(ComponenteInvalido) as error:
         servicios_combos.crear_combo(
-            sesion, _datos(HOY, bebidas_ids=[bebida.id, ajeno]), HOY
+            sesion, _datos(HOY, bebidas=comp(bebida.id, ajeno)), HOY
         )
 
-    assert error.value.campo == "bebidas_ids"
+    assert error.value.campo == "bebidas"
     assert error.value.ids == [ajeno]
     assert not sesion.scalars(select(ComboPromocion)).all()
 
@@ -127,7 +128,7 @@ def test_cat_39_crear_combo_con_bebida_dada_de_baja_es_componente_inactivo(
 
     with pytest.raises(ComponenteInactivo) as error:
         servicios_combos.crear_combo(
-            sesion, _datos(HOY, platos_ids=[plato.id], bebidas_ids=[bebida.id]), HOY
+            sesion, _datos(HOY, platos=comp(plato.id), bebidas=comp(bebida.id)), HOY
         )
 
     assert error.value.ids == [bebida.id]
@@ -140,7 +141,7 @@ def test_cat_40_crear_combo_con_fecha_hasta_vencida(sesion, componentes, HOY):
         HOY,
         fecha_desde=HOY - timedelta(days=5),
         fecha_hasta=HOY - timedelta(days=1),
-        platos_ids=[plato.id],
+        platos=comp(plato.id),
     )
 
     with pytest.raises(FechaHastaVencida):
@@ -153,7 +154,7 @@ def test_crear_combo_con_fecha_hasta_igual_a_hoy_se_acepta(sesion, componentes, 
     plato, _, _ = componentes
 
     combo = servicios_combos.crear_combo(
-        sesion, _datos(HOY, fecha_hasta=HOY, platos_ids=[plato.id]), HOY
+        sesion, _datos(HOY, fecha_hasta=HOY, platos=comp(plato.id)), HOY
     )
 
     assert combo.fecha_hasta == HOY
@@ -164,7 +165,7 @@ def test_cat_21_crear_combo_con_nombre_activo_duplicado(sesion, componentes, HOY
 
     with pytest.raises(NombreDuplicado):
         servicios_combos.crear_combo(
-            sesion, _datos(HOY, nombre="MILANESA", platos_ids=[plato.id]), HOY
+            sesion, _datos(HOY, nombre="MILANESA", platos=comp(plato.id)), HOY
         )
 
     assert not sesion.scalars(select(ComboPromocion)).all()
@@ -177,7 +178,7 @@ def test_crear_combo_con_error_no_deja_filas_parciales(sesion, componentes, HOY)
 
     with pytest.raises(ComponenteInactivo):
         servicios_combos.crear_combo(
-            sesion, _datos(HOY, platos_ids=[plato.id], bebidas_ids=[bebida.id]), HOY
+            sesion, _datos(HOY, platos=comp(plato.id), bebidas=comp(bebida.id)), HOY
         )
 
     assert not sesion.in_transaction()
@@ -187,9 +188,9 @@ def test_crear_combo_con_error_no_deja_filas_parciales(sesion, componentes, HOY)
 def _ids_actuales(componentes):
     plato, bebida, postre = componentes
     return {
-        "platos_ids": [plato.id],
-        "bebidas_ids": [bebida.id],
-        "postres_ids": [postre.id],
+        "platos": comp(plato.id),
+        "bebidas": comp(bebida.id),
+        "postres": comp(postre.id),
     }
 
 
@@ -205,15 +206,15 @@ def test_actualizar_combo_reemplaza_el_objeto_y_las_listas_completas(
         sesion,
         combo_persistido.id,
         _datos_actualizar(
-            HOY, nombre="Combo nuevo", platos_ids=[plato_nuevo.id], bebidas_ids=[bebida.id]
+            HOY, nombre="Combo nuevo", platos=comp(plato_nuevo.id), bebidas=comp(bebida.id)
         ),
         HOY,
     )
 
     assert actualizado.nombre == "Combo nuevo"
-    assert actualizado.platos_ids == [plato_nuevo.id]
-    assert actualizado.bebidas_ids == [bebida.id]
-    assert actualizado.postres_ids == []
+    assert actualizado.platos == comp(plato_nuevo.id)
+    assert actualizado.bebidas == comp(bebida.id)
+    assert actualizado.postres == comp()
     assert actualizado.descripcion is None
     assert actualizado.dado_de_baja is False
 
@@ -221,7 +222,7 @@ def test_actualizar_combo_reemplaza_el_objeto_y_las_listas_completas(
 def test_actualizar_combo_desconocido_es_404_antes_que_los_componentes(sesion, HOY):
     with pytest.raises(ProductoNoEncontrado):
         servicios_combos.actualizar_combo(
-            sesion, 999, _datos_actualizar(HOY, platos_ids=[998]), HOY
+            sesion, 999, _datos_actualizar(HOY, platos=comp(998)), HOY
         )
 
 
@@ -232,7 +233,7 @@ def test_cat_42_actualizar_combo_activo_con_componente_inactivo_no_cambia_nada(
     bebida_inactiva.dado_de_baja = True
     sesion.add(bebida_inactiva)
     sesion.commit()
-    ids = {**_ids_actuales(componentes), "bebidas_ids": [bebida_inactiva.id]}
+    ids = {**_ids_actuales(componentes), "bebidas": comp(bebida_inactiva.id)}
 
     with pytest.raises(ComponenteInactivo) as error:
         servicios_combos.actualizar_combo(
@@ -243,7 +244,7 @@ def test_cat_42_actualizar_combo_activo_con_componente_inactivo_no_cambia_nada(
     guardado = sesion.get(ComboPromocion, combo_persistido.id)
     assert error.value.ids == [bebida_inactiva.id]
     assert guardado.nombre == "Combo"
-    assert guardado.bebidas_ids == [componentes[1].id]
+    assert guardado.bebidas == comp(componentes[1].id)
 
 
 @pytest.mark.parametrize("dado_de_baja", [True, None], ids=["true", "omitido"])
@@ -272,14 +273,14 @@ def test_cat_44_combo_de_baja_con_componente_inexistente_es_invalido(
 ):
     combo_persistido.dado_de_baja = True
     sesion.commit()
-    ids = {**_ids_actuales(componentes), "postres_ids": [999]}
+    ids = {**_ids_actuales(componentes), "postres": comp(999)}
 
     with pytest.raises(ComponenteInvalido) as error:
         servicios_combos.actualizar_combo(
             sesion, combo_persistido.id, _datos_actualizar(HOY, dado_de_baja=True, **ids), HOY
         )
 
-    assert error.value.campo == "postres_ids"
+    assert error.value.campo == "postres"
     assert error.value.ids == [999]
 
 
@@ -365,7 +366,7 @@ def test_cat_s_04_crear_combo_con_seccion_guarda_seccion_id(sesion, componentes,
     plato, _, _ = componentes
 
     combo = servicios_combos.crear_combo(
-        sesion, _datos(HOY, platos_ids=[plato.id], seccion_id=seccion.id), HOY
+        sesion, _datos(HOY, platos=comp(plato.id), seccion_id=seccion.id), HOY
     )
 
     assert sesion.get(ComboPromocion, combo.id).seccion_id == seccion.id
@@ -376,7 +377,7 @@ def test_cat_s_05_crear_combo_con_seccion_inexistente_no_persiste(sesion, compon
 
     with pytest.raises(SeccionInexistente):
         servicios_combos.crear_combo(
-            sesion, _datos(HOY, platos_ids=[plato.id], seccion_id=999), HOY
+            sesion, _datos(HOY, platos=comp(plato.id), seccion_id=999), HOY
         )
 
     assert sesion.scalars(select(ComboPromocion)).all() == []
@@ -387,9 +388,9 @@ def test_cat_s_09_28_combo_vigente_cambia_de_seccion_y_rechaza_inexistente(
 ):
     combo = combo_persistido
     base = {
-        "platos_ids": combo.platos_ids,
-        "bebidas_ids": combo.bebidas_ids,
-        "postres_ids": combo.postres_ids,
+        "platos": combo.platos,
+        "bebidas": combo.bebidas,
+        "postres": combo.postres,
     }
 
     servicios_combos.actualizar_combo(
@@ -415,11 +416,11 @@ def test_cat_s_20_referencia_inexistente_tiene_prioridad_sobre_componente_inacti
     with pytest.raises(ComponenteInvalido) as error:
         servicios_combos.crear_combo(
             sesion,
-            _datos(HOY, platos_ids=[plato.id, 999], bebidas_ids=[bebida.id]),
+            _datos(HOY, platos=comp(plato.id, 999), bebidas=comp(bebida.id)),
             HOY,
         )
 
-    assert error.value.campo == "platos_ids"
+    assert error.value.campo == "platos"
 
 
 def test_seccion_inexistente_tiene_prioridad_sobre_componente_inactivo_en_el_alta(
@@ -432,7 +433,7 @@ def test_seccion_inexistente_tiene_prioridad_sobre_componente_inactivo_en_el_alt
     with pytest.raises(SeccionInexistente):
         servicios_combos.crear_combo(
             sesion,
-            _datos(HOY, platos_ids=[plato.id], bebidas_ids=[bebida.id], seccion_id=999),
+            _datos(HOY, platos=comp(plato.id), bebidas=comp(bebida.id), seccion_id=999),
             HOY,
         )
 
@@ -442,11 +443,11 @@ def test_seccion_inexistente_tiene_prioridad_sobre_componente_inactivo_en_el_put
 ):
     combo = combo_persistido
     ids = {
-        "platos_ids": combo.platos_ids,
-        "bebidas_ids": combo.bebidas_ids,
-        "postres_ids": combo.postres_ids,
+        "platos": combo.platos,
+        "bebidas": combo.bebidas,
+        "postres": combo.postres,
     }
-    combo.bebidas[0].dado_de_baja = True
+    combo.componentes_bebidas[0].bebida.dado_de_baja = True
     sesion.commit()
 
     with pytest.raises(SeccionInexistente):
