@@ -337,6 +337,55 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
 .mesa.is-busy { background: var(--c-accent-soft); border-color: #C6D9D1; }
 .mesa.is-reserved { background: var(--c-warning-soft); border-color: #E6D4AE; }
 
+.menu-view { display: flex; flex-direction: column; gap: 20px; }
+.menu-view-cover {
+  display: none; flex-direction: column; align-items: center; justify-content: center;
+  gap: 18px; min-height: 92vh; padding: 40px 24px 56px; text-align: center;
+  background: linear-gradient(180deg, var(--c-surface) 0%, var(--c-accent-soft) 100%);
+  border: 1px solid var(--c-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
+}
+.menu-view-cover-logo {
+  width: 140px; height: 140px; border-radius: 50%; object-fit: contain;
+  background: var(--c-surface); border: 4px solid var(--c-accent-soft);
+}
+.menu-view-cover-title {
+  font-size: clamp(2.2rem, 5vw, 4.2rem); line-height: 1; font-weight: 700;
+  letter-spacing: -.05em; color: var(--c-accent-ink);
+}
+.menu-view-cover-subtitle {
+  font-size: 0.82rem; font-weight: 600; letter-spacing: 0.24em; text-transform: uppercase;
+  color: var(--c-text-3);
+}
+.menu-view-category {
+  display: flex; flex-direction: column; gap: 20px; padding: 24px;
+  background: var(--c-surface); border: 1px solid var(--c-border);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
+}
+.menu-view-category-title {
+  padding-bottom: 12px; border-bottom: 2px solid var(--c-accent);
+  color: var(--c-accent-ink); font-size: 24px; font-weight: 600; letter-spacing: -.02em;
+}
+.menu-view-section { display: flex; flex-direction: column; gap: 8px; padding-left: 14px; border-left: 2px solid var(--c-accent-soft); }
+.menu-view-category > .menu-view-section { padding-left: 0; border-left: 0; gap: 12px; }
+.menu-view-category > .menu-view-section > .menu-view-section-title {
+  padding-bottom: 12px; border-bottom: 2px solid var(--c-accent);
+  color: var(--c-accent-ink); font-size: 24px; letter-spacing: -.02em;
+}
+.menu-view-category > .menu-view-section > .menu-view-section-title > span { color: inherit; }
+.menu-view-section-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; font-size: 17px; font-weight: 600; }
+.menu-view-section-title > span { color: var(--c-text); }
+.menu-view-description { color: var(--c-text-3); font-size: 13px; font-weight: 400; overflow-wrap: anywhere; }
+.menu-view-section-title .menu-view-description { font-size: 13px; }
+.menu-view-items { display: flex; flex-direction: column; gap: 0; margin: 0; padding: 0; list-style: none; }
+.menu-view-item {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 16px;
+  padding: 10px 0; border-top: 1px solid var(--c-border);
+  break-inside: avoid; page-break-inside: avoid;
+}
+.menu-view-item-info { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; }
+.menu-view-item-name { font-weight: 500; }
+.menu-view-price { flex: none; color: var(--c-accent-ink); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
 .bar-row { display: grid; grid-template-columns: minmax(110px, 200px) 1fr 64px; align-items: center; gap: 12px; }
 .bar { height: 8px; border-radius: 4px; background: var(--c-neutral-soft); overflow: hidden; }
 .bar > span { display: block; height: 100%; background: var(--c-accent); }
@@ -556,4 +605,87 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
   .content { padding: 20px 16px 40px; }
   .bar-row { grid-template-columns: 1fr 56px; }
   .bar-row .bar { grid-column: 1 / -1; grid-row: 2; }
+  .menu-view-category { padding: 18px 16px; }
+  .menu-view-category-title { font-size: 21px; }
+}
+
+/* ---------- 14. Layout de impresión ----------
+   Las reglas de `.menu-view--print` se aplican tanto al clon de medición como
+   al documento real durante la impresión, para que las alturas coincidan.
+   La geometría de la hoja debe coincidir con `pagination.ts`. */
+.menu-view--print { display: block; }
+
+.menu-view--print .menu-view-cover {
+  display: flex; height: 270mm; min-height: 0; margin: 0; padding: 8mm;
+  break-after: page; page-break-after: always;
+  box-shadow: none; border: 0; border-radius: 0;
+}
+.menu-view--print .menu-view-cover-logo { width: 90px; height: 90px; }
+.menu-view--print .menu-view-cover-title { font-size: 2.6rem; }
+.menu-view--print .menu-view-cover-subtitle { font-size: 0.7rem; }
+
+.menu-view--print .menu-view-page {
+  display: block;
+  break-after: page; page-break-after: always;
+}
+.menu-view--print .menu-view-page:last-child {
+  break-after: auto; page-break-after: auto;
+}
+
+/* Espaciado entre bloques con padding: no colapsa márgenes y el alto de la
+   hoja es la suma exacta de los bloques. */
+.menu-view--print .print-block { padding-bottom: 10px; }
+
+.menu-view--print .menu-view-section {
+  display: block; padding: 10px 14px; margin: 0;
+  border: 1px solid var(--c-border-strong); border-radius: var(--radius);
+  background: var(--c-surface);
+  break-inside: avoid; page-break-inside: avoid;
+  box-decoration-break: clone; -webkit-box-decoration-break: clone;
+}
+.menu-view--print .menu-view-section--breakable { break-inside: auto; page-break-inside: auto; }
+.menu-view--print .menu-view-section-title {
+  padding-bottom: 8px;
+  break-after: avoid; page-break-after: avoid;
+}
+.menu-view--print .menu-view-items { display: block; }
+.menu-view--print .menu-view-item { break-inside: avoid; page-break-inside: avoid; }
+
+/* Clon oculto de medición: mismo layout que la impresión y ancho de caja de página. */
+.menu-view--measure {
+  position: fixed; top: 0; left: -10000px; width: 186mm;
+  visibility: hidden; pointer-events: none; z-index: -1;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  .sidebar,
+  .page-actions,
+  .nav,
+  .user {
+    display: none !important;
+  }
+
+  .main {
+    display: block;
+  }
+
+  .content {
+    max-width: none;
+    padding: 0;
+  }
+
+  .content:has(.menu-view) > .page-header {
+    display: none;
+  }
+
+  /* Respaldo para impresión directa (Ctrl+P) sin el layout paginado del botón. */
+  .menu-view:not(.menu-view--print) { display: block; }
+  .menu-view:not(.menu-view--print) .menu-view-section {
+    break-inside: avoid; page-break-inside: avoid;
+  }
 }
