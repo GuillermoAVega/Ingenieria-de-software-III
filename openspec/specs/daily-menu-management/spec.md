@@ -7,7 +7,7 @@ Capacidad nueva introducida por el cambio `productos-menu`. Códigos de estado: 
 ## ADDED Requirements
 
 ### Requirement: Entidad ProductoMenu y relación con Producto
-Un `ProductoMenu` DEBE tener `id`, `producto_id` (obligatorio, referencia a un `Producto` de cualquier subtipo) y `fecha` (fecha calendario obligatoria). La fecha DEBE ser única entre todos los registros. La relación entre `ProductoMenu` y `Producto` DEBE ser bidireccional (`ProductoMenu.producto` / `Producto.menus_del_dia`, con `back_populates`, cardinalidad 0..N del lado del producto) y todos los mappers DEBEN configurarse sin errores. La respuesta de un `ProductoMenu` DEBE exponer únicamente `id`, `producto_id` y `fecha`.
+Un `ProductoMenu` DEBE tener `id`, `producto_id` (obligatorio, referencia a un `Producto` de subtipo Plato) y `fecha` (fecha calendario obligatoria). La fecha DEBE ser única entre todos los registros. La relación entre `ProductoMenu` y `Producto` DEBE ser bidireccional (`ProductoMenu.producto` / `Producto.menus_del_dia`, con `back_populates`, cardinalidad 0..N del lado del producto) y todos los mappers DEBEN configurarse sin errores. La respuesta de un `ProductoMenu` DEBE exponer únicamente `id`, `producto_id` y `fecha`.
 
 #### Scenario: PMD-01 Los mappers se configuran con la nueva entidad
 - DADO que los modelos de producto y de menú del día están cargados
@@ -25,7 +25,7 @@ Un `ProductoMenu` DEBE tener `id`, `producto_id` (obligatorio, referencia a un `
 - ENTONCES el cuerpo de la respuesta contiene exactamente las claves `id`, `producto_id` y `fecha`
 
 ### Requirement: Alta de un menú del día
-`POST /productos-menu` con `{producto_id, fecha}` DEBE crear el registro y devolver 201 con `{id, producto_id, fecha}`. La `fecha` PUEDE ser pasada, la de hoy o futura. El `producto_id` PUEDE referir a un producto de cualquiera de los cinco subtipos (Plato, Postre, Bebida, MenuEjecutivo, ComboPromocion).
+`POST /productos-menu` con `{producto_id, fecha}` DEBE crear el registro y devolver 201 con `{id, producto_id, fecha}`. La `fecha` DEBE ser la de hoy o futura; una fecha anterior a hoy DEBE rechazarse con 422. El `producto_id` DEBE referir a un producto de subtipo Plato; los demás subtipos (Postre, Bebida, MenuEjecutivo, ComboPromocion) NO se aceptan.
 
 #### Scenario: PMD-04 Alta válida
 - DADO un producto activo y una fecha sin menú del día
@@ -33,9 +33,9 @@ Un `ProductoMenu` DEBE tener `id`, `producto_id` (obligatorio, referencia a un `
 - ENTONCES 201 y el cuerpo contiene `id`, `producto_id` y `fecha` iguales a los enviados, y el registro queda persistido
 
 #### Scenario: PMD-05 Fecha pasada
-- DADO un producto activo y una fecha anterior a hoy sin menú del día
+- DADO un producto activo y una fecha anterior a hoy
 - CUANDO un cliente llama a `POST /productos-menu`
-- ENTONCES 201
+- ENTONCES 422 con un error de campo (`loc` = `["body", "fecha"]`, `type` = `fecha_pasada`, `msg` = "La fecha del menú del día no puede ser anterior a hoy") y no se crea ningún registro
 
 #### Scenario: PMD-06 Fecha de hoy
 - DADO un producto activo y la fecha de hoy sin menú del día
@@ -47,13 +47,18 @@ Un `ProductoMenu` DEBE tener `id`, `producto_id` (obligatorio, referencia a un `
 - CUANDO un cliente llama a `POST /productos-menu`
 - ENTONCES 201
 
-#### Scenario: PMD-08 Se acepta un producto de cualquiera de los cinco subtipos
-- DADO un producto activo de cada subtipo (Plato, Postre, Bebida, MenuEjecutivo, ComboPromocion) y una fecha distinta para cada uno
-- CUANDO un cliente llama a `POST /productos-menu` para cada producto
-- ENTONCES cada llamada devuelve 201
+#### Scenario: PMD-08 Se acepta un plato
+- DADO un producto activo de subtipo Plato y una fecha sin menú del día
+- CUANDO un cliente llama a `POST /productos-menu`
+- ENTONCES 201
+
+#### Scenario: PMD-08b Se rechaza un producto que no es plato
+- DADO un producto existente de subtipo Postre, Bebida, MenuEjecutivo o ComboPromocion
+- CUANDO un cliente llama a `POST /productos-menu` con su `producto_id`
+- ENTONCES 422 con un error de campo (`loc` = `["body", "producto_id"]`, `type` = `producto_no_plato`, `msg` = "El menú del día solo puede ser un plato") y no se crea ningún registro
 
 ### Requirement: Validación del alta
-`producto_id` es obligatorio y DEBE ser un entero; `fecha` es obligatoria y DEBE ser una fecha válida. Un `producto_id` ausente o no entero DEBE devolver 422; una `fecha` ausente o inválida DEBE devolver 422. Un `producto_id` entero que no corresponda a ningún producto DEBE devolver 422. Un producto dado de baja DEBE devolver 409. Una `fecha` ya ocupada por otro registro DEBE devolver 409. Cuando concurran varios errores, la prioridad DEBE ser: esquema 422, producto inexistente 422, producto dado de baja 409, fecha ocupada 409. Una solicitud rechazada NO DEBE modificar el estado persistido. Ante una carrera entre dos altas con la misma fecha, la violación del índice UNIQUE DEBE traducirse a 409.
+`producto_id` es obligatorio y DEBE ser un entero; `fecha` es obligatoria y DEBE ser una fecha válida. Un `producto_id` ausente o no entero DEBE devolver 422; una `fecha` ausente o inválida DEBE devolver 422. Un `producto_id` entero que no corresponda a ningún producto DEBE devolver 422. Un producto existente que no sea de subtipo Plato DEBE devolver 422. Una `fecha` anterior a hoy DEBE devolver 422. Un producto dado de baja DEBE devolver 409. Una `fecha` ya ocupada por otro registro DEBE devolver 409. Cuando concurran varios errores, la prioridad DEBE ser: esquema 422, producto inexistente 422, producto que no es plato 422, fecha pasada 422, producto dado de baja 409, fecha ocupada 409. Una solicitud rechazada NO DEBE modificar el estado persistido. Ante una carrera entre dos altas con la misma fecha, la violación del índice UNIQUE DEBE traducirse a 409.
 
 #### Scenario: PMD-09 producto_id ausente
 - DADO un cuerpo sin el campo `producto_id`
@@ -116,7 +121,7 @@ Un `ProductoMenu` DEBE tener `id`, `producto_id` (obligatorio, referencia a un `
 - ENTONCES la respuesta es 409 y no 500
 
 ### Requirement: Modificación de la fecha de un menú del día
-`PUT /productos-menu/{id}` DEBE aceptar únicamente `fecha` y devolver 200 con `{id, producto_id, fecha}` actualizado. Conservar la fecha propia del registro DEBE ser válido. Mover el registro a una fecha libre DEBE ser válido. Una fecha ocupada por OTRO registro DEBE devolver 409. Un `id` inexistente DEBE devolver 404. Si el producto asociado está dado de baja, DEBE devolver 409. Un `producto_id` incluido en el cuerpo DEBE ignorarse y NO DEBE modificar el producto asociado. Cuando concurran varios errores, la prioridad DEBE ser: esquema 422, id inexistente 404, producto dado de baja 409, fecha ocupada por otro registro 409. Una solicitud rechazada NO DEBE modificar el estado persistido.
+`PUT /productos-menu/{id}` DEBE aceptar únicamente `fecha` y devolver 200 con `{id, producto_id, fecha}` actualizado. Conservar la fecha propia del registro DEBE ser válido. Mover el registro a una fecha libre DEBE ser válido. Una fecha anterior a hoy DEBE devolver 422 como error de campo sobre `fecha` (`type` = `fecha_pasada`); la de hoy y las futuras son válidas. Una fecha ocupada por OTRO registro DEBE devolver 409. Un `id` inexistente DEBE devolver 404. Si el producto asociado está dado de baja, DEBE devolver 409. Un `producto_id` incluido en el cuerpo DEBE ignorarse y NO DEBE modificar el producto asociado. Cuando concurran varios errores, la prioridad DEBE ser: esquema 422, id inexistente 404, fecha pasada 422, producto dado de baja 409, fecha ocupada por otro registro 409. Una solicitud rechazada NO DEBE modificar el estado persistido.
 
 #### Scenario: PMD-21 Mover a una fecha libre
 - DADO un registro con `fecha = F1` y una fecha libre `F2`
@@ -172,6 +177,21 @@ Un `ProductoMenu` DEBE tener `id`, `producto_id` (obligatorio, referencia a un `
 - DADO un conjunto de registros existentes
 - CUANDO una llamada a `PUT /productos-menu/{id}` es rechazada con 422, 404 o 409
 - ENTONCES el conjunto de registros persistidos es idéntico al previo
+
+#### Scenario: PMD-48 Fecha pasada en el PUT
+- DADO un menú del día existente
+- CUANDO un cliente llama a `PUT /productos-menu/{id}` con una fecha anterior a hoy
+- ENTONCES 422 con un error de campo (`loc` = `["body", "fecha"]`, `type` = `fecha_pasada`, `msg` = "La fecha del menú del día no puede ser anterior a hoy") y el registro conserva su fecha
+
+#### Scenario: PMD-49 Fecha de hoy o futura en el PUT
+- DADO un menú del día existente
+- CUANDO un cliente llama a `PUT /productos-menu/{id}` con la fecha de hoy o una posterior, libre
+- ENTONCES 200 y el registro queda con la nueva fecha
+
+#### Scenario: PMD-50 La fecha pasada prevalece sobre los conflictos de estado
+- DADO un producto dado de baja o una fecha ya ocupada
+- CUANDO un cliente envía además una fecha anterior a hoy en `POST` o `PUT /productos-menu`
+- ENTONCES 422 por fecha pasada, y no 409
 
 ### Requirement: Borrado físico de un menú del día
 `DELETE /productos-menu/{id}` DEBE eliminar físicamente el registro y devolver 204 sin cuerpo. Un `id` inexistente, o un DELETE repetido sobre el mismo `id`, DEBE devolver 404. El borrado NO DEBE verificar el estado (`dado_de_baja`) del producto asociado. La fecha liberada DEBE poder reutilizarse en un `POST` posterior.

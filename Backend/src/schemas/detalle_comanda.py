@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class DetalleComandaBase(BaseModel):
@@ -20,6 +20,14 @@ class DetalleComandaUpdate(BaseModel):
     observaciones: str | None = Field(default=None, max_length=255)
     producto_id: int | None = None
     entregado: bool | None = None
+
+    @field_validator("producto_id")
+    @classmethod
+    def producto_no_nulo(cls, valor):
+        # Omitirlo es válido (no cambia); enviarlo como null no lo es
+        if valor is None:
+            raise ValueError("producto_id no puede ser null")
+        return valor
 
 
 class DetalleComandaOut(DetalleComandaBase):

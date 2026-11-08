@@ -4,6 +4,7 @@ TIPO_BEBIDA = "bebida"
 TIPO_POSTRE = "postre"
 TIPO_MENU_EJECUTIVO = "menu_ejecutivo"
 TIPO_COMBO_PROMOCION = "combo_promocion"
+TIPO_MENU_DEL_DIA = "menu_del_dia"
 
 # Límites de validación y de columnas
 NOMBRE_MAX = 100

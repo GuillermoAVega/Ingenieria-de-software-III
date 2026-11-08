@@ -7,28 +7,51 @@ from sqlalchemy import Date, Integer, inspect, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import configure_mappers
 
-from src.productos.registro import Plato, ProductoMenu
 from src.productos.models import Producto
+from src.productos.registro import MenuDelDia, ProductoMenu
 
 
-def test_pmd_01_mappers_se_configuran_con_la_nueva_entidad():
+def test_mdd_01_mappers_se_configuran_con_la_nueva_entidad():
     configure_mappers()
 
 
-def test_pmd_02_relacion_bidireccional(sesion, crear_plato):
-    plato = crear_plato()
+def test_mdd_01_relacion_bidireccional(sesion, crear_menu_del_dia):
+    menu = crear_menu_del_dia()
     registro = ProductoMenu(fecha=date(2026, 6, 15))
-    registro.producto = plato
-    assert registro in plato.menus_del_dia
+    registro.menu_del_dia = menu
+    assert registro in menu.fechas
 
-    otro = crear_plato(nombre="Pizza")
+    otro = crear_menu_del_dia(nombre="Menú del martes")
     otra = ProductoMenu(fecha=date(2026, 6, 16))
-    otro.menus_del_dia.append(otra)
-    assert otra.producto is otro
+    otro.fechas.append(otra)
+    assert otra.menu_del_dia is otro
 
-    sesion.add_all([plato, otro])
+    sesion.add_all([menu, otro])
     sesion.commit()
-    assert sesion.get(ProductoMenu, registro.id).producto is plato
+    assert sesion.get(ProductoMenu, registro.id).menu_del_dia is menu
+
+
+def test_mdd_03_menu_sin_fechas_tiene_coleccion_vacia(sesion, crear_menu_del_dia):
+    menu = crear_menu_del_dia()
+    sesion.add(menu)
+    sesion.commit()
+
+    assert menu.fechas == []
+
+
+def test_fechas_del_menu_ordenadas_por_fecha(sesion, crear_menu_del_dia):
+    menu = crear_menu_del_dia()
+    sesion.add(menu)
+    sesion.commit()
+    sesion.add_all(
+        [
+            ProductoMenu(menu_del_dia_id=menu.id, fecha=date(2026, 6, 20)),
+            ProductoMenu(menu_del_dia_id=menu.id, fecha=date(2026, 6, 10)),
+        ]
+    )
+    sesion.commit()
+
+    assert [r.fecha for r in menu.fechas] == [date(2026, 6, 10), date(2026, 6, 20)]
 
 
 def test_tabla_producto_menu_con_las_columnas_del_diseno(motor):
@@ -36,20 +59,20 @@ def test_tabla_producto_menu_con_las_columnas_del_diseno(motor):
     assert "producto_menu" in inspector.get_table_names()
 
     columnas = {c["name"]: c for c in inspector.get_columns("producto_menu")}
-    assert set(columnas) == {"id", "producto_id", "fecha"}
+    assert set(columnas) == {"id", "menu_del_dia_id", "fecha"}
     assert isinstance(columnas["id"]["type"], Integer)
-    assert isinstance(columnas["producto_id"]["type"], Integer)
+    assert isinstance(columnas["menu_del_dia_id"]["type"], Integer)
     assert isinstance(columnas["fecha"]["type"], Date)
-    assert columnas["producto_id"]["nullable"] is False
+    assert columnas["menu_del_dia_id"]["nullable"] is False
     assert columnas["fecha"]["nullable"] is False
 
 
-def test_producto_id_y_fecha_son_obligatorios(sesion, crear_plato):
-    plato = crear_plato()
-    sesion.add(plato)
+def test_menu_del_dia_id_y_fecha_son_obligatorios(sesion, crear_menu_del_dia):
+    menu = crear_menu_del_dia()
+    sesion.add(menu)
     sesion.commit()
 
-    sesion.add(ProductoMenu(producto_id=plato.id))
+    sesion.add(ProductoMenu(menu_del_dia_id=menu.id))
     with pytest.raises(IntegrityError):
         sesion.commit()
     sesion.rollback()
@@ -59,18 +82,18 @@ def test_producto_id_y_fecha_son_obligatorios(sesion, crear_plato):
         sesion.commit()
 
 
-def test_fk_a_producto_sin_clausula_on_delete(motor):
+def test_fk_a_menu_del_dia_sin_clausula_on_delete(motor):
     claves = inspect(motor).get_foreign_keys("producto_menu")
     assert len(claves) == 1
-    assert claves[0]["constrained_columns"] == ["producto_id"]
-    assert claves[0]["referred_table"] == "producto"
+    assert claves[0]["constrained_columns"] == ["menu_del_dia_id"]
+    assert claves[0]["referred_table"] == "menu_del_dia"
     assert claves[0]["referred_columns"] == ["id"]
     assert not claves[0].get("options", {}).get("ondelete")
 
 
-def test_indice_simple_sobre_producto_id(motor):
+def test_indice_simple_sobre_menu_del_dia_id(motor):
     indices = inspect(motor).get_indexes("producto_menu")
-    simples = [i for i in indices if i["column_names"] == ["producto_id"]]
+    simples = [i for i in indices if i["column_names"] == ["menu_del_dia_id"]]
     assert len(simples) == 1
     assert not simples[0]["unique"]
 
@@ -81,37 +104,42 @@ def test_indice_ux_producto_menu_fecha_es_unico(motor):
     assert indices["ux_producto_menu_fecha"]["column_names"] == ["fecha"]
 
 
-def test_pmd_15_indice_unico_rechaza_fecha_repetida(sesion, crear_plato, crear_postre):
-    plato, postre = crear_plato(), crear_postre()
-    sesion.add_all([plato, postre])
+def test_indice_unico_rechaza_fecha_repetida(sesion, crear_menu_del_dia):
+    uno, otro = crear_menu_del_dia(), crear_menu_del_dia(nombre="Otro")
+    sesion.add_all([uno, otro])
     sesion.commit()
-    sesion.add(ProductoMenu(producto_id=plato.id, fecha=date(2026, 6, 15)))
+    sesion.add(ProductoMenu(menu_del_dia_id=uno.id, fecha=date(2026, 6, 15)))
     sesion.commit()
 
-    sesion.add(ProductoMenu(producto_id=postre.id, fecha=date(2026, 6, 15)))
+    sesion.add(ProductoMenu(menu_del_dia_id=otro.id, fecha=date(2026, 6, 15)))
     with pytest.raises(IntegrityError) as error:
         sesion.commit()
     assert "producto_menu.fecha" in str(error.value.orig)
 
 
-def test_pmd_40_un_producto_con_varias_fechas(sesion, crear_plato):
-    plato = crear_plato()
-    sesion.add(plato)
+def test_mdd_24_un_menu_con_varias_fechas(sesion, crear_menu_del_dia):
+    menu = crear_menu_del_dia()
+    sesion.add(menu)
     sesion.commit()
     sesion.add_all(
         [
-            ProductoMenu(producto_id=plato.id, fecha=date(2026, 6, 15)),
-            ProductoMenu(producto_id=plato.id, fecha=date(2026, 6, 16)),
+            ProductoMenu(menu_del_dia_id=menu.id, fecha=date(2026, 6, 15)),
+            ProductoMenu(menu_del_dia_id=menu.id, fecha=date(2026, 6, 16)),
         ]
     )
     sesion.commit()
 
     assert len(sesion.scalars(select(ProductoMenu)).all()) == 2
-    assert {m.fecha for m in plato.menus_del_dia} == {date(2026, 6, 15), date(2026, 6, 16)}
+    assert {m.fecha for m in menu.fechas} == {date(2026, 6, 15), date(2026, 6, 16)}
 
 
-def test_producto_menus_del_dia_sin_cascada_delete():
-    relacion = inspect(Producto).relationships["menus_del_dia"]
+def test_producto_menu_no_tiene_producto_id_ni_producto_no_tiene_menus_del_dia():
+    assert not hasattr(ProductoMenu, "producto_id")
+    assert not hasattr(Producto, "menus_del_dia")
+
+
+def test_menu_del_dia_fechas_sin_cascada_delete():
+    relacion = inspect(MenuDelDia).relationships["fechas"]
     assert "delete" not in relacion.cascade
 
 

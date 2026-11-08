@@ -1,6 +1,7 @@
 from datetime import date
 
 import pytest
+from tests.productos.combos.ayudas import comp
 
 PREFIJO = "/productos/combos"
 AYER = date(2026, 6, 14)  # HOY fijo de las pruebas es 2026-06-15
@@ -20,9 +21,9 @@ def _cuerpo(**cambios):
         "precio": "3000.00",
         "fecha_desde": "2026-06-01",
         "fecha_hasta": "2026-06-30",
-        "platos_ids": [],
-        "bebidas_ids": [],
-        "postres_ids": [],
+        "platos": comp(),
+        "bebidas": comp(),
+        "postres": comp(),
         **cambios,
     }
 
@@ -33,7 +34,7 @@ def _combo_vencido(crear_combo, plato, **cambios):
 
 
 def _cuerpo_vencido(plato_id, **cambios):
-    return _cuerpo(fecha_desde="2026-05-01", fecha_hasta=AYER.isoformat(), platos_ids=[plato_id], **cambios)
+    return _cuerpo(fecha_desde="2026-05-01", fecha_hasta=AYER.isoformat(), platos=comp(plato_id), **cambios)
 
 
 def test_cat_34_combo_valido_responde_201_con_los_componentes(cliente, componentes):
@@ -41,16 +42,16 @@ def test_cat_34_combo_valido_responde_201_con_los_componentes(cliente, component
 
     respuesta = cliente.post(
         PREFIJO,
-        json=_cuerpo(platos_ids=[plato_id], bebidas_ids=[bebida_id], postres_ids=[postre_id]),
+        json=_cuerpo(platos=comp(plato_id), bebidas=comp(bebida_id), postres=comp(postre_id)),
     )
 
     assert respuesta.status_code == 201
     cuerpo = respuesta.json()
     assert isinstance(cuerpo["id"], int)
     assert cuerpo["tipo"] == "combo_promocion"
-    assert cuerpo["platos_ids"] == [plato_id]
-    assert cuerpo["bebidas_ids"] == [bebida_id]
-    assert cuerpo["postres_ids"] == [postre_id]
+    assert cuerpo["platos"] == comp(plato_id)
+    assert cuerpo["bebidas"] == comp(bebida_id)
+    assert cuerpo["postres"] == comp(postre_id)
     assert cuerpo["fecha_desde"] == "2026-06-01"
     assert cuerpo["fecha_hasta"] == "2026-06-30"
     assert cuerpo["dado_de_baja"] is False
@@ -59,14 +60,14 @@ def test_cat_34_combo_valido_responde_201_con_los_componentes(cliente, component
 def test_cat_34_combo_con_fecha_hasta_igual_a_hoy_se_acepta(cliente, componentes):
     plato_id, *_ = componentes
 
-    respuesta = cliente.post(PREFIJO, json=_cuerpo(fecha_hasta="2026-06-15", platos_ids=[plato_id]))
+    respuesta = cliente.post(PREFIJO, json=_cuerpo(fecha_hasta="2026-06-15", platos=comp(plato_id)))
 
     assert respuesta.status_code == 201
 
 
 def test_obtener_combo_por_id_devuelve_el_combo(cliente, componentes):
     plato_id, *_ = componentes
-    creado = cliente.post(PREFIJO, json=_cuerpo(platos_ids=[plato_id])).json()
+    creado = cliente.post(PREFIJO, json=_cuerpo(platos=comp(plato_id))).json()
 
     respuesta = cliente.get(f"{PREFIJO}/{creado['id']}")
 
@@ -87,17 +88,17 @@ def test_cat_35_combo_con_las_tres_listas_vacias_responde_422(cliente):
 def test_cat_36_combo_con_un_unico_componente_responde_201(cliente, componentes):
     _, bebida_id, _ = componentes
 
-    respuesta = cliente.post(PREFIJO, json=_cuerpo(bebidas_ids=[bebida_id]))
+    respuesta = cliente.post(PREFIJO, json=_cuerpo(bebidas=comp(bebida_id)))
 
     assert respuesta.status_code == 201
-    assert respuesta.json()["bebidas_ids"] == [bebida_id]
-    assert respuesta.json()["platos_ids"] == []
+    assert respuesta.json()["bebidas"] == comp(bebida_id)
+    assert respuesta.json()["platos"] == comp()
 
 
 def test_cat_37_ids_duplicados_en_una_lista_responden_422(cliente, componentes):
     plato_id, *_ = componentes
 
-    respuesta = cliente.post(PREFIJO, json=_cuerpo(platos_ids=[plato_id, plato_id]))
+    respuesta = cliente.post(PREFIJO, json=_cuerpo(platos=comp(plato_id, plato_id)))
 
     assert respuesta.status_code == 422
 
@@ -105,20 +106,20 @@ def test_cat_37_ids_duplicados_en_una_lista_responden_422(cliente, componentes):
 def test_cat_38_bebidas_ids_con_un_plato_responde_422_con_los_ids(cliente, componentes):
     plato_id, *_ = componentes
 
-    respuesta = cliente.post(PREFIJO, json=_cuerpo(bebidas_ids=[plato_id]))
+    respuesta = cliente.post(PREFIJO, json=_cuerpo(bebidas=comp(plato_id)))
 
     assert respuesta.status_code == 422
     error = respuesta.json()["detail"][0]
-    assert error["loc"] == ["body", "bebidas_ids"]
+    assert error["loc"] == ["body", "bebidas"]
     assert error["ids"] == [plato_id]
 
 
 def test_cat_38_bebidas_ids_con_un_id_inexistente_responde_422_con_los_ids(cliente):
-    respuesta = cliente.post(PREFIJO, json=_cuerpo(bebidas_ids=[999]))
+    respuesta = cliente.post(PREFIJO, json=_cuerpo(bebidas=comp(999)))
 
     assert respuesta.status_code == 422
     error = respuesta.json()["detail"][0]
-    assert error["loc"] == ["body", "bebidas_ids"]
+    assert error["loc"] == ["body", "bebidas"]
     assert error["ids"] == [999]
 
 
@@ -127,7 +128,7 @@ def test_cat_39_bebida_inactiva_responde_409_con_los_ids(cliente, crear_bebida, 
     bebida.dado_de_baja = True
     bebida_id = persistir(bebida)
 
-    respuesta = cliente.post(PREFIJO, json=_cuerpo(bebidas_ids=[bebida_id]))
+    respuesta = cliente.post(PREFIJO, json=_cuerpo(bebidas=comp(bebida_id)))
 
     assert respuesta.status_code == 409
     assert respuesta.json()["ids"] == [bebida_id]
@@ -137,7 +138,7 @@ def test_cat_40_fecha_hasta_anterior_a_hoy_responde_422_sobre_fecha_hasta(client
     plato_id, *_ = componentes
 
     respuesta = cliente.post(
-        PREFIJO, json=_cuerpo(fecha_desde="2026-05-01", fecha_hasta="2026-06-14", platos_ids=[plato_id])
+        PREFIJO, json=_cuerpo(fecha_desde="2026-05-01", fecha_hasta="2026-06-14", platos=comp(plato_id))
     )
 
     assert respuesta.status_code == 422
@@ -148,7 +149,7 @@ def test_cat_29_rango_de_fechas_invertido_responde_422(cliente, componentes):
     plato_id, *_ = componentes
 
     respuesta = cliente.post(
-        PREFIJO, json=_cuerpo(fecha_desde="2026-07-01", fecha_hasta="2026-06-20", platos_ids=[plato_id])
+        PREFIJO, json=_cuerpo(fecha_desde="2026-07-01", fecha_hasta="2026-06-20", platos=comp(plato_id))
     )
 
     assert respuesta.status_code == 422
@@ -157,7 +158,7 @@ def test_cat_29_rango_de_fechas_invertido_responde_422(cliente, componentes):
 def test_cat_21_combo_con_nombre_de_producto_activo_responde_409(cliente, componentes):
     plato_id, *_ = componentes
 
-    respuesta = cliente.post(PREFIJO, json=_cuerpo(nombre="milanesa", platos_ids=[plato_id]))
+    respuesta = cliente.post(PREFIJO, json=_cuerpo(nombre="milanesa", platos=comp(plato_id)))
 
     assert respuesta.status_code == 409
 
@@ -260,10 +261,10 @@ def test_delete_de_combo_desconocido_responde_404(cliente):
 
 def test_ld_18_baja_via_put_de_un_combo_no_vencido_responde_200_de_baja(cliente, componentes):
     plato_id, *_ = componentes
-    creado = cliente.post(PREFIJO, json=_cuerpo(platos_ids=[plato_id])).json()
+    creado = cliente.post(PREFIJO, json=_cuerpo(platos=comp(plato_id))).json()
 
     respuesta = cliente.put(
-        f"{PREFIJO}/{creado['id']}", json=_cuerpo(platos_ids=[plato_id], dado_de_baja=True)
+        f"{PREFIJO}/{creado['id']}", json=_cuerpo(platos=comp(plato_id), dado_de_baja=True)
     )
 
     assert respuesta.status_code == 200
@@ -279,7 +280,7 @@ def test_ld_20_reactivar_combo_con_componentes_activos_responde_200(
     plato_id, combo_id = persistir(plato, combo)
 
     respuesta = cliente.put(
-        f"{PREFIJO}/{combo_id}", json=_cuerpo(platos_ids=[plato_id], dado_de_baja=False)
+        f"{PREFIJO}/{combo_id}", json=_cuerpo(platos=comp(plato_id), dado_de_baja=False)
     )
 
     assert respuesta.status_code == 200
@@ -293,10 +294,10 @@ def test_put_de_combo_activo_con_componente_inactivo_responde_409_con_ids(
     bebida = crear_bebida()
     bebida.dado_de_baja = True
     plato_id, bebida_id = persistir(plato, bebida)
-    creado = cliente.post(PREFIJO, json=_cuerpo(platos_ids=[plato_id])).json()
+    creado = cliente.post(PREFIJO, json=_cuerpo(platos=comp(plato_id))).json()
 
     respuesta = cliente.put(
-        f"{PREFIJO}/{creado['id']}", json=_cuerpo(platos_ids=[plato_id], bebidas_ids=[bebida_id])
+        f"{PREFIJO}/{creado['id']}", json=_cuerpo(platos=comp(plato_id), bebidas=comp(bebida_id))
     )
 
     assert respuesta.status_code == 409
@@ -307,7 +308,7 @@ def test_cat_s_04_crear_combo_con_seccion(cliente, componentes, crear_seccion, p
     plato_id, *_ = componentes
     seccion_id = persistir(crear_seccion())
 
-    respuesta = cliente.post(PREFIJO, json=_cuerpo(platos_ids=[plato_id], seccion_id=seccion_id))
+    respuesta = cliente.post(PREFIJO, json=_cuerpo(platos=comp(plato_id), seccion_id=seccion_id))
 
     assert respuesta.status_code == 201
     assert respuesta.json()["seccion_id"] == seccion_id
@@ -316,7 +317,7 @@ def test_cat_s_04_crear_combo_con_seccion(cliente, componentes, crear_seccion, p
 def test_cat_s_05_crear_combo_con_seccion_inexistente_responde_422(cliente, componentes):
     plato_id, *_ = componentes
 
-    respuesta = cliente.post(PREFIJO, json=_cuerpo(platos_ids=[plato_id], seccion_id=999))
+    respuesta = cliente.post(PREFIJO, json=_cuerpo(platos=comp(plato_id), seccion_id=999))
 
     assert respuesta.status_code == 422
     assert respuesta.json()["detail"][0]["type"] == "seccion_inexistente"
@@ -327,13 +328,13 @@ def test_cat_s_09_put_de_combo_vigente_acepta_y_rechaza_seccion_id(
 ):
     plato_id, *_ = componentes
     seccion_id = persistir(crear_seccion())
-    combo = cliente.post(PREFIJO, json=_cuerpo(platos_ids=[plato_id])).json()
+    combo = cliente.post(PREFIJO, json=_cuerpo(platos=comp(plato_id))).json()
 
     valido = cliente.put(
-        f"{PREFIJO}/{combo['id']}", json=_cuerpo(platos_ids=[plato_id], seccion_id=seccion_id)
+        f"{PREFIJO}/{combo['id']}", json=_cuerpo(platos=comp(plato_id), seccion_id=seccion_id)
     )
     invalido = cliente.put(
-        f"{PREFIJO}/{combo['id']}", json=_cuerpo(platos_ids=[plato_id], seccion_id=999)
+        f"{PREFIJO}/{combo['id']}", json=_cuerpo(platos=comp(plato_id), seccion_id=999)
     )
 
     assert valido.status_code == 200
@@ -346,10 +347,10 @@ def test_cat_s_28_un_combo_vigente_puede_cambiar_de_seccion(
 ):
     plato_id, *_ = componentes
     dos, tres = persistir(crear_seccion("Dos"), crear_seccion("Tres"))
-    combo = cliente.post(PREFIJO, json=_cuerpo(platos_ids=[plato_id], seccion_id=dos)).json()
+    combo = cliente.post(PREFIJO, json=_cuerpo(platos=comp(plato_id), seccion_id=dos)).json()
 
     respuesta = cliente.put(
-        f"{PREFIJO}/{combo['id']}", json=_cuerpo(platos_ids=[plato_id], seccion_id=tres)
+        f"{PREFIJO}/{combo['id']}", json=_cuerpo(platos=comp(plato_id), seccion_id=tres)
     )
 
     assert respuesta.status_code == 200
@@ -376,7 +377,7 @@ def test_cat_s_20_las_referencias_inexistentes_tienen_prioridad_sobre_componente
 
     respuesta = cliente.put(
         f"{PREFIJO}/{combo_id}",
-        json=_cuerpo(platos_ids=[plato_id, 999], bebidas_ids=[bebida_id]),
+        json=_cuerpo(platos=comp(plato_id, 999), bebidas=comp(bebida_id)),
     )
 
     assert respuesta.status_code == 422
@@ -478,3 +479,94 @@ def test_cat_s_27_delete_de_combo_vencido_no_altera_la_seccion(
     actual = cliente.get(f"{PREFIJO}/{combo_id}").json()
     assert actual["dado_de_baja"] is True
     assert actual["seccion_id"] == dos
+
+
+def test_pro_74_listar_combos_devuelve_solo_los_activos(
+    cliente, crear_combo, crear_plato, persistir
+):
+    plato = crear_plato()
+    activo_id, _ = persistir(
+        crear_combo(nombre="Activo", platos=[plato]),
+        crear_combo(nombre="De baja", platos=[plato], dado_de_baja=True),
+    )
+    respuesta = cliente.get(PREFIJO)
+    assert respuesta.status_code == 200
+    assert [c["id"] for c in respuesta.json()] == [activo_id]
+    assert respuesta.json()[0]["tipo"] == "combo_promocion"
+
+
+def test_plc_54_combo_con_cantidades(cliente, componentes):
+    plato_id, bebida_id, _ = componentes
+
+    respuesta = cliente.post(
+        PREFIJO,
+        json=_cuerpo(platos=comp(plato_id, cantidad=2), bebidas=comp(bebida_id, cantidad=3)),
+    )
+
+    assert respuesta.status_code == 201
+    assert respuesta.json()["platos"] == comp(plato_id, cantidad=2)
+    assert respuesta.json()["bebidas"] == comp(bebida_id, cantidad=3)
+    assert respuesta.json()["postres"] == []
+
+
+@pytest.mark.parametrize("cantidad", [1, 1000])
+def test_plc_55_y_57_cantidad_minima_y_sin_maximo(cliente, componentes, cantidad):
+    # PLC-55, PLC-57
+    plato_id, _, _ = componentes
+    respuesta = cliente.post(PREFIJO, json=_cuerpo(platos=comp(plato_id, cantidad=cantidad)))
+    assert respuesta.status_code == 201
+    assert respuesta.json()["platos"] == comp(plato_id, cantidad=cantidad)
+
+
+@pytest.mark.parametrize("cantidad", [0, -1, 1.5, None])
+def test_plc_56_cantidad_invalida_responde_422_y_no_crea(cliente, componentes, cantidad):
+    plato_id, _, _ = componentes
+    componente = {"id": plato_id} if cantidad is None else {"id": plato_id, "cantidad": cantidad}
+
+    respuesta = cliente.post(PREFIJO, json=_cuerpo(platos=[componente]))
+
+    assert respuesta.status_code == 422
+    assert cliente.get(PREFIJO).json() == []
+
+
+def test_ids_duplicados_con_distinta_cantidad_responden_422(cliente, componentes):
+    plato_id, _, _ = componentes
+    cuerpo = _cuerpo(platos=[*comp(plato_id), *comp(plato_id, cantidad=2)])
+    assert cliente.post(PREFIJO, json=cuerpo).status_code == 422
+
+
+def test_combo_sin_componentes_responde_422(cliente):
+    assert cliente.post(PREFIJO, json=_cuerpo()).status_code == 422
+
+
+def test_plc_58_consulta_y_listado_devuelven_componentes_con_cantidad(cliente, componentes):
+    plato_id, bebida_id, _ = componentes
+    creado = cliente.post(
+        PREFIJO,
+        json=_cuerpo(platos=comp(plato_id, cantidad=2), bebidas=comp(bebida_id)),
+    ).json()
+
+    por_id = cliente.get(f"{PREFIJO}/{creado['id']}").json()
+    listado = cliente.get(PREFIJO).json()[0]
+
+    for combo in (por_id, listado):
+        assert combo["platos"] == comp(plato_id, cantidad=2)
+        assert combo["bebidas"] == comp(bebida_id)
+        assert combo["postres"] == []
+        assert not {"platos_ids", "bebidas_ids", "postres_ids"} & set(combo)
+
+
+def test_plc_59_put_modifica_las_cantidades_y_los_componentes(cliente, componentes):
+    plato_id, bebida_id, _ = componentes
+    creado = cliente.post(
+        PREFIJO, json=_cuerpo(platos=comp(plato_id), bebidas=comp(bebida_id))
+    ).json()
+
+    respuesta = cliente.put(
+        f"{PREFIJO}/{creado['id']}", json=_cuerpo(platos=comp(plato_id, cantidad=4))
+    )
+
+    assert respuesta.status_code == 200
+    assert respuesta.json()["platos"] == comp(plato_id, cantidad=4)
+    assert respuesta.json()["bebidas"] == []
+    assert cliente.get(f"{PREFIJO}/{creado['id']}").json()["platos"] == comp(plato_id, cantidad=4)

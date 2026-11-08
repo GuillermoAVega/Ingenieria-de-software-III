@@ -44,8 +44,6 @@ class Producto(ModeloBase):
 
     # Referencia a Seccion solo por cadena; `registro` carga su modelo
     seccion = relationship("Seccion", back_populates="productos")
-    # Referencia a ProductoMenu solo por cadena; sin cascada `delete` (historial)
-    menus_del_dia = relationship("ProductoMenu", back_populates="producto")
     # Referencias por cadena a los detalles que consumen el producto
     detalles_reserva = relationship("DetalleReserva", back_populates="producto")
     detalles_comanda = relationship("DetalleComanda", back_populates="producto")

@@ -18,6 +18,7 @@ import { SectionFormPage } from '../features/sections/SectionFormPage'
 import { PromotionsListPage } from '../features/promotions/PromotionsListPage'
 import { PromotionFormPage } from '../features/promotions/PromotionFormPage'
 import { MenuViewPage } from '../features/menu-view/MenuViewPage'
+import { ComboFormPage } from '../features/combos/ComboFormPage'
 import { TablesAndSectorsPage } from '../features/tables/TablesAndSectorsPage'
 import { SectorFormPage } from '../features/tables/SectorFormPage'
 import { TableFormPage } from '../features/tables/TableFormPage'
@@ -112,8 +113,20 @@ export const routes: RouteDefinition[] = [
     render: () => <MenuViewPage />,
   },
   {
+    path: '/productos/combos/nuevo',
+    render: () => <ComboFormPage />,
+  },
+  {
+    path: '/productos/combos/:id/editar',
+    render: (params) => <ComboFormPage id={params.id} />,
+  },
+  {
     path: '/productos/nuevo',
     render: () => <ProductFormPage />,
+  },
+  {
+    path: '/productos/:tipo',
+    render: (params) => <ProductsListPage tipo={params.tipo} />,
   },
   {
     path: '/productos/:tipo/nuevo',

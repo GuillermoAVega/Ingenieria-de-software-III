@@ -1,6 +1,6 @@
 /**
  * EQUIPO: Carta
- * FUNCIONALIDAD: Alta y edición de platos, bebidas y postres
+ * FUNCIONALIDAD: Alta y edición de platos, bebidas, postres y menús del día
  * La lógica del formulario vive en `useProductForm`; la pantalla solo renderiza.
  */
 import {
@@ -38,10 +38,16 @@ const TITLES: Record<ProductType, { new: string; edit: string; save: string; loa
     save: 'Guardar postre',
     loading: 'Cargando postre...',
   },
+  'menus-del-dia': {
+    new: 'Nuevo menú del día',
+    edit: 'Editar menú del día',
+    save: 'Guardar menú del día',
+    loading: 'Cargando menú del día...',
+  },
 }
 
 function normalizeType(tipo?: string): ProductType {
-  return tipo === 'bebidas' || tipo === 'postres' ? tipo : 'platos'
+  return tipo === 'bebidas' || tipo === 'postres' || tipo === 'menus-del-dia' ? tipo : 'platos'
 }
 
 export function ProductFormPage({ tipo, id }: { tipo?: string; id?: string }) {
@@ -75,7 +81,7 @@ function ProductForm({ tipo, id }: { tipo: ProductType; id?: string }) {
           <Card
             footer={
               <>
-                <Button onClick={() => navigate('/productos')} disabled={state.saving}>
+                <Button onClick={() => navigate(`/productos/${tipo}`)} disabled={state.saving}>
                   Cancelar
                 </Button>
                 <Button variant="primary" type="submit" disabled={state.saving}>

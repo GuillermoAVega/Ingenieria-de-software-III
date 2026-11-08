@@ -4,26 +4,31 @@ import { getSections } from '../sections/api'
 import type { SeccionRespuesta } from '../sections/api'
 import {
   deleteBebida,
+  deleteMenuDelDia,
   deletePlato,
   deletePostre,
   getBebidas,
+  getMenusDelDia,
   getPlatos,
   getPostres,
 } from './api'
-import type { BebidaRespuesta, PlatoRespuesta, PostreRespuesta } from './api'
+import type { BebidaRespuesta, MenuDelDiaListado, PlatoRespuesta, PostreRespuesta } from './api'
 
 export const PRODUCT_TABS = [
   { id: 'platos', label: 'Platos' },
   { id: 'bebidas', label: 'Bebidas' },
   { id: 'postres', label: 'Postres' },
+  { id: 'menus-del-dia', label: 'Menús del día' },
+  { id: 'combos', label: 'Combos' },
 ] as const
 
 export type ProductTabId = (typeof PRODUCT_TABS)[number]['id']
 
-export type ProductListItem = PlatoRespuesta | BebidaRespuesta | PostreRespuesta
+export type ProductListTabId = Exclude<ProductTabId, 'combos'>
+
+export type ProductListItem = PlatoRespuesta | BebidaRespuesta | PostreRespuesta | MenuDelDiaListado
 
 type ProductsListState = {
-  activeTab: ProductTabId
   products: ProductListItem[]
   loading: boolean
   error: string | null
@@ -36,7 +41,6 @@ type ProductsListState = {
 }
 
 const initialState: ProductsListState = {
-  activeTab: 'platos',
   products: [],
   loading: true,
   error: null,
@@ -48,19 +52,25 @@ const initialState: ProductsListState = {
   reloadToken: 0,
 }
 
-function fetchProducts(tab: ProductTabId): Promise<ProductListItem[]> {
+function fetchProducts(tab: ProductListTabId): Promise<ProductListItem[]> {
   if (tab === 'bebidas') return getBebidas()
   if (tab === 'postres') return getPostres()
+  if (tab === 'menus-del-dia') return getMenusDelDia()
   return getPlatos()
 }
 
-function deleteProduct(tab: ProductTabId, id: number): Promise<void> {
+function deleteProduct(tab: ProductListTabId, id: number): Promise<void> {
   if (tab === 'bebidas') return deleteBebida(id)
   if (tab === 'postres') return deletePostre(id)
+  if (tab === 'menus-del-dia') return deleteMenuDelDia(id)
   return deletePlato(id)
 }
 
-export function useProductsList() {
+export function normalizeProductTab(tipo?: string): ProductTabId {
+  return PRODUCT_TABS.find((tab) => tab.id === tipo)?.id ?? 'platos'
+}
+
+export function useProductsList(activeTab: ProductTabId) {
   const [state, setState] = useState<ProductsListState>(initialState)
 
   useEffect(() => {
@@ -86,9 +96,13 @@ export function useProductsList() {
 
   useEffect(() => {
     let cancelled = false
-    const tab = state.activeTab
+    const tab = activeTab
 
     async function loadProducts() {
+      if (tab === 'combos') {
+        setState((previous) => ({ ...previous, products: [], loading: false, error: null }))
+        return
+      }
       setState((previous) => ({ ...previous, loading: true, error: null }))
       try {
         const products = await fetchProducts(tab)
@@ -110,11 +124,7 @@ export function useProductsList() {
     return () => {
       cancelled = true
     }
-  }, [state.activeTab, state.reloadToken])
-
-  const updateTab = (activeTab: string) => {
-    setState((previous) => ({ ...previous, activeTab: activeTab as ProductTabId }))
-  }
+  }, [activeTab, state.reloadToken])
 
   const updateSearch = (search: string) => {
     setState((previous) => ({ ...previous, search }))
@@ -125,7 +135,8 @@ export function useProductsList() {
   }
 
   const remove = async (id: number) => {
-    const tab = state.activeTab
+    const tab = activeTab
+    if (tab === 'combos') return
     setState((previous) => ({ ...previous, deletingId: id, error: null }))
     try {
       await deleteProduct(tab, id)
@@ -154,7 +165,6 @@ export function useProductsList() {
   return {
     state,
     products,
-    updateTab,
     updateSearch,
     updateSection,
     remove,

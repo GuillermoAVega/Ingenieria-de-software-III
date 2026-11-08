@@ -6,6 +6,7 @@ import pytest
 from sqlalchemy import Integer, event, inspect
 from sqlalchemy.exc import IntegrityError
 
+from src.productos.combos.models import ComboPlato
 from src.productos.registro import (
     Bebida,
     ComboPromocion,
@@ -193,7 +194,7 @@ def _combo(plato, **cambios):
         precio=Decimal("3000.00"),
         fecha_desde=date.today() - timedelta(days=30),
         fecha_hasta=date.today() + timedelta(days=30),
-        platos=[plato],
+        componentes_platos=[ComboPlato(plato=plato, cantidad=1)],
         **cambios,
     )
 

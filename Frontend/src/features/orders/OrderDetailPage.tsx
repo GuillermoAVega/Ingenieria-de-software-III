@@ -358,7 +358,7 @@ function OrderDetail({ id }: { id: number }) {
               onClick={() => {
                 void detail.generateInvoice()
               }}
-              disabled={detail.state.invoiceSaving || !invoiceComplete}
+              disabled={detail.state.invoiceSaving}
             >
               {detail.state.invoiceSaving ? 'Generando...' : 'Generar factura'}
             </Button>

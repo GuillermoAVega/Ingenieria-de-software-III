@@ -12,4 +12,4 @@ class Bebida(Producto):
     id = mapped_column(ForeignKey("producto.id"), primary_key=True)
     es_alcoholica = mapped_column(Boolean, nullable=False)
 
-    combos = relationship("ComboPromocion", secondary="combo_bebida", back_populates="bebidas")
+    combos = relationship("ComboPromocion", secondary="combo_bebida", viewonly=True)

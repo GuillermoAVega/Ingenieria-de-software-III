@@ -6,15 +6,19 @@ from sqlalchemy.orm import Session
 
 from src.productos import services
 from src.productos.combos.exceptions import ComboVencidoInmutable, FechaHastaVencida
-from src.productos.combos.schemas import ComboActualizar, ComboCrear
+from src.productos.combos.models import ComboBebida, ComboPlato, ComboPostre
+from src.productos.combos.schemas import ComboActualizar, ComboCrear, ComponenteCombo
 from src.productos.exceptions import ComponenteInactivo, ComponenteInvalido, ErrorDominio
 from src.productos.registro import Bebida, ComboPromocion, Plato, Postre
 
 
-def _buscar_componentes(sesion: Session, modelo, campo: str, ids: list[int]) -> list:
+def _buscar_componentes(
+    sesion: Session, modelo, campo: str, componentes: list[ComponenteCombo]
+) -> list:
     """Devuelve los componentes del subtipo `modelo` o lanza `ComponenteInvalido(campo, faltantes)`."""
-    if not ids:
+    if not componentes:
         return []
+    ids = [componente.id for componente in componentes]
     encontrados = sesion.scalars(select(modelo).where(modelo.id.in_(ids))).all()
     faltantes = sorted(set(ids) - {componente.id for componente in encontrados})
     if faltantes:
@@ -31,9 +35,9 @@ def verificar_componentes_activos(*listas: list) -> None:
 
 def resolver_componentes_combo(
     sesion: Session,
-    platos_ids: list[int],
-    bebidas_ids: list[int],
-    postres_ids: list[int],
+    platos: list[ComponenteCombo],
+    bebidas: list[ComponenteCombo],
+    postres: list[ComponenteCombo],
     exigir_activos: bool,
 ) -> tuple[list[Plato], list[Bebida], list[Postre]]:
     """Devuelve los platos, bebidas y postres del combo tras validarlos.
@@ -41,12 +45,30 @@ def resolver_componentes_combo(
     Existencia y tipo se validan siempre (`ComponenteInvalido`, 422); que estén
     activos solo si `exigir_activos` (`ComponenteInactivo`, 409).
     """
-    platos = _buscar_componentes(sesion, Plato, "platos_ids", platos_ids)
-    bebidas = _buscar_componentes(sesion, Bebida, "bebidas_ids", bebidas_ids)
-    postres = _buscar_componentes(sesion, Postre, "postres_ids", postres_ids)
+    entidades_platos = _buscar_componentes(sesion, Plato, "platos", platos)
+    entidades_bebidas = _buscar_componentes(sesion, Bebida, "bebidas", bebidas)
+    entidades_postres = _buscar_componentes(sesion, Postre, "postres", postres)
     if exigir_activos:
-        verificar_componentes_activos(platos, bebidas, postres)
-    return platos, bebidas, postres
+        verificar_componentes_activos(entidades_platos, entidades_bebidas, entidades_postres)
+    return entidades_platos, entidades_bebidas, entidades_postres
+
+
+def _sincronizar(clase, columna: str, actuales: list, nuevos: list[ComponenteCombo]) -> list:
+    """Asociaciones resultantes: reutiliza las existentes (cambia `cantidad`), crea las
+    nuevas y descarta las ausentes (la cascada `delete-orphan` las borra)."""
+    por_id = {getattr(asociacion, columna): asociacion for asociacion in actuales}
+    resultado = []
+    for componente in nuevos:
+        asociacion = por_id.get(componente.id)
+        if asociacion is None:
+            asociacion = clase(**{columna: componente.id})
+        asociacion.cantidad = componente.cantidad
+        resultado.append(asociacion)
+    return resultado
+
+
+def listar_combos(sesion: Session) -> list[ComboPromocion]:
+    return services.listar(sesion, ComboPromocion)
 
 
 def crear_combo(sesion: Session, datos: ComboCrear, hoy: date) -> ComboPromocion:
@@ -59,7 +81,7 @@ def crear_combo(sesion: Session, datos: ComboCrear, hoy: date) -> ComboPromocion
         if datos.fecha_hasta < hoy:
             raise FechaHastaVencida()
         platos, bebidas, postres = resolver_componentes_combo(
-            sesion, datos.platos_ids, datos.bebidas_ids, datos.postres_ids, exigir_activos=False
+            sesion, datos.platos, datos.bebidas, datos.postres, exigir_activos=False
         )
         services.verificar_seccion(sesion, datos.seccion_id)
         verificar_componentes_activos(platos, bebidas, postres)
@@ -72,17 +94,27 @@ def crear_combo(sesion: Session, datos: ComboCrear, hoy: date) -> ComboPromocion
         datos,
         fecha_desde=datos.fecha_desde,
         fecha_hasta=datos.fecha_hasta,
-        platos=platos,
-        bebidas=bebidas,
-        postres=postres,
+        componentes_platos=_sincronizar(ComboPlato, "plato_id", [], datos.platos),
+        componentes_bebidas=_sincronizar(ComboBebida, "bebida_id", [], datos.bebidas),
+        componentes_postres=_sincronizar(ComboPostre, "postre_id", [], datos.postres),
     )
+
+
+def _a_mapa(componentes: list) -> dict[int, int]:
+    """`{id: cantidad}` de componentes del payload (objetos) o del combo (diccionarios)."""
+    return {
+        (c["id"] if isinstance(c, dict) else c.id): (
+            c["cantidad"] if isinstance(c, dict) else c.cantidad
+        )
+        for c in componentes
+    }
 
 
 def _sin_otros_cambios(combo: ComboPromocion, datos: ComboActualizar) -> bool:
     """Indica si el payload (sin `dado_de_baja`) coincide con lo persistido.
 
     `nombre` ya viene recortado; `precio` se compara como `Decimal`;
-    `descripcion`, `imagen` y `seccion_id` incluyen `None`; las listas de ids, como conjuntos.
+    `descripcion`, `imagen` y `seccion_id` incluyen `None`; las listas de componentes, como `{id: cantidad}`.
     """
     return (
         datos.nombre == combo.nombre
@@ -92,9 +124,9 @@ def _sin_otros_cambios(combo: ComboPromocion, datos: ComboActualizar) -> bool:
         and datos.seccion_id == combo.seccion_id
         and datos.fecha_desde == combo.fecha_desde
         and datos.fecha_hasta == combo.fecha_hasta
-        and set(datos.platos_ids) == set(combo.platos_ids)
-        and set(datos.bebidas_ids) == set(combo.bebidas_ids)
-        and set(datos.postres_ids) == set(combo.postres_ids)
+        and _a_mapa(datos.platos) == _a_mapa(combo.platos)
+        and _a_mapa(datos.bebidas) == _a_mapa(combo.bebidas)
+        and _a_mapa(datos.postres) == _a_mapa(combo.postres)
     )
 
 
@@ -129,9 +161,9 @@ def actualizar_combo(
         )
         platos, bebidas, postres = resolver_componentes_combo(
             sesion,
-            datos.platos_ids,
-            datos.bebidas_ids,
-            datos.postres_ids,
+            datos.platos,
+            datos.bebidas,
+            datos.postres,
             exigir_activos=False,
         )
         services.verificar_seccion(sesion, datos.seccion_id)
@@ -155,7 +187,13 @@ def actualizar_combo(
         verificar_reactivacion=verificar_reactivacion,
         fecha_desde=datos.fecha_desde,
         fecha_hasta=datos.fecha_hasta,
-        platos=platos,
-        bebidas=bebidas,
-        postres=postres,
+        componentes_platos=_sincronizar(
+            ComboPlato, "plato_id", combo.componentes_platos, datos.platos
+        ),
+        componentes_bebidas=_sincronizar(
+            ComboBebida, "bebida_id", combo.componentes_bebidas, datos.bebidas
+        ),
+        componentes_postres=_sincronizar(
+            ComboPostre, "postre_id", combo.componentes_postres, datos.postres
+        ),
     )

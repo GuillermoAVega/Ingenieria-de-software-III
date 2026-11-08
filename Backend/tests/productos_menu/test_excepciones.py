@@ -6,15 +6,17 @@ from src.productos_menu import exceptions as excepciones
 from src.productos_menu.exceptions import (
     ErrorProductoMenu,
     FechaMenuOcupada,
-    ProductoDadoDeBaja,
-    ProductoInexistente,
+    MenuDelDiaDadoDeBaja,
+    MenuDelDiaInexistente,
     ProductoMenuNoEncontrado,
+    ProductoNoMenuDelDia,
 )
 from src.secciones.exceptions import ErrorSeccion
 
 CONCRETAS = (
-    ProductoInexistente,
-    ProductoDadoDeBaja,
+    MenuDelDiaInexistente,
+    ProductoNoMenuDelDia,
+    MenuDelDiaDadoDeBaja,
     FechaMenuOcupada,
     ProductoMenuNoEncontrado,
 )
@@ -34,18 +36,18 @@ def test_jerarquia_disjunta_de_productos_y_secciones():
     assert not issubclass(ErrorSeccion, ErrorProductoMenu)
 
 
-def test_producto_inexistente_guarda_producto_id():
-    error = ProductoInexistente(42)
+def test_menu_del_dia_inexistente_guarda_producto_id():
+    error = MenuDelDiaInexistente(42)
 
-    assert error.producto_id == 42
+    assert error.menu_del_dia_id == 42
     assert error.mensaje
 
 
 def test_cada_excepcion_tiene_mensaje():
     instancias = (
         ErrorProductoMenu(),
-        ProductoInexistente(1),
-        ProductoDadoDeBaja(),
+        MenuDelDiaInexistente(1),
+        MenuDelDiaDadoDeBaja(),
         FechaMenuOcupada(),
         ProductoMenuNoEncontrado(),
     )
@@ -55,7 +57,7 @@ def test_cada_excepcion_tiene_mensaje():
 
 
 def test_mensajes_de_baja_y_fecha_ocupada_difieren():
-    assert ProductoDadoDeBaja().mensaje != FechaMenuOcupada().mensaje
+    assert MenuDelDiaDadoDeBaja().mensaje != FechaMenuOcupada().mensaje
 
 
 def test_mensaje_personalizado():

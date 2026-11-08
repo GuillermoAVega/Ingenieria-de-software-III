@@ -5,8 +5,8 @@ import {
   Button,
   Card,
   DataTable,
+  DateInput,
   Field,
-  Input,
   PageHeader,
   Select,
 } from '../../ui/ui'
@@ -210,11 +210,10 @@ export function WaiterAttentionsPage({ id }: { id: string }) {
                   </Select>
                 </Field>
                 <Field label="Fecha desde" required>
-                  <Input
-                    type="date"
+                  <DateInput
                     value={startDate}
                     max={today}
-                    onChange={(event) => setStartDate(event.target.value)}
+                    onChange={setStartDate}
                     required
                     disabled={!waiter.estado}
                   />
@@ -241,15 +240,14 @@ export function WaiterAttentionsPage({ id }: { id: string }) {
                 const finishDate = finishDates[attention.id] ?? localDate()
                 return (
                   <div className="row">
-                    <Input
-                      type="date"
+                    <DateInput
                       aria-label={`Fecha hasta de ${attention.sector}`}
                       min={attention.fecha_desde}
                       max={today}
                       value={finishDate}
                       required
-                      onChange={(event) =>
-                        setFinishDates((current) => ({ ...current, [attention.id]: event.target.value }))
+                      onChange={(value) =>
+                        setFinishDates((current) => ({ ...current, [attention.id]: value }))
                       }
                     />
                     <Button

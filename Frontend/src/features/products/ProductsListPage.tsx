@@ -16,45 +16,74 @@ import {
   Tabs,
   Toolbar,
   ToolbarSpacer,
-} from '../../ui/ui'
-import type { DataTableColumn } from '../../ui/ui'
-import { navigate } from '../../app/navigation'
-import { PRODUCT_TABS, useProductsList } from './useProductsList'
-import type { ProductListItem } from './useProductsList'
+} from "../../ui/ui";
+import type { DataTableColumn } from "../../ui/ui";
+import { navigate } from "../../app/navigation";
+import { CombosTable } from "../combos/CombosTable";
+import { formatDate } from "../../utils/format";
+import { PRODUCT_TABS, normalizeProductTab, useProductsList } from "./useProductsList";
+import type { ProductListItem, ProductTabId } from "./useProductsList";
 
-const formatCurrency = (value: string) => `$ ${Number(value).toLocaleString('es-AR')}`
+const formatCurrency = (value: string) =>
+  `$ ${Number(value).toLocaleString("es-AR")}`;
 
 const SINGULAR: Record<string, string> = {
-  platos: 'plato',
-  bebidas: 'bebida',
-  postres: 'postre',
+  platos: "plato",
+  bebidas: "bebida",
+  postres: "postre",
+  "menus-del-dia": "menú del día",
+  combos: "combo",
+};
+
+export function ProductsListPage({ tipo }: { tipo?: string }) {
+  const activeTab = normalizeProductTab(tipo);
+  // `key` reinicia búsqueda y sección al cambiar de pestaña.
+  return <ProductsList key={activeTab} activeTab={activeTab} />;
 }
 
-export function ProductsListPage() {
-  const { state, products, updateTab, updateSearch, updateSection, remove } = useProductsList()
+function ProductsList({ activeTab }: { activeTab: ProductTabId }) {
+  const { state, products, updateSearch, updateSection, remove } =
+    useProductsList(activeTab);
+  const isCombos = activeTab === "combos";
 
-  const sectionsById = new Map(state.sections.map((section) => [section.id, section.nombre]))
-  const tabs = PRODUCT_TABS.map((tab) => ({ ...tab }))
+  const sectionsById = new Map(
+    state.sections.map((section) => [section.id, section.nombre]),
+  );
+  const tabs = PRODUCT_TABS.map((tab) => ({ ...tab }));
 
   const columns: DataTableColumn<ProductListItem>[] = [
     {
-      key: 'nombre',
-      header: 'Producto',
+      key: "nombre",
+      header: "Producto",
       render: (product) => <span className="cell-main">{product.nombre}</span>,
     },
+    ...(activeTab === "menus-del-dia"
+      ? [
+          {
+            key: "proxima_fecha",
+            header: "Fecha",
+            render: (product: ProductListItem) =>
+              "proxima_fecha" in product && product.proxima_fecha
+                ? formatDate(product.proxima_fecha)
+                : "—",
+          },
+        ]
+      : []),
     {
-      key: 'seccion',
-      header: 'Sección',
+      key: "seccion",
+      header: "Sección",
       render: (product) =>
-        product.seccion_id === null ? '—' : (sectionsById.get(product.seccion_id) ?? '—'),
+        product.seccion_id === null
+          ? "—"
+          : (sectionsById.get(product.seccion_id) ?? "—"),
     },
     {
-      key: 'precio',
-      header: 'Precio',
+      key: "precio",
+      header: "Precio",
       num: true,
       render: (product) => formatCurrency(product.precio),
     },
-  ]
+  ];
 
   return (
     <>
@@ -63,25 +92,24 @@ export function ProductsListPage() {
         subtitle="Carta vigente, precios y secciones de cada producto."
         actions={
           <>
-            <Button onClick={() => navigate('/menus/dia/nuevo')}>Nuevo menú del día</Button>
             <Button
               variant="primary"
-              onClick={() => navigate(`/productos/${state.activeTab}/nuevo`)}
+              onClick={() => navigate(`/productos/${activeTab}/nuevo`)}
             >
-              Nuevo {SINGULAR[state.activeTab]}
+              Nuevo {SINGULAR[activeTab]}
             </Button>
           </>
         }
       />
 
-      {state.error && (
+      {!isCombos && state.error && (
         <Alert tone="danger" title="No se pudieron cargar los productos">
           {state.error}
         </Alert>
       )}
 
       <Card flush>
-        <Tabs tabs={tabs} active={state.activeTab} onChange={updateTab} />
+        <Tabs tabs={tabs} active={activeTab} onChange={(id) => navigate(`/productos/${id}`)} />
 
         <Toolbar>
           <Input
@@ -104,7 +132,9 @@ export function ProductsListPage() {
           <ToolbarSpacer />
         </Toolbar>
 
-        {state.loading ? (
+        {isCombos ? (
+          <CombosTable search={state.search} sectionId={state.sectionId} />
+        ) : state.loading ? (
           <p className="muted">Cargando productos...</p>
         ) : (
           <DataTable
@@ -119,19 +149,29 @@ export function ProductsListPage() {
               <div className="row">
                 <Button
                   size="sm"
-                  onClick={() => navigate(`/productos/${state.activeTab}/${product.id}/editar`)}
+                  onClick={() =>
+                    navigate(
+                      `/productos/${activeTab}/${product.id}/editar`,
+                    )
+                  }
                   disabled={state.deletingId === product.id}
                 >
                   Editar
                 </Button>
                 <DeleteButton
-                  title={`Eliminar ${SINGULAR[state.activeTab]}`}
+                  title={`Eliminar ${SINGULAR[activeTab]}`}
                   onConfirm={() => {
-                    void remove(product.id)
+                    void remove(product.id);
                   }}
                 >
-                  ¿Querés eliminar <strong>{product.nombre}</strong> de la carta? Esta acción no se
-                  puede deshacer.
+                  ¿Querés eliminar <strong>{product.nombre}</strong> de la
+                  carta? Esta acción no se puede deshacer.
+                  {"proxima_fecha" in product && product.proxima_fecha && (
+                    <>
+                      {" "}
+                      También se eliminarán sus fechas asignadas posteriores a hoy.
+                    </>
+                  )}
                 </DeleteButton>
               </div>
             )}
@@ -139,5 +179,5 @@ export function ProductsListPage() {
         )}
       </Card>
     </>
-  )
+  );
 }

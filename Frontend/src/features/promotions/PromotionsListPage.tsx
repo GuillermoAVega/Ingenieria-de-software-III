@@ -1,119 +1,151 @@
 /**
  * EQUIPO: Carta
  * FUNCIONALIDAD: Listado de promociones
- * COMPLETAR:
- * 1. Reemplazar DEMO_PROMOTIONS por la llamada a la API.
- * 2. Implementar búsqueda, filtro por estado y paginación.
- * 3. Conectar Editar y Eliminar con la API.
+ * La lógica vive en `usePromotionsList`; la pantalla solo renderiza.
  */
-import { Badge, Button, Card, DataTable, DeleteButton, Input, PageHeader, Pagination, Select, Toolbar, ToolbarSpacer } from '../../ui/ui'
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  DataTable,
+  DeleteButton,
+  EmptyState,
+  Input,
+  PageHeader,
+  Select,
+  Toolbar,
+} from '../../ui/ui'
 import type { DataTableColumn } from '../../ui/ui'
 import { navigate } from '../../app/navigation'
-import { DEMO_PROMOTIONS } from './demo'
+import { usePromotionsList } from './usePromotionsList'
+import type { PromotionStatusFilter } from './usePromotionsList'
+import { formatBenefit } from './format'
 import type { Promotion } from './types'
 
-const formatCurrency = (value: number) => `$ ${value.toLocaleString('es-AR')}`
-
-const formatDiscount = (promotion: Promotion) =>
-  promotion.discountType === 'Porcentaje'
-    ? `${promotion.discountValue}%`
-    : formatCurrency(promotion.discountValue)
+const IN_USE_REASON =
+  'Ya se aplicó en facturas, por eso no se puede editar. Podés darla de baja y crear una nueva.'
 
 const columns: DataTableColumn<Promotion>[] = [
   {
-    key: 'name',
+    key: 'nombre',
     header: 'Nombre',
-    render: (promotion) => <span className="cell-main">{promotion.name}</span>,
+    render: (promotion) => <span className="cell-main">{promotion.nombre}</span>,
   },
   {
-    key: 'appliesTo',
-    header: 'Aplica a',
+    key: 'beneficio',
+    header: 'Beneficio',
+    render: (promotion) => formatBenefit(promotion),
   },
   {
-    key: 'discountValue',
-    header: 'Descuento',
+    key: 'productos',
+    header: 'Productos',
     num: true,
-    render: (promotion) => formatDiscount(promotion),
+    render: (promotion) => promotion.productos_ids.length,
   },
   {
-    key: 'from',
+    key: 'vigencia',
     header: 'Vigencia',
-    render: (promotion) => `${promotion.from} → ${promotion.to}`,
+    render: (promotion) => `${promotion.fecha_desde} → ${promotion.fecha_hasta}`,
   },
   {
-    key: 'active',
+    key: 'estado',
     header: 'Estado',
     render: (promotion) => (
-      <Badge tone={promotion.active ? 'success' : 'neutral'}>
-        {promotion.active ? 'Activa' : 'Inactiva'}
+      <Badge tone={promotion.dado_de_baja ? 'neutral' : 'success'}>
+        {promotion.dado_de_baja ? 'De baja' : 'Activa'}
       </Badge>
     ),
+  },
+  {
+    key: 'uso',
+    header: 'Uso',
+    render: (promotion) =>
+      promotion.en_uso ? (
+        <span title={IN_USE_REASON}>
+          <Badge tone="info">En uso</Badge>
+        </span>
+      ) : null,
   },
 ]
 
 export function PromotionsListPage() {
+  const { state, promotions, updateSearch, updateStatusFilter, remove } = usePromotionsList()
+
   return (
     <>
       <PageHeader
         title="Promociones"
         subtitle="Descuentos vigentes sobre productos y combinaciones de la carta."
         actions={
-          <Button variant="primary" onClick={() => navigate('/promociones/nueva')}>
-            Nueva promoción
-          </Button>
+          <>
+            <Button variant="primary" onClick={() => navigate('/promociones/nueva')}>
+              Nueva promoción
+            </Button>
+          </>
         }
       />
+
+      {state.error && (
+        <Alert tone="danger" title="No se pudo completar la operación">
+          {state.error}
+        </Alert>
+      )}
 
       <Card flush>
         <Toolbar>
           <Input
             placeholder="Buscar promoción..."
-            onChange={() => {
-              // TODO(equipo-carta): filtrar promociones por texto.
-            }}
+            value={state.search}
+            onChange={(event) => updateSearch(event.target.value)}
           />
           <Select
-            defaultValue=""
-            onChange={() => {
-              // TODO(equipo-carta): filtrar promociones por estado.
-            }}
+            value={state.statusFilter}
+            onChange={(event) => updateStatusFilter(event.target.value as PromotionStatusFilter)}
           >
-            <option value="">Todos los estados</option>
-            <option value="activa">Activas</option>
-            <option value="inactiva">Inactivas</option>
+            <option value="activas">Solo activas</option>
+            <option value="todas">Incluir dadas de baja</option>
+            <option value="bajas">Solo dadas de baja</option>
           </Select>
-          <ToolbarSpacer />
-          <span className="muted text-sm">Datos de demostración</span>
         </Toolbar>
 
-        <DataTable
-          columns={columns}
-          rows={DEMO_PROMOTIONS}
-          actions={(promotion) => (
-            <div className="row">
-              <Button size="sm" onClick={() => navigate(`/promociones/${promotion.id}/editar`)}>
-                Editar
-              </Button>
-              <DeleteButton
-                title="Eliminar promoción"
-                onConfirm={() => {
-                  // TODO(equipo-carta): eliminar la promoción en la API.
-                }}
-              >
-                ¿Querés eliminar <strong>{promotion.name}</strong>?
-              </DeleteButton>
-            </div>
-          )}
-        />
-
-        <Pagination
-          page={1}
-          pageSize={10}
-          total={DEMO_PROMOTIONS.length}
-          onPageChange={() => {
-            // TODO(equipo-carta): implementar la paginación contra la API.
-          }}
-        />
+        {state.loading ? (
+          <p className="muted">Cargando promociones...</p>
+        ) : (
+          <DataTable
+            columns={columns}
+            rows={promotions}
+            empty={
+              <EmptyState title="Sin promociones">
+                Todavía no hay promociones cargadas.
+              </EmptyState>
+            }
+            actions={(promotion) => (
+              <div className="row">
+                {!promotion.en_uso && (
+                  <Button
+                    size="sm"
+                    onClick={() => navigate(`/promociones/${promotion.id}/editar`)}
+                    disabled={state.deletingId === promotion.id}
+                  >
+                    Editar
+                  </Button>
+                )}
+                {!promotion.dado_de_baja && (
+                  <DeleteButton
+                    title="Dar de baja promoción"
+                    onConfirm={() => {
+                      void remove(promotion.id)
+                    }}
+                  >
+                    ¿Querés dar de baja <strong>{promotion.nombre}</strong>? Dejará de aplicarse a
+                    nuevas facturas.
+                  </DeleteButton>
+                )}
+              </div>
+            )}
+          />
+        )}
       </Card>
     </>
   )

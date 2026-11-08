@@ -9,6 +9,7 @@ import {
   Button,
   Card,
   DataTable,
+  DateInput,
   DeleteButton,
   EmptyState,
   Input,
@@ -17,7 +18,7 @@ import {
 } from '../../ui/ui'
 import type { DataTableColumn } from '../../ui/ui'
 import { navigate } from '../../app/navigation'
-import { formatDate, tipoLabel } from '../menus/format'
+import { formatDate } from '../menus/format'
 import { useDailyMenusList } from './useDailyMenusList'
 import type { ProductoMenuDetalle } from './api'
 
@@ -28,24 +29,19 @@ const columns: DataTableColumn<ProductoMenuDetalle>[] = [
     render: (menu) => <span className="cell-main">{formatDate(menu.fecha)}</span>,
   },
   {
-    key: 'producto',
-    header: 'Producto',
+    key: 'menu_del_dia',
+    header: 'Menú del día',
     render: (menu) => (
       <div className="row">
-        <span>{menu.producto_nombre}</span>
-        {menu.producto_dado_de_baja && <Badge tone="warning">Dado de baja</Badge>}
+        <span>{menu.menu_del_dia_nombre}</span>
+        {menu.menu_del_dia_dado_de_baja && <Badge tone="warning">Dado de baja</Badge>}
       </div>
     ),
-  },
-  {
-    key: 'tipo',
-    header: 'Tipo',
-    render: (menu) => tipoLabel(menu.producto_tipo),
   },
 ]
 
 export function DailyMenusTab() {
-  const { state, menus, updateSearch, remove } = useDailyMenusList()
+  const { state, menus, hasFilters, updateSearch, updateDateFilter, clearFilters, remove } = useDailyMenusList()
 
   return (
     <>
@@ -58,12 +54,26 @@ export function DailyMenusTab() {
       <Card flush>
         <Toolbar>
           <Input
-            placeholder="Buscar por producto, tipo o fecha..."
+            placeholder="Buscar por menú del día"
             value={state.search}
             onChange={(event) => updateSearch(event.target.value)}
           />
+          <div className="toolbar-filter">
+            <span className="muted">Filtrar por fecha</span>
+            <DateInput
+              aria-label="Filtrar por fecha"
+              value={state.dateFilter}
+              onChange={updateDateFilter}
+            />
+          </div>
+          {hasFilters && (
+            <Button size="sm" onClick={clearFilters}>
+              Limpiar
+            </Button>
+          )}
           <ToolbarSpacer />
-          <Button variant="primary" onClick={() => navigate('/menus/dia/nuevo')}>
+          <Button onClick={() => navigate('/menus/dia/nuevo')}>Asignar menú del día</Button>
+          <Button variant="primary" onClick={() => navigate('/productos/menus-del-dia/nuevo')}>
             Nuevo menú del día
           </Button>
         </Toolbar>

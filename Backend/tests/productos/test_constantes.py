@@ -7,6 +7,7 @@ def test_valores_de_tipos():
     assert constantes.TIPO_POSTRE == "postre"
     assert constantes.TIPO_MENU_EJECUTIVO == "menu_ejecutivo"
     assert constantes.TIPO_COMBO_PROMOCION == "combo_promocion"
+    assert constantes.TIPO_MENU_DEL_DIA == "menu_del_dia"
 
 
 def test_valores_de_limites():
@@ -24,6 +25,7 @@ def test_tipos_distintos_y_caben_en_tipo_max():
         constantes.TIPO_POSTRE,
         constantes.TIPO_MENU_EJECUTIVO,
         constantes.TIPO_COMBO_PROMOCION,
+        constantes.TIPO_MENU_DEL_DIA,
     ]
     assert len(set(tipos)) == len(tipos)
     assert all(len(tipo) <= constantes.TIPO_MAX for tipo in tipos)

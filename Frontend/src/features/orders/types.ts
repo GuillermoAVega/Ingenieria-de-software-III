@@ -68,10 +68,8 @@ export type Invoice = {
 
 export type InvoiceLinePayload = {
   factura_id: number
-  detalle_comanda_id: number | null
-  precio_unitario: number
+  detalle_comanda_id: number
   cantidad: number
-  precio_final?: number
 }
 
 export type InvoiceLine = {
@@ -82,5 +80,6 @@ export type InvoiceLine = {
   precio_unitario: number
   cantidad: number
   precio_final: number
+  unidades_gratis: number
   activo: boolean
 }

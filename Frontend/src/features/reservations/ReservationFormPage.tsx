@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Alert, Button, Card, Field, Input, PageHeader, Select, Textarea } from '../../ui/ui'
+import { Alert, Button, Card, DateInput, Field, Input, PageHeader, Select, Textarea } from '../../ui/ui'
 import { navigate } from '../../app/navigation'
 import {
   addReservationDetail,
@@ -305,7 +305,7 @@ export function ReservationFormPage({ id }: { id?: string }) {
                   </Field>
 
                   <Field label="Fecha" required>
-                    <Input type="date" value={date} onChange={(event) => setDate(event.target.value)} required />
+                    <DateInput value={date} onChange={setDate} required />
                   </Field>
 
                   <Field label="Hora" required>

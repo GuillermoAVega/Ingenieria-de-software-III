@@ -3,19 +3,19 @@ import type { FormEvent } from 'react'
 import type { ApiFieldErrors } from '../../api/client'
 import { ApiError, getErrorMessage, getFieldErrors } from '../../api/client'
 import { navigate } from '../../app/navigation'
-import { getPlatos } from '../products/api'
-import type { PlatoRespuesta } from '../products/api'
+import { getMenusDelDia } from '../products/api'
+import type { MenuDelDiaRespuesta } from '../products/api'
 import { createProductoMenu, getProductoMenu, updateProductoMenuFecha } from './api'
 import type { ProductoMenuDetalle } from './api'
 
-export type DailyMenuFormField = 'fecha' | 'productoId'
+export type DailyMenuFormField = 'fecha' | 'menuDelDiaId'
 
 type DailyMenuFormState = {
   fecha: string
-  productoId: string
-  producto: ProductoMenuDetalle | null
-  platos: PlatoRespuesta[]
-  platosLoading: boolean
+  menuDelDiaId: string
+  registro: ProductoMenuDetalle | null
+  menusDelDia: MenuDelDiaRespuesta[]
+  menusDelDiaLoading: boolean
   loading: boolean
   saving: boolean
   error: string | null
@@ -33,10 +33,10 @@ export function getTodayInputValue(): string {
 function createInitialState(isEditing: boolean): DailyMenuFormState {
   return {
     fecha: getTodayInputValue(),
-    productoId: '',
-    producto: null,
-    platos: [],
-    platosLoading: true,
+    menuDelDiaId: '',
+    registro: null,
+    menusDelDia: [],
+    menusDelDiaLoading: true,
     loading: isEditing,
     saving: false,
     error: null,
@@ -53,24 +53,24 @@ export function useDailyMenuForm(id?: string) {
   useEffect(() => {
     let cancelled = false
 
-    async function loadPlatos() {
+    async function loadMenusDelDia() {
       try {
-        const platos = await getPlatos()
+        const menusDelDia = await getMenusDelDia()
         if (cancelled) return
-        setState((previous) => ({ ...previous, platos, platosLoading: false }))
+        setState((previous) => ({ ...previous, menusDelDia, menusDelDiaLoading: false }))
       } catch (requestError) {
         if (cancelled) return
         setState((previous) => ({
           ...previous,
-          platos: [],
-          platosLoading: false,
+          menusDelDia: [],
+          menusDelDiaLoading: false,
           loading: false,
           error: getErrorMessage(requestError),
         }))
       }
     }
 
-    void loadPlatos()
+    void loadMenusDelDia()
 
     return () => {
       cancelled = true
@@ -93,8 +93,8 @@ export function useDailyMenuForm(id?: string) {
         setState((previous) => ({
           ...previous,
           fecha: menu.fecha,
-          productoId: String(menu.producto_id),
-          producto: menu,
+          menuDelDiaId: String(menu.menu_del_dia_id),
+          registro: menu,
         }))
       } catch (requestError) {
         if (cancelled) return
@@ -124,8 +124,8 @@ export function useDailyMenuForm(id?: string) {
     setState((previous) => {
       const fieldErrors = { ...previous.fieldErrors }
       delete fieldErrors[field]
-      if (field === 'productoId') {
-        delete fieldErrors.producto_id
+      if (field === 'menuDelDiaId') {
+        delete fieldErrors.menu_del_dia_id
       }
       return { ...previous, [field]: value, fieldErrors }
     })
@@ -140,9 +140,11 @@ export function useDailyMenuForm(id?: string) {
     const fieldErrors: ApiFieldErrors = {}
     if (!state.fecha) {
       fieldErrors.fecha = 'Elegí la fecha del menú.'
+    } else if (state.fecha < getTodayInputValue()) {
+      fieldErrors.fecha = 'La fecha del menú del día no puede ser anterior a hoy.'
     }
-    if (!isEditing && !state.productoId) {
-      fieldErrors.producto_id = 'Elegí un plato para el menú del día.'
+    if (!isEditing && !state.menuDelDiaId) {
+      fieldErrors.menu_del_dia_id = 'Elegí el menú del día que se ofrece en esa fecha.'
     }
     if (Object.keys(fieldErrors).length > 0) {
       setState((previous) => ({ ...previous, error: null, fieldErrors }))
@@ -161,7 +163,7 @@ export function useDailyMenuForm(id?: string) {
         await updateProductoMenuFecha(numericId, state.fecha)
       } else {
         await createProductoMenu({
-          producto_id: Number(state.productoId),
+          menu_del_dia_id: Number(state.menuDelDiaId),
           fecha: state.fecha,
         })
       }

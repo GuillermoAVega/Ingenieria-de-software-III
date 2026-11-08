@@ -32,6 +32,30 @@ class UnprocessableEntity(DetailedHTTPException):
     DETAIL = "Entidad no procesable"
 
 
+class Conflict(DetailedHTTPException):
+    STATUS_CODE = status.HTTP_409_CONFLICT
+    DETAIL = "Conflicto"
+
+
+class ProductoInexistente(UnprocessableEntity):
+    """422 con la misma forma que los errores de campo de Pydantic."""
+
+    def __init__(self, producto_id: int) -> None:
+        super().__init__()
+        self.detail = [
+            {
+                "loc": ["body", "producto_id"],
+                "msg": "El producto no existe",
+                "type": "producto_inexistente",
+                "ids": [producto_id],
+            }
+        ]
+
+
+class ProductoDadoDeBaja(Conflict):
+    DETAIL = "El producto está dado de baja"
+
+
 class NotAuthenticated(DetailedHTTPException):
     STATUS_CODE = status.HTTP_401_UNAUTHORIZED
     DETAIL = "Usuario no autorizado"

@@ -18,7 +18,13 @@ from src.main import app
 from src.models import ModeloBase
 from src.productos import registro  # noqa: F401  (carga los mappers de todos los subtipos)
 from src.productos.bebidas.models import Bebida
-from src.productos.combos.models import ComboPromocion
+from src.productos.combos.models import (
+    ComboBebida,
+    ComboPlato,
+    ComboPostre,
+    ComboPromocion,
+)
+from src.productos.menus_del_dia.models import MenuDelDia
 from src.productos.menus_ejecutivos.models import MenuEjecutivo
 from src.productos.platos.models import Plato
 from src.productos.postres.models import Postre
@@ -162,16 +168,37 @@ def crear_menu():
 
 
 @pytest.fixture
+def crear_menu_del_dia():
+    def _crear(nombre="Menú del lunes", precio="2500.00", **extra):
+        return MenuDelDia(
+            nombre=nombre,
+            nombre_normalizado=nombre.strip().casefold(),
+            precio=Decimal(precio),
+            **extra,
+        )
+
+    return _crear
+
+
+@pytest.fixture
 def crear_combo():
     def _crear(
         nombre="Combo", desde=date(2026, 6, 1), hasta=date(2026, 6, 30), **relaciones
     ):
+        # `platos=[plato]` o `[(plato, cantidad)]` (cantidad 1 por defecto)
+        def asociaciones(clase, atributo, componentes):
+            pares = [c if isinstance(c, tuple) else (c, 1) for c in componentes]
+            return [clase(**{atributo: c}, cantidad=n) for c, n in pares]
+
         return ComboPromocion(
             nombre=nombre,
             nombre_normalizado=nombre.strip().casefold(),
             precio=Decimal("3000.00"),
             fecha_desde=desde,
             fecha_hasta=hasta,
+            componentes_platos=asociaciones(ComboPlato, "plato", relaciones.pop("platos", [])),
+            componentes_bebidas=asociaciones(ComboBebida, "bebida", relaciones.pop("bebidas", [])),
+            componentes_postres=asociaciones(ComboPostre, "postre", relaciones.pop("postres", [])),
             **relaciones,
         )
 
@@ -183,9 +210,59 @@ def crear_producto_menu():
     # Autoasignadas desde 2100-01-01 para no chocar con las fechas explícitas de las pruebas
     dias = itertools.count()
 
-    def _crear(producto, fecha=None):
+    def _crear(menu_del_dia, fecha=None):
         if fecha is None:
             fecha = date(2100, 1, 1) + timedelta(days=next(dias))
-        return ProductoMenu(producto=producto, fecha=fecha)
+        return ProductoMenu(menu_del_dia=menu_del_dia, fecha=fecha)
+
+    return _crear
+
+
+@pytest.fixture
+def crear_promocion():
+    def _crear(
+        productos,
+        nombre="Promo",
+        desde=date(2026, 6, 1),
+        hasta=date(2026, 6, 30),
+        descuento="10.00",
+        dado_de_baja=False,
+        tipo="porcentaje",
+        lleva=None,
+        paga=None,
+    ):
+        # Importación diferida: el fixture solo se usa en pruebas de promociones
+        from src.promociones.models import Promocion
+
+        return Promocion(
+            nombre=nombre,
+            fecha_desde=desde,
+            fecha_hasta=hasta,
+            tipo=tipo,
+            descuento=None if descuento is None else Decimal(descuento),
+            lleva=lleva,
+            paga=paga,
+            dado_de_baja=dado_de_baja,
+            productos=list(productos),
+        )
+
+    return _crear
+
+
+@pytest.fixture
+def crear_comanda_facturable():
+    """Comanda con una línea por producto persistido, lista para facturar."""
+
+    def _crear(producto_ids, cantidad=1):
+        from datetime import time
+
+        from src.models import Comanda, DetalleComanda
+
+        comanda = Comanda(fecha=HOY_FIJO, hora=time(12), mozo_id=1, mesa_id=1)
+        comanda.detalles = [
+            DetalleComanda(cantidad=cantidad, producto_id=producto_id)
+            for producto_id in producto_ids
+        ]
+        return comanda
 
     return _crear

@@ -22,4 +22,4 @@ class Plato(Producto):
     menus = relationship(
         "MenuEjecutivo", foreign_keys="MenuEjecutivo.plato_id", back_populates="plato"
     )
-    combos = relationship("ComboPromocion", secondary="combo_plato", back_populates="platos")
+    combos = relationship("ComboPromocion", secondary="combo_plato", viewonly=True)

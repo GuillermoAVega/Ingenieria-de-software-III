@@ -13,8 +13,10 @@ class ProductoMenu(ModeloBase):
 
     id = mapped_column(Integer, primary_key=True)
     # FK por cadena (sin ON DELETE): este módulo no importa productos
-    producto_id = mapped_column(ForeignKey("producto.id"), nullable=False, index=True)
+    menu_del_dia_id = mapped_column(
+        ForeignKey("menu_del_dia.id"), nullable=False, index=True
+    )
     fecha = mapped_column(Date, nullable=False)
 
-    # Referencia a Producto solo por cadena; `registro` carga su modelo
-    producto = relationship("Producto", back_populates="menus_del_dia")
+    # Referencia a MenuDelDia solo por cadena; `registro` carga su modelo
+    menu_del_dia = relationship("MenuDelDia", back_populates="fechas")

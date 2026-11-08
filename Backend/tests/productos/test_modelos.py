@@ -13,6 +13,7 @@ from src.productos.constants import (
     TIPO_PLATO,
     TIPO_POSTRE,
 )
+from src.productos.menus_del_dia.models import MenuDelDia
 from src.productos.menus_ejecutivos.models import MenuEjecutivo
 from src.productos.models import Producto
 from src.productos.platos.models import Plato
@@ -98,8 +99,8 @@ def test_reutilizacion_del_nombre_tras_la_baja_permitida(sesion, crear_plato):
     assert cantidad == 2
 
 
-def test_cat_03_los_mappers_se_configuran_con_los_cinco_subtipos():
+def test_cat_03_los_mappers_se_configuran_con_los_seis_subtipos():
     configure_mappers()
 
-    for subtipo in (Plato, Bebida, Postre, MenuEjecutivo, ComboPromocion):
+    for subtipo in (Plato, Bebida, Postre, MenuEjecutivo, ComboPromocion, MenuDelDia):
         class_mapper(subtipo)

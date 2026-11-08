@@ -183,6 +183,24 @@ def test_ld_13_multiples_bloqueantes_se_listan_ordenados(
     assert len(respuesta.json()["bloqueantes"]) == 2
 
 
+def test_baja_restringida_nombra_los_bloqueantes_en_el_mensaje(
+    cliente, crear_plato, crear_postre, crear_menu, crear_combo, persistir
+):
+    # El mensaje identifica por nombre y tipo a los compuestos que bloquean la baja
+    plato, postre = crear_plato(), crear_postre()
+    menu = crear_menu(plato, postre)
+    combo = crear_combo(platos=[plato])
+    nombre_menu, nombre_combo = menu.nombre, combo.nombre
+    plato_id, *_ = persistir(plato, postre, menu, combo)
+
+    respuesta = cliente.delete(f"/productos/platos/{plato_id}")
+
+    assert respuesta.status_code == 409
+    detalle = respuesta.json()["detail"]
+    assert f'combo "{nombre_combo}"' in detalle
+    assert f'menú ejecutivo "{nombre_menu}"' in detalle
+
+
 def test_ld_14_menu_de_baja_y_combo_vencido_no_bloquean_la_baja(
     cliente, crear_plato, crear_postre, crear_menu, crear_combo, persistir
 ):

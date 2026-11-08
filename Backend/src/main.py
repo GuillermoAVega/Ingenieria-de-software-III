@@ -33,6 +33,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.productos import registro  # noqa: F401  (carga los mappers antes de create_all)
 from src.productos.router import MANEJADORES_EXCEPCIONES as MANEJADORES_PRODUCTOS
 from src.productos.router import router as router_productos
+from src.promociones import models as promociones_models  # noqa: F401
+from src.promociones.router import MANEJADORES_EXCEPCIONES as MANEJADORES_PROMOCIONES
+from src.promociones.router import router as router_promociones
 from src.productos_menu.router import MANEJADORES_EXCEPCIONES as MANEJADORES_PRODUCTOS_MENU
 from src.productos_menu.router import router as router_productos_menu
 from src.secciones.router import MANEJADORES_EXCEPCIONES as MANEJADORES_SECCIONES
@@ -77,6 +80,7 @@ app.include_router(reservas_router)
 app.include_router(router_productos)
 app.include_router(router_secciones)
 app.include_router(router_productos_menu)
+app.include_router(router_promociones)
 app.include_router(medios_pago.router)
 app.include_router(comandas.router)
 app.include_router(detalles_comanda.router)
@@ -88,6 +92,7 @@ for manejadores in (
     MANEJADORES_PRODUCTOS,
     MANEJADORES_SECCIONES,
     MANEJADORES_PRODUCTOS_MENU,
+    MANEJADORES_PROMOCIONES,
 ):
     for tipo_excepcion, manejador in manejadores.items():
         app.add_exception_handler(tipo_excepcion, manejador)

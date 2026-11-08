@@ -6,7 +6,8 @@
  * 2. Implementar filtros por fecha, estado y medio de pago.
  * 3. Definir el contrato de emisión y anulación de comprobantes.
  */
-import { Alert, Badge, Button, Card, DataTable, Input, PageHeader, Pagination, Select, Stat, Toolbar, ToolbarSpacer } from '../../ui/ui'
+import { useState } from 'react'
+import { Alert, Badge, Button, Card, DataTable, DateInput, Input, PageHeader, Pagination, Select, Stat, Toolbar, ToolbarSpacer } from '../../ui/ui'
 import type { BadgeTone, DataTableColumn } from '../../ui/ui'
 import { navigate } from '../../app/navigation'
 import { DEMO_BILLING_SUMMARY, DEMO_INVOICES } from './demo'
@@ -63,6 +64,8 @@ const columns: DataTableColumn<Invoice>[] = [
 ]
 
 export function BillingListPage() {
+  const [filters, setFilters] = useState({ date: '2026-10-16' })
+
   return (
     <>
       <PageHeader
@@ -117,11 +120,12 @@ export function BillingListPage() {
               // TODO(equipo-operacion): filtrar comprobantes por texto.
             }}
           />
-          <Input
-            type="date"
-            defaultValue="2026-10-16"
-            onChange={() => {
+          <DateInput
+            aria-label="Filtrar por fecha"
+            value={filters.date}
+            onChange={(date) => {
               // TODO(equipo-operacion): filtrar comprobantes por fecha.
+              setFilters((previous) => ({ ...previous, date }))
             }}
           />
           <Select

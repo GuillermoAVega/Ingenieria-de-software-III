@@ -1,21 +1,20 @@
 import { apiFetch } from '../../api/client'
 
 export type ProductoMenuPayload = {
-  producto_id: number
+  menu_del_dia_id: number
   fecha: string
 }
 
 export type ProductoMenuRespuesta = {
   id: number
-  producto_id: number
+  menu_del_dia_id: number
   fecha: string
 }
 
-/** Ítem del listado: incluye el producto asociado ya resuelto por el backend. */
+/** Ítem del listado: incluye el menú del día asociado ya resuelto por el backend. */
 export type ProductoMenuDetalle = ProductoMenuRespuesta & {
-  producto_nombre: string
-  producto_tipo: string
-  producto_dado_de_baja: boolean
+  menu_del_dia_nombre: string
+  menu_del_dia_dado_de_baja: boolean
 }
 
 export function getProductoMenus(): Promise<ProductoMenuDetalle[]> {

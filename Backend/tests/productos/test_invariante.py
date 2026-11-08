@@ -7,7 +7,7 @@ from decimal import Decimal
 import pytest
 from sqlalchemy import select
 
-from src.productos.combos.models import ComboPromocion
+from src.productos.combos.models import ComboPlato, ComboPromocion
 from src.productos.menus_ejecutivos.models import MenuEjecutivo
 
 HOY = date(2026, 6, 15)  # coincide con el HOY fijo del fixture `cliente`
@@ -31,7 +31,12 @@ def _verificar_invariante(sesion):
             assert not menu.postre.dado_de_baja, f"menú activo {menu.id} con postre inactivo"
     for combo in sesion.scalars(select(ComboPromocion)):
         if not combo.dado_de_baja and combo.fecha_hasta >= HOY:
-            componentes = [*combo.platos, *combo.bebidas, *combo.postres]
+            componentes = [
+                asociacion.plato
+                for asociacion in combo.componentes_platos
+            ] + [a.bebida for a in combo.componentes_bebidas] + [
+                a.postre for a in combo.componentes_postres
+            ]
             assert all(
                 not componente.dado_de_baja for componente in componentes
             ), f"combo vigente {combo.id} con componentes inactivos"
@@ -70,6 +75,9 @@ def test_ld_23_invariante_se_mantiene_en_secuencias_mixtas_de_operaciones(
     def elegir_ids(tipo, maximo):
         cantidad = azar.randint(0, maximo)
         return list({azar.choice(componentes[tipo])[0] for _ in range(cantidad)})
+
+    def elegir_componentes(tipo, maximo):
+        return [{"id": id_, "cantidad": 1} for id_ in elegir_ids(tipo, maximo)]
 
     def baja_componente():
         tipo = azar.choice(list(componentes))
@@ -126,9 +134,9 @@ def test_ld_23_invariante_se_mantiene_en_secuencias_mixtas_de_operaciones(
             "precio": "3000.00",
             "fecha_desde": "2026-06-01",
             "fecha_hasta": azar.choice(["2026-06-15", "2026-06-30", "2026-12-31"]),
-            "platos_ids": elegir_ids("platos", 2),
-            "bebidas_ids": elegir_ids("bebidas", 2),
-            "postres_ids": elegir_ids("postres", 2),
+            "platos": elegir_componentes("platos", 2),
+            "bebidas": elegir_componentes("bebidas", 2),
+            "postres": elegir_componentes("postres", 2),
             **extra,
         }
 
@@ -175,7 +183,7 @@ def _combo_vencido(plato):
         precio=Decimal("3000.00"),
         fecha_desde=date(2026, 5, 1),
         fecha_hasta=date(2026, 6, 14),
-        platos=[plato],
+        componentes_platos=[ComboPlato(plato=plato, cantidad=1)],
     )
 
 

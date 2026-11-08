@@ -197,6 +197,11 @@ sketch
 [Ll]ib64
 [Ll]ocal
 [Ss]cripts
+# Backend/scripts contiene scripts del proyecto (no es el Scripts/ de un venv)
+!/Backend/scripts/
+/Backend/scripts/*
+!/Backend/scripts/__init__.py
+!/Backend/scripts/poblar_db.py
 pyvenv.cfg
 pip-selfcheck.json
 
