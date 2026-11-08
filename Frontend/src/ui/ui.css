@@ -332,6 +332,12 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
   color: var(--c-accent-ink); font-size: 24px; font-weight: 600; letter-spacing: -.02em;
 }
 .menu-view-section { display: flex; flex-direction: column; gap: 8px; padding-left: 14px; border-left: 2px solid var(--c-accent-soft); }
+.menu-view-category > .menu-view-section { padding-left: 0; border-left: 0; gap: 12px; }
+.menu-view-category > .menu-view-section > .menu-view-section-title {
+  padding-bottom: 12px; border-bottom: 2px solid var(--c-accent);
+  color: var(--c-accent-ink); font-size: 24px; letter-spacing: -.02em;
+}
+.menu-view-category > .menu-view-section > .menu-view-section-title > span { color: inherit; }
 .menu-view-section-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; font-size: 17px; font-weight: 600; }
 .menu-view-section-title > span { color: var(--c-text); }
 .menu-view-description { color: var(--c-text-3); font-size: 13px; font-weight: 400; overflow-wrap: anywhere; }
@@ -385,9 +391,58 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
   .menu-view-category-title { font-size: 21px; }
 }
 
+/* ---------- 14. Layout de impresión ----------
+   Las reglas de `.menu-view--print` se aplican tanto al clon de medición como
+   al documento real durante la impresión, para que las alturas coincidan.
+   La geometría de la hoja debe coincidir con `pagination.ts`. */
+.menu-view--print { display: block; }
+
+.menu-view--print .menu-view-cover {
+  display: flex; height: 270mm; min-height: 0; margin: 0; padding: 8mm;
+  break-after: page; page-break-after: always;
+  box-shadow: none; border: 0; border-radius: 0;
+}
+.menu-view--print .menu-view-cover-logo { width: 90px; height: 90px; }
+.menu-view--print .menu-view-cover-title { font-size: 2.6rem; }
+.menu-view--print .menu-view-cover-subtitle { font-size: 0.7rem; }
+
+.menu-view--print .menu-view-page {
+  display: block;
+  break-after: page; page-break-after: always;
+}
+.menu-view--print .menu-view-page:last-child {
+  break-after: auto; page-break-after: auto;
+}
+
+/* Espaciado entre bloques con padding: no colapsa márgenes y el alto de la
+   hoja es la suma exacta de los bloques. */
+.menu-view--print .print-block { padding-bottom: 10px; }
+
+.menu-view--print .menu-view-section {
+  display: block; padding: 10px 14px; margin: 0;
+  border: 1px solid var(--c-border-strong); border-radius: var(--radius);
+  background: var(--c-surface);
+  break-inside: avoid; page-break-inside: avoid;
+  box-decoration-break: clone; -webkit-box-decoration-break: clone;
+}
+.menu-view--print .menu-view-section--breakable { break-inside: auto; page-break-inside: auto; }
+.menu-view--print .menu-view-section-title {
+  padding-bottom: 8px;
+  break-after: avoid; page-break-after: avoid;
+}
+.menu-view--print .menu-view-items { display: block; }
+.menu-view--print .menu-view-item { break-inside: avoid; page-break-inside: avoid; }
+
+/* Clon oculto de medición: mismo layout que la impresión y ancho de caja de página. */
+.menu-view--measure {
+  position: fixed; top: 0; left: -10000px; width: 186mm;
+  visibility: hidden; pointer-events: none; z-index: -1;
+}
+
 @media print {
   @page {
-    margin: 0;
+    size: A4;
+    margin: 12mm;
   }
 
   .sidebar,
@@ -410,28 +465,9 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
     display: none;
   }
 
-  .menu-view {
-    padding-top: 12mm;
-    box-decoration-break: clone;
-    -webkit-box-decoration-break: clone;
-  }
-
-  .menu-view-cover {
-    display: flex; height: calc(100vh - 12mm); min-height: 0; margin: -12mm 0 0; padding: 8mm;
-    break-after: page; page-break-after: always;
-    box-shadow: none; border: 0; border-radius: 0;
-  }
-  .menu-view-cover-logo { width: 90px; height: 90px; }
-  .menu-view-cover-title { font-size: 2.6rem; }
-  .menu-view-cover-subtitle { font-size: 0.7rem; }
-
-  .menu-view-category {
-    margin: 0 12mm 12mm;
-    break-before: page; page-break-before: always;
-    box-shadow: none; border-color: var(--c-border-strong);
-  }
-  .menu-view-category:first-child { break-before: auto; page-break-before: auto; }
-  .menu-view-section {
+  /* Respaldo para impresión directa (Ctrl+P) sin el layout paginado del botón. */
+  .menu-view:not(.menu-view--print) { display: block; }
+  .menu-view:not(.menu-view--print) .menu-view-section {
     break-inside: avoid; page-break-inside: avoid;
   }
 }

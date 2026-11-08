@@ -3,7 +3,7 @@ import { getErrorMessage } from '../../api/client'
 import { todayISO } from '../../utils/format'
 import { getMenuViewData } from './api'
 import type { MenuViewData } from './api'
-import type { MenuViewCategory, MenuViewItem, MenuViewState } from './types'
+import type { MenuViewItem, MenuViewSectionGroup, MenuViewState } from './types'
 
 function createInitialState(): MenuViewState {
   return {
@@ -14,27 +14,28 @@ function createInitialState(): MenuViewState {
   }
 }
 
+/**
+ * Agrupa los ítems por sección. Los ítems sin sección (o con una sección
+ * inexistente) se descartan: la carta solo muestra secciones.
+ */
 function groupBySection(
   items: MenuViewItem[],
   sections: MenuViewData['sections'],
-) {
+): MenuViewSectionGroup[] {
   const sectionById = new Map(sections.map((section) => [section.id, section]))
   const itemsBySection = new Map<number, MenuViewItem[]>()
-  const unsectionedItems: MenuViewItem[] = []
 
   for (const item of items) {
-    const section = item.seccionId === null ? undefined : sectionById.get(item.seccionId)
-    if (!section) {
-      unsectionedItems.push(item)
-      continue
-    }
+    if (item.seccionId === null) continue
+    const section = sectionById.get(item.seccionId)
+    if (!section) continue
 
     const sectionItems = itemsBySection.get(section.id) ?? []
     sectionItems.push(item)
     itemsBySection.set(section.id, sectionItems)
   }
 
-  const sectionGroups = sections
+  return sections
     .filter((section) => itemsBySection.has(section.id))
     .sort((left, right) => left.posicion - right.posicion)
     .map((section) => ({
@@ -43,8 +44,6 @@ function groupBySection(
       subtitulo: section.subtitulo,
       items: itemsBySection.get(section.id) ?? [],
     }))
-
-  return { sectionGroups, unsectionedItems }
 }
 
 export function useMenuView() {
@@ -77,10 +76,11 @@ export function useMenuView() {
     }
   }, [])
 
-  const categories = useMemo<MenuViewCategory[]>(() => {
+  const sections = useMemo<MenuViewSectionGroup[]>(() => {
     if (!state.data) return []
 
-    const { dailyMenus, executiveMenus, platos, postres, bebidas, sections } = state.data
+    const { dailyMenus, executiveMenus, platos, postres, bebidas, sections: allSections } =
+      state.data
     const platosById = new Map(platos.map((plato) => [plato.id, plato]))
     const postresById = new Map(postres.map((postre) => [postre.id, postre]))
 
@@ -129,18 +129,16 @@ export function useMenuView() {
           seccionId: product.seccion_id,
         }))
 
-    return [
-      { id: 'daily', title: 'Menú del día', items: dailyItems },
-      { id: 'executive', title: 'Menús ejecutivos', items: executiveItems },
-      { id: 'dishes', title: 'Platos', items: productItems(platos) },
-      { id: 'desserts', title: 'Postres', items: productItems(postres) },
-      { id: 'drinks', title: 'Bebidas', items: productItems(bebidas) },
-    ].map(({ id, title, items }) => ({
-      id,
-      title,
-      ...groupBySection(items, sections),
-    }))
+    const items = [
+      ...dailyItems,
+      ...executiveItems,
+      ...productItems(platos),
+      ...productItems(postres),
+      ...productItems(bebidas),
+    ]
+
+    return groupBySection(items, allSections)
   }, [state.data, state.date])
 
-  return { state, categories }
+  return { state, sections }
 }

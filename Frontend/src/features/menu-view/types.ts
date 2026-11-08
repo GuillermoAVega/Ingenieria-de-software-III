@@ -17,13 +17,6 @@ export type MenuViewSectionGroup = {
   items: MenuViewItem[]
 }
 
-export type MenuViewCategory = {
-  id: string
-  title: string
-  sectionGroups: MenuViewSectionGroup[]
-  unsectionedItems: MenuViewItem[]
-}
-
 export type MenuViewState = {
   date: string
   loading: boolean

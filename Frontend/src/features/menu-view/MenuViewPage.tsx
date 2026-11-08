@@ -3,78 +3,20 @@
  * FUNCIONALIDAD: Consulta de la carta del restaurante
  */
 import { Alert, Button, PageHeader } from '../../ui/ui'
-import { formatCurrency, formatDate } from '../../utils/format'
+import { formatDate } from '../../utils/format'
+import { MenuCover } from './components/MenuCover'
+import { MenuSectionFrame } from './components/MenuSectionFrame'
+import { PrintablePages } from './components/PrintablePages'
+import { sectionKey } from './pagination'
 import { useMenuView } from './useMenuView'
-import type { MenuViewCategory, MenuViewItem } from './types'
-
-function MenuItemRow({ item }: { item: MenuViewItem }) {
-  return (
-    <li className="menu-view-item">
-      <div className="menu-view-item-info">
-        <span className="menu-view-item-name">{item.nombre}</span>
-        {item.descripcion && <small className="menu-view-description">{item.descripcion}</small>}
-        {item.platoNombre && (
-          <small className="menu-view-description">Plato: {item.platoNombre}</small>
-        )}
-        {item.postreNombre && (
-          <small className="menu-view-description">Postre: {item.postreNombre}</small>
-        )}
-      </div>
-      <span className="menu-view-price">{formatCurrency(item.precio)}</span>
-    </li>
-  )
-}
-
-function MenuCategory({ category }: { category: MenuViewCategory }) {
-  const hasSections = category.sectionGroups.length > 0
-
-  return (
-    <section className="menu-view-category" aria-labelledby={`menu-view-${category.id}`}>
-      <h2 className="menu-view-category-title" id={`menu-view-${category.id}`}>
-        {category.title}
-      </h2>
-
-      {hasSections &&
-        category.sectionGroups.map((group) => (
-          <div className="menu-view-section" key={group.id}>
-            <h3 className="menu-view-section-title">
-              <span>{group.nombre}</span>
-              {group.subtitulo && (
-                <small className="menu-view-description">{group.subtitulo}</small>
-              )}
-            </h3>
-            <ul className="menu-view-items">
-              {group.items.map((item) => (
-                <MenuItemRow item={item} key={item.key} />
-              ))}
-            </ul>
-          </div>
-        ))}
-
-      {category.unsectionedItems.length > 0 && (
-        <div className={hasSections ? 'menu-view-section' : undefined}>
-          {hasSections && <h3 className="menu-view-section-title">Sin sección</h3>}
-          <ul className="menu-view-items">
-            {category.unsectionedItems.map((item) => (
-              <MenuItemRow item={item} key={item.key} />
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {!hasSections && category.unsectionedItems.length === 0 && (
-        <p className="muted">No hay elementos disponibles.</p>
-      )}
-    </section>
-  )
-}
+import { useMenuViewPrint } from './useMenuViewPrint'
 
 export function MenuViewPage() {
-  const { state, categories } = useMenuView()
+  const { state, sections } = useMenuView()
+  const { state: printState, print, measureRef, measurePages } = useMenuViewPrint(sections)
 
-  const handleDownloadPdf = () => {
-    window.print()
-  }
+  const isPrinting = printState.phase === 'printing'
+  const isPreparing = printState.phase !== 'idle'
 
   return (
     <>
@@ -82,8 +24,8 @@ export function MenuViewPage() {
         title="Ver carta"
         subtitle={`Carta vigente al ${formatDate(state.date)}.`}
         actions={
-          <Button variant="primary" onClick={handleDownloadPdf}>
-            Descargar PDF
+          <Button variant="primary" onClick={print} disabled={isPreparing || state.loading}>
+            {isPreparing ? 'Preparando PDF…' : 'Descargar PDF'}
           </Button>
         }
       />
@@ -94,24 +36,45 @@ export function MenuViewPage() {
         </Alert>
       )}
 
+      {printState.error && (
+        <Alert tone="danger" title="No se pudo preparar el PDF">
+          {printState.error}
+        </Alert>
+      )}
+
       {state.loading ? (
         <p className="muted">Cargando carta...</p>
       ) : (
-        <div className="menu-view">
-          <div className="menu-view-cover" aria-label="Carátula de la carta">
-            <img className="menu-view-cover-logo" src="/logo.png" alt="Logo de Sabor de Mar" />
-            <h1 className="menu-view-cover-title">Sabor de Mar</h1>
-            <p className="menu-view-cover-subtitle">Carta del restaurante</p>
-          </div>
+        <div className={`menu-view${isPrinting ? ' menu-view--print' : ''}`}>
+          <MenuCover />
 
-          {categories
-            .filter(
-              (category) =>
-                category.sectionGroups.length > 0 || category.unsectionedItems.length > 0,
-            )
-            .map((category) => (
-              <MenuCategory category={category} key={category.id} />
-            ))}
+          {isPrinting && printState.pages ? (
+            <PrintablePages pages={printState.pages} />
+          ) : sections.length > 0 ? (
+            sections.map((section) => (
+              <div className="menu-view-category" key={section.id}>
+                <MenuSectionFrame
+                  partKey={sectionKey(section.id)}
+                  title={section.nombre}
+                  subtitle={section.subtitulo}
+                  items={section.items}
+                  showTitle
+                />
+              </div>
+            ))
+          ) : (
+            <p className="muted">No hay elementos con sección para mostrar.</p>
+          )}
+        </div>
+      )}
+
+      {measurePages && (
+        <div
+          ref={measureRef}
+          className="menu-view menu-view--print menu-view--measure"
+          aria-hidden="true"
+        >
+          <PrintablePages pages={measurePages} />
         </div>
       )}
     </>

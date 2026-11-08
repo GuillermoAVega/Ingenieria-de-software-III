@@ -1,6 +1,15 @@
 # AGENTS.md
 
-Guía de trabajo para agentes que modifiquen este repositorio.
+Guía general para agentes que modifiquen este repositorio.
+
+## Alcance
+
+Este archivo contiene reglas globales del repositorio. Las reglas específicas de cada parte viven en:
+
+- `Backend/AGENTS.md` — FastAPI, SQLAlchemy, Pydantic, pruebas y base de datos.
+- `Frontend/AGENTS.md` — React, TypeScript, estado, hooks, componentes y estilos.
+
+Antes de trabajar en una de esas carpetas, leer también su `AGENTS.md`.
 
 ## Estructura
 
@@ -9,84 +18,23 @@ Guía de trabajo para agentes que modifiquen este repositorio.
 - `openspec/specs/`: especificaciones vigentes.
 - `openspec/changes/`: cambios propuestos y archivo histórico.
 
-## Frontend: estado y hooks
+## Especificaciones
 
-### Un único objeto de estado por componente o hook
+- `openspec/specs/` es la fuente de verdad del comportamiento esperado.
+- Los cambios de comportamiento deben reflejarse en `openspec/changes/` según el flujo de OpenSpec.
+- Si el código y la especificación difieren, revisar la especificación antes de dar por correcta una implementación.
 
-No se deben crear múltiples `useState` para cada campo del mismo formulario o pantalla. El estado relacionado debe agruparse en un único objeto tipado.
+## Convenciones globales
 
-Incorrecto:
+- Mantener los textos visibles para el usuario (interfaz y mensajes de error) en español.
+- Respetar la estructura, el nombrado y los patrones del área que se modifica.
+- No agregar dependencias nuevas sin necesidad y sin actualizar el archivo de dependencias correspondiente.
+- Tratar archivos y cambios desconocidos como trabajo del usuario: investigar antes de borrar o sobrescribir.
+- No commitear archivos generados, secretos ni bases de datos locales (`node_modules/`, `dist/`, `venv/`, `__pycache__/`, `.env`, `*.db`).
 
-```tsx
-const [nombre, setNombre] = useState('')
-const [precio, setPrecio] = useState('')
-const [loading, setLoading] = useState(false)
-const [error, setError] = useState<string | null>(null)
-```
+## Verificación
 
-Correcto:
+Antes de cerrar un cambio, ejecutar la verificación del área modificada:
 
-```tsx
-type ProductFormState = {
-  nombre: string
-  precio: string
-  loading: boolean
-  error: string | null
-}
-
-const [state, setState] = useState<ProductFormState>(initialState)
-```
-
-Las actualizaciones deben ser inmutables y usar la forma funcional cuando dependan del estado anterior:
-
-```tsx
-setState((previous) => ({ ...previous, [field]: value }))
-```
-
-### Separar la lógica de la pantalla mediante hooks
-
-La lógica de un formulario o pantalla no debe vivir dentro del componente de renderizado. Debe extraerse a un hook propio de la feature, por ejemplo:
-
-- `Frontend/src/features/products/useProductForm.ts`
-- `Frontend/src/features/sections/useSectionForm.ts`
-
-El hook es responsable de:
-
-- Inicializar y mantener el estado del formulario.
-- Cargar datos desde la API.
-- Validar y transformar los datos antes de enviarlos.
-- Ejecutar el alta, la modificación o el borrado.
-- Manejar estados de carga, guardado y errores.
-- Exponer acciones estables para la pantalla: `updateField`, `submit`, etc.
-
-El componente debe limitarse a:
-
-- Renderizar el formulario.
-- Conectar los eventos a las acciones del hook.
-- Mostrar los estados y errores que expone el hook.
-
-Ejemplo de uso esperado:
-
-```tsx
-function ProductForm({ id }: { id?: string }) {
-  const { state, isEditing, updateField, submit } = useProductForm(id)
-
-  return (
-    <form onSubmit={submit}>
-      <Input
-        value={state.nombre}
-        onChange={(event) => updateField('nombre', event.target.value)}
-      />
-    </form>
-  )
-}
-```
-
-### Reglas adicionales
-
-- No llamar a `fetch` directamente desde componentes o páginas. Usar `apiFetch` y las funciones de API de cada feature.
-- No duplicar lógica de carga o envío entre pantallas; si dos pantallas comparten comportamiento, extraer un hook.
-- No usar `useEffect` para inicializar estado derivado de props. Usar inicializadores de `useState` o un componente interno con `key` cuando corresponda.
-- Evitar `setState` síncrono dentro del cuerpo de un `useEffect`; las cargas asíncronas deben encapsularse en una función async.
-- Nombrar los hooks con el prefijo `use` y ubicarlos junto a la feature que los consume.
-- Mantener los mensajes de interfaz en español y los identificadores de código en inglés.
+- Backend: `pytest` desde `Backend/`.
+- Frontend: `npm run build` y `npx eslint <ruta>` desde `Frontend/`.
