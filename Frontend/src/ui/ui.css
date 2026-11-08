@@ -227,8 +227,12 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
 .table td { padding: 12px 16px; vertical-align: middle; border-bottom: 1px solid var(--c-border); }
 .table tbody tr:last-child td { border-bottom: 0; }
 .table tbody tr:hover td { background: var(--c-surface-2); }
-.table .num { text-align: right; }
+.table .num { text-align: right; white-space: nowrap; }
 .table .col-actions { width: 1%; text-align: right; white-space: nowrap; }
+/* Acciones de fila: apiladas (Editar arriba de Eliminar), mismo ancho y texto centrado */
+.table .col-actions .row { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 6px; }
+.table .col-actions .btn { min-width: 88px; line-height: 1.25; }
+.table .col-actions .btn-danger-ghost { border-color: var(--c-danger-soft); }
 .cell-main { font-weight: 500; }
 .cell-sub { font-size: 13px; color: var(--c-text-3); }
 .thumb { width: 40px; height: 40px; border-radius: var(--radius-sm); background: var(--c-neutral-soft); border: 1px solid var(--c-border); }
@@ -289,6 +293,9 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
 .modal-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--c-border); }
 
 /* ---------- 10. Componentes del dominio ---------- */
+/* Filtro de la barra de herramientas con su leyenda a la izquierda (p. ej. "Filtrar por fecha") */
+.toolbar-filter { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; font-size: 13px; }
+.toolbar-filter .input { width: auto; }
 .mesa-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
 .mesa {
   display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 104px; padding: 12px 14px;
@@ -339,3 +346,43 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
   .bar-row { grid-template-columns: 1fr 56px; }
   .bar-row .bar { grid-column: 1 / -1; grid-row: 2; }
 }
+
+/* Selector de productos de promociones */
+.product-picker { display: flex; flex-direction: column; gap: 8px; }
+.product-picker-list {
+  display: flex; flex-direction: column; gap: 2px; max-height: 280px; overflow-y: auto;
+  padding: 8px 12px; border: 1px solid var(--c-border-strong); border-radius: var(--radius);
+}
+.product-picker-title { margin: 6px 0 2px; font-size: 12.5px; font-weight: 600; color: var(--c-text-3); }
+
+.product-picker-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.product-picker-qty { display: flex; align-items: center; gap: 8px; }
+.product-picker-qty .input { width: 80px; }
+.combo-summary { margin: 0; font-size: 13px; color: var(--c-text-3); }
+
+/* DateInput — campo dd/mm/aaaa + calendario en popover */
+.date-input { position: relative; width: 100%; }
+.date-input-field { padding-right: 40px; }
+.date-input-toggle {
+  position: absolute; top: 0; right: 0; width: 40px; height: 100%;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0; background: transparent; color: var(--c-text-3); cursor: pointer;
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+.date-input-toggle:hover:not(:disabled) { color: var(--c-text); }
+.date-input-toggle:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.date-input-toggle:disabled { cursor: not-allowed; }
+.date-input-popover {
+  z-index: 1000; width: max-content;
+  padding: 8px; background: var(--c-surface);
+  border: 1px solid var(--c-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-md);
+}
+.date-input-popover .rdp-root {
+  --rdp-accent-color: var(--c-accent);
+  --rdp-accent-background-color: var(--c-accent-soft);
+  --rdp-day-height: 38px; --rdp-day-width: 38px;
+  --rdp-day_button-height: 36px; --rdp-day_button-width: 36px;
+  color: var(--c-text); font-size: 14px;
+}
+.date-input-popover .rdp-dropdown { font: inherit; color: var(--c-text); }
+.toolbar .date-input, .toolbar-filter .date-input { width: 180px; flex: none; }

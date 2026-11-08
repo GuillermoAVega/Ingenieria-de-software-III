@@ -6,10 +6,12 @@
  * 2. Implementar los filtros Desde/Hasta y la exportación.
  * 3. Construir la visualización de cada slug restante.
  */
-import { BarRow, Breadcrumb, Button, Card, EmptyState, Field, Input, PageHeader } from '../../ui/ui'
+import { useState } from 'react'
+import { BarRow, Breadcrumb, Button, Card, EmptyState, DateInput, Field, PageHeader } from '../../ui/ui'
 import { DEMO_PRODUCT_RANKING, DEMO_REPORTS } from './demo'
 
 export function ReportDetailPage({ slug }: { slug: string }) {
+  const [period, setPeriod] = useState({ from: '2026-10-01', to: '2026-10-16' })
   const report = DEMO_REPORTS.find((candidate) => candidate.slug === slug)
 
   if (!report) {
@@ -51,10 +53,10 @@ export function ReportDetailPage({ slug }: { slug: string }) {
       <Card title="Período">
         <div className="form-grid">
           <Field label="Desde">
-            <Input type="date" defaultValue="2026-10-01" />
+            <DateInput value={period.from} onChange={(from) => setPeriod((previous) => ({ ...previous, from }))} />
           </Field>
           <Field label="Hasta">
-            <Input type="date" defaultValue="2026-10-16" />
+            <DateInput value={period.to} onChange={(to) => setPeriod((previous) => ({ ...previous, to }))} />
           </Field>
         </div>
       </Card>

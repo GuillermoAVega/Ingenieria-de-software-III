@@ -5,6 +5,7 @@ import {
   Button,
   Card,
   DataTable,
+  DateInput,
   DeleteButton,
   Input,
   PageHeader,
@@ -160,12 +161,11 @@ export function ReservationsListPage() {
               setPage(1)
             }}
           />
-          <Input
-            type="date"
+          <DateInput
             aria-label="Filtrar por fecha"
             value={date}
-            onChange={(event) => {
-              setDate(event.target.value)
+            onChange={(value) => {
+              setDate(value)
               setPage(1)
             }}
           />

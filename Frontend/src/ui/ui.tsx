@@ -1,6 +1,7 @@
 // ui.tsx — componentes React finos sobre ui.css.
 // Regla: en las pantallas se usan estos componentes (o las clases de ui.css), nunca estilos propios.
 import { Fragment, cloneElement, isValidElement, useId, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type {
   ButtonHTMLAttributes,
   HTMLAttributes,
@@ -10,6 +11,10 @@ import type {
   SelectHTMLAttributes,
   TextareaHTMLAttributes,
 } from 'react'
+
+import { DateInput } from './DateInput'
+export { DateInput } from './DateInput'
+export type { DateInputProps } from './DateInput'
 
 const cx = (...classes: Array<string | false | null | undefined>) => classes.filter(Boolean).join(' ')
 
@@ -100,6 +105,7 @@ export function Field({ label, required = false, hint, error, children, classNam
     (children.type === Input ||
       children.type === Textarea ||
       children.type === Select ||
+      children.type === DateInput ||
       children.type === InputGroup)
   const control = isValidElement<Record<string, unknown>>(children)
     ? cloneElement(children, {
@@ -478,7 +484,8 @@ export function ConfirmDialog({
   onCancel,
 }: ConfirmDialogProps) {
   if (!open) return null
-  return (
+  // Igual que `Modal`: se monta en <body> para no heredar estilos de la tabla.
+  return createPortal(
     <div className="modal-backdrop" onClick={onCancel}>
       <div
         className="modal"
@@ -496,7 +503,8 @@ export function ConfirmDialog({
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
@@ -550,7 +558,9 @@ export type ModalProps = {
 
 export function Modal({ open, title, children, footer, onClose }: ModalProps) {
   if (!open) return null
-  return (
+  // Se monta en <body> para no heredar estilos del contenedor (por ejemplo, el
+  // `white-space: nowrap` de la celda de acciones de una tabla).
+  return createPortal(
     <div className="modal-backdrop" onClick={onClose}>
       <div
         className="modal"
@@ -563,7 +573,8 @@ export function Modal({ open, title, children, footer, onClose }: ModalProps) {
         <div className="modal-body">{children}</div>
         {footer && <div className="modal-footer">{footer}</div>}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
