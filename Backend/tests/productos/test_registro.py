@@ -3,6 +3,7 @@ from sqlalchemy.orm import class_mapper, configure_mappers
 from src.productos.constants import (
     TIPO_BEBIDA,
     TIPO_COMBO_PROMOCION,
+    TIPO_MENU_DEL_DIA,
     TIPO_MENU_EJECUTIVO,
     TIPO_PLATO,
     TIPO_POSTRE,
@@ -10,13 +11,14 @@ from src.productos.constants import (
 from src.productos.registro import MODELOS_POR_TIPO
 
 
-def test_modelos_por_tipo_contiene_los_cinco_tipos():
+def test_modelos_por_tipo_contiene_los_seis_tipos():
     assert set(MODELOS_POR_TIPO) == {
         TIPO_PLATO,
         TIPO_BEBIDA,
         TIPO_POSTRE,
         TIPO_MENU_EJECUTIVO,
         TIPO_COMBO_PROMOCION,
+        TIPO_MENU_DEL_DIA,
     }
 
 

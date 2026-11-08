@@ -153,6 +153,12 @@ def test_baja_restringida_responde_409_con_bloqueantes_ordenados():
     }
 
 
+def test_conflicto_generico_responde_solo_detail():
+    respuesta = _app_con_manejadores(ErrorConflicto()).get("/falla")
+
+    assert respuesta.json() == {"detail": ErrorConflicto.MENSAJE}
+
+
 def test_main_registra_los_manejadores_de_excepciones():
     for tipo in MANEJADORES_EXCEPCIONES:
         assert tipo in app.exception_handlers

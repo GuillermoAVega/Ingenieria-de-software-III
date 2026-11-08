@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 
 import pytest
 from sqlalchemy import select
@@ -12,10 +12,10 @@ F3 = date(2026, 7, 3)
 
 
 def _estado(sesion):
-    """Conjunto persistido (id, producto_id, fecha); deja la transacción cerrada."""
+    """Conjunto persistido (id, menu_del_dia_id, fecha); deja la transacción cerrada."""
     estado = set(
         sesion.execute(
-            select(ProductoMenu.id, ProductoMenu.producto_id, ProductoMenu.fecha)
+            select(ProductoMenu.id, ProductoMenu.menu_del_dia_id, ProductoMenu.fecha)
         ).all()
     )
     sesion.rollback()
@@ -28,41 +28,41 @@ def _de_baja(producto):
 
 
 def test_pmd_21_mover_a_fecha_libre_responde_200_y_libera_la_anterior(
-    cliente, sesion, crear_plato, crear_producto_menu, persistir
+    cliente, sesion, crear_menu_del_dia, crear_producto_menu, persistir
 ):
-    plato = crear_plato()
-    plato_id, menu_id = persistir(plato, crear_producto_menu(plato, F1))
+    mdd = crear_menu_del_dia()
+    menu_del_dia_id, menu_id = persistir(mdd, crear_producto_menu(mdd, F1))
 
     respuesta = cliente.put(f"{URL}/{menu_id}", json={"fecha": F2.isoformat()})
 
     assert respuesta.status_code == 200
-    assert respuesta.json() == {"id": menu_id, "producto_id": plato_id, "fecha": "2026-07-02"}
-    assert _estado(sesion) == {(menu_id, plato_id, F2)}
+    assert respuesta.json() == {"id": menu_id, "menu_del_dia_id": menu_del_dia_id, "fecha": "2026-07-02"}
+    assert _estado(sesion) == {(menu_id, menu_del_dia_id, F2)}
     # F1 quedó libre
     assert (
-        cliente.post(URL, json={"producto_id": plato_id, "fecha": F1.isoformat()}).status_code
+        cliente.post(URL, json={"menu_del_dia_id": menu_del_dia_id, "fecha": F1.isoformat()}).status_code
         == 201
     )
 
 
 def test_pmd_22_conservar_la_fecha_propia_responde_200(
-    cliente, sesion, crear_plato, crear_producto_menu, persistir
+    cliente, sesion, crear_menu_del_dia, crear_producto_menu, persistir
 ):
-    plato = crear_plato()
-    plato_id, menu_id = persistir(plato, crear_producto_menu(plato, F1))
+    mdd = crear_menu_del_dia()
+    menu_del_dia_id, menu_id = persistir(mdd, crear_producto_menu(mdd, F1))
 
     respuesta = cliente.put(f"{URL}/{menu_id}", json={"fecha": F1.isoformat()})
 
     assert respuesta.status_code == 200
-    assert _estado(sesion) == {(menu_id, plato_id, F1)}
+    assert _estado(sesion) == {(menu_id, menu_del_dia_id, F1)}
 
 
 def test_pmd_23_fecha_ocupada_por_otro_registro_responde_409_sin_cambios(
-    cliente, sesion, crear_plato, crear_producto_menu, persistir
+    cliente, sesion, crear_menu_del_dia, crear_producto_menu, persistir
 ):
-    plato = crear_plato()
-    plato_id, primero, segundo = persistir(
-        plato, crear_producto_menu(plato, F1), crear_producto_menu(plato, F2)
+    mdd = crear_menu_del_dia()
+    menu_del_dia_id, primero, segundo = persistir(
+        mdd, crear_producto_menu(mdd, F1), crear_producto_menu(mdd, F2)
     )
     antes = _estado(sesion)
 
@@ -70,7 +70,7 @@ def test_pmd_23_fecha_ocupada_por_otro_registro_responde_409_sin_cambios(
 
     assert respuesta.status_code == 409
     assert respuesta.json() == {"detail": "Ya existe un menú del día en esa fecha"}
-    assert antes == {(primero, plato_id, F1), (segundo, plato_id, F2)}
+    assert antes == {(primero, menu_del_dia_id, F1), (segundo, menu_del_dia_id, F2)}
     assert _estado(sesion) == antes
 
 
@@ -88,35 +88,35 @@ def test_pmd_24_id_inexistente_responde_404(cliente):
         pytest.param(F1, id="misma_fecha"),
     ],
 )
-def test_pmd_25_producto_dado_de_baja_responde_409_sin_cambios(
-    cliente, sesion, crear_plato, crear_producto_menu, persistir, fecha
+def test_pmd_25_menu_del_dia_dado_de_baja_responde_409_sin_cambios(
+    cliente, sesion, crear_menu_del_dia, crear_producto_menu, persistir, fecha
 ):
-    plato = crear_plato()
-    plato_id, menu_id = persistir(plato, crear_producto_menu(plato, F1))
-    plato_persistido = sesion.get(type(plato), plato_id)
-    plato_persistido.dado_de_baja = True
+    mdd = crear_menu_del_dia()
+    menu_del_dia_id, menu_id = persistir(mdd, crear_producto_menu(mdd, F1))
+    mdd_persistido = sesion.get(type(mdd), menu_del_dia_id)
+    mdd_persistido.dado_de_baja = True
     sesion.commit()
     sesion.close()
 
     respuesta = cliente.put(f"{URL}/{menu_id}", json={"fecha": fecha.isoformat()})
 
     assert respuesta.status_code == 409
-    assert _estado(sesion) == {(menu_id, plato_id, F1)}
+    assert _estado(sesion) == {(menu_id, menu_del_dia_id, F1)}
 
 
 def test_pmd_26_producto_id_del_cuerpo_se_ignora(
-    cliente, sesion, crear_plato, crear_postre, crear_producto_menu, persistir
+    cliente, sesion, crear_menu_del_dia, crear_postre, crear_producto_menu, persistir
 ):
-    plato, postre = crear_plato(), crear_postre()
-    plato_id, postre_id, menu_id = persistir(plato, postre, crear_producto_menu(plato, F1))
+    mdd, mdd_c = crear_menu_del_dia(), crear_menu_del_dia(nombre="Menú C")
+    menu_del_dia_id, mdd_c_id, menu_id = persistir(mdd, mdd_c, crear_producto_menu(mdd, F1))
 
     respuesta = cliente.put(
-        f"{URL}/{menu_id}", json={"fecha": F2.isoformat(), "producto_id": postre_id}
+        f"{URL}/{menu_id}", json={"fecha": F2.isoformat(), "menu_del_dia_id": mdd_c_id}
     )
 
     assert respuesta.status_code == 200
-    assert respuesta.json()["producto_id"] == plato_id
-    assert _estado(sesion) == {(menu_id, plato_id, F2)}
+    assert respuesta.json()["menu_del_dia_id"] == menu_del_dia_id
+    assert _estado(sesion) == {(menu_id, menu_del_dia_id, F2)}
 
 
 @pytest.mark.parametrize(
@@ -128,15 +128,15 @@ def test_pmd_26_producto_id_del_cuerpo_se_ignora(
     ],
 )
 def test_pmd_27_fecha_ausente_o_invalida_responde_422_sin_cambios(
-    cliente, sesion, crear_plato, crear_producto_menu, persistir, cuerpo
+    cliente, sesion, crear_menu_del_dia, crear_producto_menu, persistir, cuerpo
 ):
-    plato = crear_plato()
-    plato_id, menu_id = persistir(plato, crear_producto_menu(plato, F1))
+    mdd = crear_menu_del_dia()
+    menu_del_dia_id, menu_id = persistir(mdd, crear_producto_menu(mdd, F1))
 
     respuesta = cliente.put(f"{URL}/{menu_id}", json=cuerpo)
 
     assert respuesta.status_code == 422
-    assert _estado(sesion) == {(menu_id, plato_id, F1)}
+    assert _estado(sesion) == {(menu_id, menu_del_dia_id, F1)}
 
 
 def test_pmd_28_esquema_invalido_prevalece_sobre_id_inexistente(cliente):
@@ -146,10 +146,10 @@ def test_pmd_28_esquema_invalido_prevalece_sobre_id_inexistente(cliente):
 
 
 def test_pmd_29_id_inexistente_prevalece_sobre_fecha_ocupada(
-    cliente, crear_plato, crear_producto_menu, persistir
+    cliente, crear_menu_del_dia, crear_producto_menu, persistir
 ):
-    plato = crear_plato()
-    persistir(plato, crear_producto_menu(plato, F1))
+    mdd = crear_menu_del_dia()
+    persistir(mdd, crear_producto_menu(mdd, F1))
 
     respuesta = cliente.put(f"{URL}/999", json={"fecha": F1.isoformat()})
 
@@ -157,31 +157,31 @@ def test_pmd_29_id_inexistente_prevalece_sobre_fecha_ocupada(
 
 
 def test_pmd_30_baja_prevalece_sobre_fecha_ocupada_con_mensaje_distinto(
-    cliente, sesion, crear_plato, crear_postre, crear_producto_menu, persistir
+    cliente, sesion, crear_menu_del_dia, crear_postre, crear_producto_menu, persistir
 ):
-    plato, postre = crear_plato(), crear_postre()
-    _, postre_id, menu_baja, _ = persistir(
-        plato,
-        postre,
-        crear_producto_menu(postre, F1),
-        crear_producto_menu(plato, F2),
+    mdd, mdd_c = crear_menu_del_dia(), crear_menu_del_dia(nombre="Menú C")
+    _, mdd_c_id, menu_baja, _ = persistir(
+        mdd,
+        mdd_c,
+        crear_producto_menu(mdd_c, F1),
+        crear_producto_menu(mdd, F2),
     )
-    sesion.get(type(postre), postre_id).dado_de_baja = True
+    sesion.get(type(mdd_c), mdd_c_id).dado_de_baja = True
     sesion.commit()
     sesion.close()
 
     respuesta = cliente.put(f"{URL}/{menu_baja}", json={"fecha": F2.isoformat()})
 
     assert respuesta.status_code == 409
-    assert respuesta.json() == {"detail": "El producto está dado de baja"}
+    assert respuesta.json() == {"detail": "El menú del día está dado de baja"}
 
 
 def test_pmd_31_los_rechazos_422_404_y_409_no_cambian_lo_persistido(
-    cliente, sesion, crear_plato, crear_producto_menu, persistir
+    cliente, sesion, crear_menu_del_dia, crear_producto_menu, persistir
 ):
-    plato = crear_plato()
+    mdd = crear_menu_del_dia()
     _, primero, _ = persistir(
-        plato, crear_producto_menu(plato, F1), crear_producto_menu(plato, F2)
+        mdd, crear_producto_menu(mdd, F1), crear_producto_menu(mdd, F2)
     )
     antes = _estado(sesion)
 
@@ -193,3 +193,39 @@ def test_pmd_31_los_rechazos_422_404_y_409_no_cambian_lo_persistido(
     for url, cuerpo, codigo in rechazos:
         assert cliente.put(url, json=cuerpo).status_code == codigo
         assert _estado(sesion) == antes
+
+
+@pytest.mark.parametrize("dias", [0, 1, 30], ids=["hoy", "manana", "futura"])
+def test_cambio_a_hoy_o_futura_responde_200(
+    cliente, crear_menu_del_dia, crear_producto_menu, persistir, HOY, dias
+):
+    mdd = crear_menu_del_dia()
+    _, menu_id = persistir(mdd, crear_producto_menu(mdd, F1))
+    fecha = HOY + timedelta(days=dias)
+
+    respuesta = cliente.put(f"{URL}/{menu_id}", json={"fecha": fecha.isoformat()})
+
+    assert respuesta.status_code == 200
+    assert respuesta.json()["fecha"] == fecha.isoformat()
+
+
+@pytest.mark.parametrize("dias", [-1, -365], ids=["ayer", "lejana"])
+def test_cambio_a_fecha_pasada_responde_422_de_campo_sin_cambios(
+    cliente, sesion, crear_menu_del_dia, crear_producto_menu, persistir, HOY, dias
+):
+    mdd = crear_menu_del_dia()
+    menu_del_dia_id, menu_id = persistir(mdd, crear_producto_menu(mdd, F1))
+
+    respuesta = cliente.put(
+        f"{URL}/{menu_id}", json={"fecha": (HOY + timedelta(days=dias)).isoformat()}
+    )
+
+    assert respuesta.status_code == 422
+    assert respuesta.json()["detail"] == [
+        {
+            "loc": ["body", "fecha"],
+            "msg": "La fecha del menú del día no puede ser anterior a hoy",
+            "type": "fecha_pasada",
+        }
+    ]
+    assert _estado(sesion) == {(menu_id, menu_del_dia_id, F1)}

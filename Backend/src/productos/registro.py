@@ -1,5 +1,5 @@
 # Único módulo que conoce todos los subpaquetes: al importarlo quedan cargados
-# los cinco modelos y los mappers pueden resolver las relaciones por cadena
+# los modelos y los mappers pueden resolver las relaciones por cadena
 from src.productos.bebidas.models import Bebida
 from src.productos.combos.models import (
     ComboPromocion,
@@ -10,10 +10,12 @@ from src.productos.combos.models import (
 from src.productos.constants import (
     TIPO_BEBIDA,
     TIPO_COMBO_PROMOCION,
+    TIPO_MENU_DEL_DIA,
     TIPO_MENU_EJECUTIVO,
     TIPO_PLATO,
     TIPO_POSTRE,
 )
+from src.productos.menus_del_dia.models import MenuDelDia
 from src.productos.menus_ejecutivos.models import MenuEjecutivo
 from src.productos.platos.models import Plato
 from src.productos.postres.models import Postre
@@ -27,6 +29,7 @@ MODELOS_POR_TIPO = {
     TIPO_POSTRE: Postre,
     TIPO_MENU_EJECUTIVO: MenuEjecutivo,
     TIPO_COMBO_PROMOCION: ComboPromocion,
+    TIPO_MENU_DEL_DIA: MenuDelDia,
 }
 
 # Restricción de baja por tipo: (columna de `menu_ejecutivo` o None, tabla de
@@ -43,6 +46,7 @@ __all__ = [
     "RESTRICT_POR_TIPO",
     "Bebida",
     "ComboPromocion",
+    "MenuDelDia",
     "MenuEjecutivo",
     "Plato",
     "Postre",

@@ -5,19 +5,22 @@ import { ApiError, getErrorMessage, getFieldErrors } from '../../api/client'
 import { navigate } from '../../app/navigation'
 import {
   createBebida,
+  createMenuDelDia,
   createPlato,
   createPostre,
   getBebida,
+  getMenuDelDia,
   getPlato,
   getPostre,
   updateBebida,
+  updateMenuDelDia,
   updatePlato,
   updatePostre,
 } from './api'
 import { getSections } from '../sections/api'
 import type { SeccionRespuesta } from '../sections/api'
 
-export type ProductType = 'platos' | 'bebidas' | 'postres'
+export type ProductType = 'platos' | 'bebidas' | 'postres' | 'menus-del-dia'
 
 export type ProductFormValues = {
   nombre: string
@@ -57,6 +60,7 @@ const initialState: ProductFormState = {
 function getProduct(tipo: ProductType, id: number) {
   if (tipo === 'bebidas') return getBebida(id)
   if (tipo === 'postres') return getPostre(id)
+  if (tipo === 'menus-del-dia') return getMenuDelDia(id)
   return getPlato(id)
 }
 
@@ -167,6 +171,12 @@ export function useProductForm(tipo: ProductType, id?: string) {
         } else {
           await createBebida(payload)
         }
+      } else if (tipo === 'menus-del-dia') {
+        if (isEditing && numericId !== null) {
+          await updateMenuDelDia(numericId, base)
+        } else {
+          await createMenuDelDia(base)
+        }
       } else if (tipo === 'postres') {
         if (isEditing && numericId !== null) {
           await updatePostre(numericId, base)
@@ -181,7 +191,7 @@ export function useProductForm(tipo: ProductType, id?: string) {
           await createPlato(payload)
         }
       }
-      navigate('/productos')
+      navigate(`/productos/${tipo}`)
     } catch (requestError) {
       setState((previous) => ({
         ...previous,

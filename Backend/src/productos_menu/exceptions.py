@@ -11,17 +11,31 @@ class ErrorProductoMenu(Exception):
         super().__init__(self.mensaje)
 
 
-class ProductoInexistente(ErrorProductoMenu):
-    """El `producto_id` indicado no corresponde a ningún producto."""
-    MENSAJE = "El producto indicado no existe"
+class MenuDelDiaInexistente(ErrorProductoMenu):
+    """El `menu_del_dia_id` indicado no corresponde a ningún producto."""
+    MENSAJE = "El menú del día indicado no existe"
 
-    def __init__(self, producto_id: int, mensaje: str | None = None) -> None:
+    def __init__(self, menu_del_dia_id: int, mensaje: str | None = None) -> None:
         super().__init__(mensaje)
-        self.producto_id = producto_id
+        self.menu_del_dia_id = menu_del_dia_id
 
 
-class ProductoDadoDeBaja(ErrorProductoMenu):
-    MENSAJE = "El producto está dado de baja"
+class ProductoNoMenuDelDia(ErrorProductoMenu):
+    """El producto existe pero no es un MenuDelDia: solo ese subtipo puede asignarse a una fecha."""
+    MENSAJE = "El producto indicado no es un menú del día"
+
+    def __init__(self, menu_del_dia_id: int, mensaje: str | None = None) -> None:
+        super().__init__(mensaje)
+        self.menu_del_dia_id = menu_del_dia_id
+
+
+class MenuDelDiaDadoDeBaja(ErrorProductoMenu):
+    MENSAJE = "El menú del día está dado de baja"
+
+
+class FechaMenuPasada(ErrorProductoMenu):
+    """La fecha del menú del día es anterior a hoy."""
+    MENSAJE = "La fecha del menú del día no puede ser anterior a hoy"
 
 
 class FechaMenuOcupada(ErrorProductoMenu):

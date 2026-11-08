@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getErrorMessage } from '../../api/client'
-import { formatDate, tipoLabel } from '../menus/format'
+import { normalizeText } from '../promotions/text'
 import { deleteProductoMenu, getProductoMenus } from './api'
 import type { ProductoMenuDetalle } from './api'
 
@@ -9,6 +9,7 @@ type DailyMenusListState = {
   loading: boolean
   error: string | null
   search: string
+  dateFilter: string
   deletingId: number | null
   reloadToken: number
 }
@@ -18,6 +19,7 @@ const initialState: DailyMenusListState = {
   loading: true,
   error: null,
   search: '',
+  dateFilter: '',
   deletingId: null,
   reloadToken: 0,
 }
@@ -56,6 +58,14 @@ export function useDailyMenusList() {
     setState((previous) => ({ ...previous, search }))
   }
 
+  const updateDateFilter = (dateFilter: string) => {
+    setState((previous) => ({ ...previous, dateFilter }))
+  }
+
+  const clearFilters = () => {
+    setState((previous) => ({ ...previous, search: '', dateFilter: '' }))
+  }
+
   const remove = async (id: number) => {
     setState((previous) => ({ ...previous, deletingId: id, error: null }))
     try {
@@ -74,25 +84,21 @@ export function useDailyMenusList() {
     }
   }
 
-  const search = state.search.trim().toLowerCase()
-  const menus = search
-    ? state.menus.filter((menu) => {
-        const texto = [
-          menu.producto_nombre,
-          tipoLabel(menu.producto_tipo),
-          menu.fecha,
-          formatDate(menu.fecha),
-        ]
-          .join(' ')
-          .toLowerCase()
-        return texto.includes(search)
-      })
-    : state.menus
+  // El texto busca solo por menú del día (sin distinguir tildes); la fecha tiene su propio filtro
+  const search = normalizeText(state.search)
+  const menus = state.menus.filter((menu) => {
+    if (state.dateFilter && menu.fecha !== state.dateFilter) return false
+    return !search || normalizeText(menu.menu_del_dia_nombre).includes(search)
+  })
+  const hasFilters = state.search !== '' || state.dateFilter !== ''
 
   return {
     state,
     menus,
+    hasFilters,
     updateSearch,
+    updateDateFilter,
+    clearFilters,
     remove,
   }
 }

@@ -3,9 +3,9 @@
  * FUNCIONALIDAD: Alta y edición de un menú del día
  * La lógica del formulario vive en `useDailyMenuForm`; la pantalla solo renderiza.
  */
-import { Alert, Button, Card, Field, Input, PageHeader, Select } from '../../ui/ui'
+import { Alert, Button, Card, DateInput, Field, Input, PageHeader, Select } from '../../ui/ui'
 import { navigate } from '../../app/navigation'
-import { useDailyMenuForm } from './useDailyMenuForm'
+import { getTodayInputValue, useDailyMenuForm } from './useDailyMenuForm'
 
 export function DailyMenuFormPage({ id }: { id?: string }) {
   return <DailyMenuForm key={id ?? 'nuevo'} id={id} />
@@ -14,17 +14,17 @@ export function DailyMenuFormPage({ id }: { id?: string }) {
 function DailyMenuForm({ id }: { id?: string }) {
   const { state, isEditing, updateField, submit } = useDailyMenuForm(id)
 
-  const sinPlatos = !isEditing && !state.platosLoading && state.platos.length === 0
-  const productoInactivo = state.producto?.producto_dado_de_baja ?? false
+  const sinMenus = !isEditing && !state.menusDelDiaLoading && state.menusDelDia.length === 0
+  const menuInactivo = state.registro?.menu_del_dia_dado_de_baja ?? false
 
   return (
     <>
       <PageHeader
-        title={isEditing ? 'Editar menú del día' : 'Nuevo menú del día'}
+        title={isEditing ? 'Editar asignación de menú del día' : 'Asignar menú del día'}
         subtitle={
           isEditing
-            ? 'Cambiá la fecha del menú. El producto asociado no se puede modificar.'
-            : 'Elegí una fecha y el plato que se ofrece como menú ese día.'
+            ? 'Cambiá la fecha de la asignación. El menú del día asociado no se puede modificar.'
+            : 'Elegí una fecha y el menú del día que se ofrece ese día.'
         }
       />
 
@@ -34,14 +34,14 @@ function DailyMenuForm({ id }: { id?: string }) {
         </Alert>
       )}
 
-      {sinPlatos && (
-        <Alert tone="warning" title="No hay platos activos">
-          Cargá un plato en la carta antes de crear un menú del día.
+      {sinMenus && (
+        <Alert tone="warning" title="No hay menús del día activos">
+          Creá un menú del día en Productos antes de asignarlo a una fecha.
         </Alert>
       )}
 
-      {productoInactivo && (
-        <Alert tone="warning" title="El producto está dado de baja">
+      {menuInactivo && (
+        <Alert tone="warning" title="El menú del día está dado de baja">
           Podés eliminarlo, pero no cambiarle la fecha mientras esté dado de baja.
         </Alert>
       )}
@@ -51,7 +51,7 @@ function DailyMenuForm({ id }: { id?: string }) {
           <p className="muted">Cargando menú del día...</p>
         </Card>
       ) : (
-        <form onSubmit={submit}>
+        <form onSubmit={submit} noValidate>
           <Card
             footer={
               <>
@@ -62,10 +62,10 @@ function DailyMenuForm({ id }: { id?: string }) {
                   variant="primary"
                   type="submit"
                   disabled={
-                    state.saving || state.loading || sinPlatos || (!isEditing && state.platosLoading)
+                    state.saving || state.loading || sinMenus || (!isEditing && state.menusDelDiaLoading)
                   }
                 >
-                  {state.saving ? 'Guardando...' : 'Guardar menú del día'}
+                  {state.saving ? 'Guardando...' : 'Guardar asignación'}
                 </Button>
               </>
             }
@@ -77,42 +77,43 @@ function DailyMenuForm({ id }: { id?: string }) {
                 hint="Una fecha sólo admite un menú del día."
                 error={state.fieldErrors.fecha}
               >
-                <Input
-                  type="date"
+                <DateInput
+                  min={getTodayInputValue()}
                   value={state.fecha}
-                  onChange={(event) => updateField('fecha', event.target.value)}
+                  invalid={Boolean(state.fieldErrors.fecha)}
+                  onChange={(value) => updateField('fecha', value)}
                   disabled={state.saving}
                   required
                 />
               </Field>
 
               {isEditing ? (
-                <Field label="Plato" hint="El producto no se puede cambiar.">
+                <Field label="Menú del día" hint="El menú del día no se puede cambiar.">
                   <Input
-                    value={state.producto?.producto_nombre ?? '—'}
+                    value={state.registro?.menu_del_dia_nombre ?? '—'}
                     readOnly
                     disabled
                   />
                 </Field>
               ) : (
                 <Field
-                  label="Plato"
+                  label="Menú del día"
                   required
-                  hint="Sólo se listan los platos activos de la carta."
-                  error={state.fieldErrors.producto_id}
+                  hint="Sólo se listan los menús del día activos."
+                  error={state.fieldErrors.menu_del_dia_id}
                 >
                   <Select
-                    value={state.productoId}
-                    onChange={(event) => updateField('productoId', event.target.value)}
-                    disabled={state.saving || state.platosLoading || sinPlatos}
+                    value={state.menuDelDiaId}
+                    onChange={(event) => updateField('menuDelDiaId', event.target.value)}
+                    disabled={state.saving || state.menusDelDiaLoading || sinMenus}
                     required
                   >
                     <option value="">
-                      {state.platosLoading ? 'Cargando platos...' : 'Elegí un plato'}
+                      {state.menusDelDiaLoading ? 'Cargando menús del día...' : 'Elegí un menú del día'}
                     </option>
-                    {state.platos.map((plato) => (
-                      <option key={plato.id} value={plato.id}>
-                        {plato.nombre}
+                    {state.menusDelDia.map((menu) => (
+                      <option key={menu.id} value={menu.id}>
+                        {menu.nombre}
                       </option>
                     ))}
                   </Select>

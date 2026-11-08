@@ -13,6 +13,7 @@ from src.productos.exceptions import (
     ProductoNoEncontrado,
     SeccionInexistente,
 )
+from src.productos.menus_del_dia.router import router as router_menus_del_dia
 from src.productos.menus_ejecutivos.router import router as router_menus
 from src.productos.platos.router import router as router_platos
 from src.productos.postres.router import router as router_postres
@@ -31,6 +32,7 @@ router.include_router(router_platos)
 router.include_router(router_bebidas)
 router.include_router(router_postres)
 router.include_router(router_menus)
+router.include_router(router_menus_del_dia)
 router.include_router(router_combos)
 
 

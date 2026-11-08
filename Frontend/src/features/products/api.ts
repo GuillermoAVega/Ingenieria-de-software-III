@@ -32,6 +32,10 @@ export type PostrePayload = ProductoBasePayload & {
   dado_de_baja?: boolean | null
 }
 
+export type MenuDelDiaPayload = ProductoBasePayload & {
+  dado_de_baja?: boolean | null
+}
+
 export type PlatoRespuesta = ProductoBaseRespuesta & {
   tipo: 'plato'
   cant_personas: number
@@ -44,6 +48,15 @@ export type BebidaRespuesta = ProductoBaseRespuesta & {
 
 export type PostreRespuesta = ProductoBaseRespuesta & {
   tipo: 'postre'
+}
+
+export type MenuDelDiaRespuesta = ProductoBaseRespuesta & {
+  tipo: 'menu_del_dia'
+}
+
+/** Ítem del listado: incluye la fecha asignada más cercana desde hoy, si existe. */
+export type MenuDelDiaListado = MenuDelDiaRespuesta & {
+  proxima_fecha: string | null
 }
 
 export function getPlatos(): Promise<PlatoRespuesta[]> {
@@ -104,4 +117,67 @@ export function updatePostre(id: number, data: PostrePayload): Promise<PostreRes
 
 export function deletePostre(id: number): Promise<void> {
   return apiFetch<void>(`/productos/postres/${id}`, { method: 'DELETE' })
+}
+
+export function getMenusDelDia(): Promise<MenuDelDiaListado[]> {
+  return apiFetch<MenuDelDiaListado[]>('/productos/menus-del-dia')
+}
+
+export function getMenuDelDia(id: number): Promise<MenuDelDiaRespuesta> {
+  return apiFetch<MenuDelDiaRespuesta>(`/productos/menus-del-dia/${id}`)
+}
+
+export function createMenuDelDia(data: MenuDelDiaPayload): Promise<MenuDelDiaRespuesta> {
+  return apiFetch<MenuDelDiaRespuesta>('/productos/menus-del-dia', { method: 'POST', body: data })
+}
+
+export function updateMenuDelDia(
+  id: number,
+  data: MenuDelDiaPayload,
+): Promise<MenuDelDiaRespuesta> {
+  return apiFetch<MenuDelDiaRespuesta>(`/productos/menus-del-dia/${id}`, {
+    method: 'PUT',
+    body: data,
+  })
+}
+
+export function deleteMenuDelDia(id: number): Promise<void> {
+  return apiFetch<void>(`/productos/menus-del-dia/${id}`, { method: 'DELETE' })
+}
+
+export type MenuEjecutivoListado = ProductoBaseRespuesta & {
+  tipo: 'menu_ejecutivo'
+  plato_id: number
+  postre_id: number
+}
+
+/** Componente de un combo: id del producto y unidades (entero >= 1). */
+export type ComboComponente = {
+  id: number
+  cantidad: number
+}
+
+export type ComboListado = ProductoBaseRespuesta & {
+  tipo: 'combo_promocion'
+  fecha_desde: string
+  fecha_hasta: string
+  platos: ComboComponente[]
+  bebidas: ComboComponente[]
+  postres: ComboComponente[]
+}
+
+export type ComboPayload = ProductoBasePayload & {
+  fecha_desde: string
+  fecha_hasta: string
+  platos: ComboComponente[]
+  bebidas: ComboComponente[]
+  postres: ComboComponente[]
+}
+
+export function getMenusEjecutivos(): Promise<MenuEjecutivoListado[]> {
+  return apiFetch<MenuEjecutivoListado[]>('/productos/menus-ejecutivos')
+}
+
+export function getCombos(): Promise<ComboListado[]> {
+  return apiFetch<ComboListado[]>('/productos/combos')
 }

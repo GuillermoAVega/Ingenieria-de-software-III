@@ -3,7 +3,7 @@
 from collections.abc import Callable
 from datetime import date
 
-from sqlalchemy import select, union
+from sqlalchemy import delete, select, union
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -14,8 +14,15 @@ from src.productos.exceptions import (
     ProductoNoEncontrado,
     SeccionInexistente,
 )
+from src.productos.constants import TIPO_COMBO_PROMOCION, TIPO_MENU_DEL_DIA, TIPO_MENU_EJECUTIVO
 from src.productos.models import Producto
-from src.productos.registro import RESTRICT_POR_TIPO, ComboPromocion, MenuEjecutivo, Seccion
+from src.productos.registro import (
+    RESTRICT_POR_TIPO,
+    ComboPromocion,
+    MenuEjecutivo,
+    ProductoMenu,
+    Seccion,
+)
 from src.productos.schemas import ProductoBase
 from src.texto import normalizar_nombre
 
@@ -63,6 +70,42 @@ def verificar_seccion(sesion: Session, seccion_id: int | None) -> None:
         raise SeccionInexistente(seccion_id)
 
 
+_ETIQUETA_COMPUESTO = {
+    TIPO_COMBO_PROMOCION: "combo",
+    TIPO_MENU_EJECUTIVO: "menú ejecutivo",
+}
+
+
+def _mensaje_baja_restringida(sesion: Session, bloqueantes: list[int]) -> str:
+    """Mensaje 409 que nombra a los compuestos que impiden la baja, ordenados por id."""
+    compuestos = sesion.execute(
+        select(Producto.tipo, Producto.nombre)
+        .where(Producto.id.in_(bloqueantes))
+        .order_by(Producto.id)
+    ).all()
+    detalle = ", ".join(
+        f'{_ETIQUETA_COMPUESTO.get(tipo, "producto")} "{nombre}"' for tipo, nombre in compuestos
+    )
+    return (
+        f"No se puede dar de baja porque es componente de: {detalle}. "
+        "Quitalo de esos productos o dalos de baja primero."
+    )
+
+
+def borrar_fechas_futuras(sesion: Session, producto: Producto, hoy: date) -> None:
+    """Borra físicamente las fechas `> hoy` de un MenuDelDia; hoy y las pasadas quedan como historial.
+
+    Para cualquier otro subtipo no hace nada. No confirma (lo hace quien llama).
+    """
+    if producto.tipo != TIPO_MENU_DEL_DIA:
+        return
+    sesion.execute(
+        delete(ProductoMenu).where(
+            ProductoMenu.menu_del_dia_id == producto.id, ProductoMenu.fecha > hoy
+        )
+    )
+
+
 def buscar_bloqueantes(sesion: Session, producto: Producto, hoy: date) -> list[int]:
     """Ids ordenados de los compuestos activos que impiden dar de baja al producto.
 
@@ -105,7 +148,8 @@ def aplicar_cambio_estado(
 ) -> None:
     """Aplica `dado_de_baja` al producto sin confirmar (lo hace quien llama).
 
-    `None` o el estado actual no hacen nada (idempotente). Una baja de Plato,
+    `None` o el estado actual no hacen nada (idempotente). Una baja de MenuDelDia
+    borra físicamente sus fechas posteriores a `hoy`. Una baja de Plato,
     Bebida o Postre se rechaza con `BajaRestringida` si otros compuestos activos
     dependen de él; los compuestos no tienen restricción. Una reactivación ejecuta
     primero `verificar_reactivacion` (gancho del subtipo compuesto) y luego la
@@ -116,7 +160,8 @@ def aplicar_cambio_estado(
     if nuevo_estado:
         bloqueantes = buscar_bloqueantes(sesion, producto, hoy)
         if bloqueantes:
-            raise BajaRestringida(bloqueantes)
+            raise BajaRestringida(bloqueantes, _mensaje_baja_restringida(sesion, bloqueantes))
+        borrar_fechas_futuras(sesion, producto, hoy)
     else:
         if verificar_reactivacion is not None:
             verificar_reactivacion(producto)
@@ -131,7 +176,7 @@ def dar_de_baja(sesion: Session, modelo: type[Producto], producto_id: int, hoy: 
     try:
         producto = obtener(sesion, modelo, producto_id)
         aplicar_cambio_estado(sesion, producto, True, hoy)
-    except (ProductoNoEncontrado, BajaRestringida):
+    except ErrorDominio:
         sesion.rollback()
         raise
     confirmar_cambios(sesion)
