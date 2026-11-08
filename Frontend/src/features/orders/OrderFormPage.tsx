@@ -3,7 +3,7 @@
  * FUNCIONALIDAD: Alta de comanda
  * La lógica del formulario vive en `useOrderForm`; la pantalla solo renderiza.
  */
-import { Alert, Button, Card, Field, Input, PageHeader } from '../../ui/ui'
+import { Alert, Button, Card, DateInput, Field, Input, PageHeader } from '../../ui/ui'
 import { navigate } from '../../app/navigation'
 import { useOrderForm } from './useOrderForm'
 
@@ -39,10 +39,9 @@ export function OrderFormPage() {
         >
           <div className="form-grid">
             <Field label="Fecha" required error={state.fieldErrors.fecha}>
-              <Input
-                type="date"
+              <DateInput
                 value={state.fecha}
-                onChange={(event) => updateField('fecha', event.target.value)}
+                onChange={(value) => updateField('fecha', value)}
                 required
               />
             </Field>

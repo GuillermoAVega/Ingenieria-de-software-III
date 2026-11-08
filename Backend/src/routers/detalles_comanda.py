@@ -10,7 +10,7 @@ from src.schemas.detalle_comanda import (
     DetalleComandaOut,
     DetalleComandaUpdate,
 )
-from src.utils import obtener_activo_o_404
+from src.utils import exigir_producto_activo, obtener_activo_o_404
 
 router = APIRouter(prefix="/detalles-comanda", tags=["Detalles de comanda"])
 
@@ -25,6 +25,7 @@ def _exigir_abierta(comanda: Comanda) -> None:
 def crear_detalle_comanda(datos: DetalleComandaCreate, db: Session = Depends(get_db)):
     comanda = obtener_activo_o_404(db, Comanda, datos.comanda_id)
     _exigir_abierta(comanda)
+    exigir_producto_activo(db, datos.producto_id)
     detalle = DetalleComanda(**datos.model_dump())
     db.add(detalle)
     db.commit()
@@ -60,6 +61,9 @@ def modificar_detalle_comanda(id: int, datos: DetalleComandaUpdate, db: Session 
     # marcar la entrega sigue permitido con la comanda cerrada; el resto no
     if set(cambios) - {"entregado"}:
         _exigir_abierta(detalle.comanda)
+    nuevo_producto = cambios.get("producto_id")
+    if nuevo_producto is not None and nuevo_producto != detalle.producto_id:
+        exigir_producto_activo(db, nuevo_producto)
     for campo, valor in cambios.items():
         setattr(detalle, campo, valor)
     db.commit()

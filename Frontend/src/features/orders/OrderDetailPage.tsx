@@ -64,9 +64,6 @@ function OrderDetail({ id }: { id: number }) {
   const abierta = order.estado === 'abierta'
   const pendientes = order.detalles.filter((item) => !item.entregado).length
   const unidades = order.detalles.reduce((sum, item) => sum + item.cantidad, 0)
-  const invoiceComplete = order.detalles.every((item) =>
-    Boolean(detail.state.invoicePrices[item.id]?.trim()),
-  )
 
   const itemColumns: DataTableColumn<OrderItem>[] = [
     {
@@ -315,7 +312,7 @@ function OrderDetail({ id }: { id: number }) {
               onClick={() => {
                 void detail.generateInvoice()
               }}
-              disabled={detail.state.invoiceSaving || !invoiceComplete}
+              disabled={detail.state.invoiceSaving}
             >
               {detail.state.invoiceSaving ? 'Generando...' : 'Generar factura'}
             </Button>
@@ -327,19 +324,9 @@ function OrderDetail({ id }: { id: number }) {
             {detail.state.invoiceError}
           </Alert>
         )}
-        <p className="hint">Ingresá el precio unitario de cada producto.</p>
-        {order.detalles.map((item) => (
-          <Field key={item.id} label={`Producto #${item.producto_id} × ${item.cantidad}`}>
-            <Input
-              type="number"
-              min={0}
-              step="0.01"
-              value={detail.state.invoicePrices[item.id] ?? ''}
-              onChange={(event) => detail.setInvoicePrice(item.id, event.target.value)}
-              placeholder="Precio unitario"
-            />
-          </Field>
-        ))}
+        <p className="hint">
+          Los precios y las promociones vigentes se calculan automáticamente al generar la factura.
+        </p>
       </Modal>
     </>
   )

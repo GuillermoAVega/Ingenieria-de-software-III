@@ -7,13 +7,15 @@ from src.exceptions import BadRequest
 from src.models import Comanda, DetalleComanda, Factura
 from src.schemas.comanda import ComandaCreate, ComandaOut, ComandaUpdate
 from src.schemas.detalle_comanda import DetalleComandaOut
-from src.utils import obtener_activo_o_404
+from src.utils import exigir_producto_activo, obtener_activo_o_404
 
 router = APIRouter(prefix="/comandas", tags=["Comandas"])
 
 
 @router.post("", response_model=ComandaOut, status_code=201)
 def crear_comanda(datos: ComandaCreate, db: Session = Depends(get_db)):
+    for detalle in datos.detalles:
+        exigir_producto_activo(db, detalle.producto_id)
     comanda = Comanda(**datos.model_dump(exclude={"detalles"}))
     comanda.detalles = [DetalleComanda(**d.model_dump()) for d in datos.detalles]
     db.add(comanda)

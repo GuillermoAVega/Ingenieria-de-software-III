@@ -3,7 +3,7 @@ import { getErrorMessage } from '../../api/client'
 import { navigate } from '../../app/navigation'
 import { formatCurrency } from '../../utils/format'
 import { createInvoice, createInvoiceLine, deleteOrder, getOrder, getOrderInvoices, updateOrder } from './api'
-import type { Invoice, Order, OrderStatus } from './types'
+import type { Invoice, InvoiceLine, Order, OrderStatus } from './types'
 
 type OrderDetailState = {
   order: Order | null
@@ -14,7 +14,6 @@ type OrderDetailState = {
   statusSaving: boolean
   deleting: boolean
   invoiceModalOpen: boolean
-  invoicePrices: Record<number, string>
   invoiceSaving: boolean
   invoiceError: string | null
   success: string | null
@@ -29,7 +28,6 @@ const initialState: OrderDetailState = {
   statusSaving: false,
   deleting: false,
   invoiceModalOpen: false,
-  invoicePrices: {},
   invoiceSaving: false,
   invoiceError: null,
   success: null,
@@ -114,9 +112,6 @@ export function useOrderDetail(id: number) {
     setState((previous) => ({
       ...previous,
       invoiceModalOpen: true,
-      invoicePrices: Object.fromEntries(
-        (previous.order?.detalles ?? []).map((item) => [item.id, '']),
-      ),
       invoiceError: null,
     }))
   }
@@ -125,26 +120,10 @@ export function useOrderDetail(id: number) {
     setState((previous) => ({ ...previous, invoiceModalOpen: false, invoiceError: null }))
   }
 
-  const setInvoicePrice = (itemId: number, value: string) => {
-    setState((previous) => ({
-      ...previous,
-      invoicePrices: { ...previous.invoicePrices, [itemId]: value },
-    }))
-  }
-
   const generateInvoice = async () => {
     if (!state.order || state.invoiceSaving) return
 
     const details = state.order.detalles
-    const missingPrice = details.some((item) => !state.invoicePrices[item.id]?.trim())
-    if (missingPrice) {
-      setState((previous) => ({
-        ...previous,
-        invoiceError: 'Ingresá el precio unitario de todos los productos.',
-      }))
-      return
-    }
-
     setState((previous) => ({ ...previous, invoiceSaving: true, invoiceError: null, error: null }))
 
     let createdInvoiceId: number | null = null
@@ -152,25 +131,27 @@ export function useOrderDetail(id: number) {
       const invoice = await createInvoice(id)
       createdInvoiceId = invoice.id
 
+      const lines: InvoiceLine[] = []
       for (const item of details) {
-        await createInvoiceLine({
-          factura_id: invoice.id,
-          detalle_comanda_id: item.id,
-          precio_unitario: Number(state.invoicePrices[item.id]),
-          cantidad: item.cantidad,
-        })
+        lines.push(
+          await createInvoiceLine({
+            factura_id: invoice.id,
+            detalle_comanda_id: item.id,
+            cantidad: item.cantidad,
+          }),
+        )
       }
 
-      const total = details.reduce(
-        (sum, item) => sum + Number(state.invoicePrices[item.id]) * item.cantidad,
-        0,
-      )
+      // El servidor calcula precios y promociones: el total sale de precio_final
+      const total = lines.reduce((sum, line) => sum + line.precio_final, 0)
+      const promoted = lines.filter((line) => line.promocion_id !== null).length
+      const promoText = promoted > 0 ? ` Promociones aplicadas en ${promoted} línea(s).` : ''
 
       setState((previous) => ({
         ...previous,
         invoiceModalOpen: false,
         invoiceSaving: false,
-        success: `Factura #${invoice.id} generada por ${formatCurrency(total)}.`,
+        success: `Factura #${invoice.id} generada por ${formatCurrency(total)}.${promoText}`,
       }))
       reload()
     } catch (requestError) {
@@ -192,7 +173,6 @@ export function useOrderDetail(id: number) {
     remove,
     openInvoiceModal,
     closeInvoiceModal,
-    setInvoicePrice,
     generateInvoice,
   }
 }
