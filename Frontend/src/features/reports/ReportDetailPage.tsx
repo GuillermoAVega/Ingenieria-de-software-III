@@ -7,9 +7,10 @@
  * 3. Construir la visualización de cada slug restante.
  */
 import { useState } from 'react'
-import { BarRow, Breadcrumb, Card, EmptyState, DateInput, Field, PageHeader } from '../../ui/ui'
+import { BarRow, Breadcrumb, Button, Card, EmptyState, DateInput, Field, PageHeader } from '../../ui/ui'
 import { DEMO_PRODUCT_RANKING, DEMO_REPORTS } from './demo'
 import { SalesComparisonReport } from './SalesComparisonReport'
+import { SalesCountReport } from './SalesCountReport'
 
 export function ReportDetailPage({ slug }: { slug: string }) {
   const [period, setPeriod] = useState({ from: '2026-10-01', to: '2026-10-16' })
@@ -31,6 +32,8 @@ export function ReportDetailPage({ slug }: { slug: string }) {
     )
   }
 
+  const isSales = report.slug === 'ventas'
+  const canExport = isSales || report.slug === 'comparativa-mensual'
   const maxValue = Math.max(...DEMO_PRODUCT_RANKING.map((product) => product.value))
 
   return (
@@ -39,10 +42,19 @@ export function ReportDetailPage({ slug }: { slug: string }) {
         breadcrumb={<Breadcrumb items={[{ label: 'Reportes', href: '#/reportes' }, { label: report.title }]} />}
         title={report.title}
         subtitle={report.description}
+        actions={
+          isSales ? (
+            <Button variant="primary" onClick={() => window.print()}>
+              Exportar PDF
+            </Button>
+          ) : undefined
+        }
       />
 
       {report.slug === 'comparativa-mensual' ? (
         <SalesComparisonReport />
+      ) : isSales ? (
+        <SalesCountReport />
       ) : (
         <>
           <Card title="Período">

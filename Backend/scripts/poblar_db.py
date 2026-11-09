@@ -20,6 +20,7 @@ de promociones); las facturas se calculan con el motor agrupado del backend
 `unidades_gratis`, `precio_final` e `importe_total` son consistentes con él.
 """
 
+import random
 import sys
 from datetime import date, datetime, time, timedelta
 from decimal import ROUND_HALF_UP, Decimal
@@ -718,6 +719,53 @@ def _crear_comandas_y_facturas(db: Session, hoy: date, ids: dict) -> None:
     )
 
 
+# Rango (mínimo, máximo) de ventas por día de la semana (lunes = 0)
+VENTAS_POR_DIA_SEMANA = {0: (0, 1), 1: (0, 1), 2: (0, 2), 3: (0, 2), 4: (1, 3), 5: (2, 4), 6: (1, 3)}
+# Meses de temporada alta (vacaciones de invierno y fiestas): una venta extra por día
+MESES_TEMPORADA_ALTA = {7, 12}
+
+
+def _crear_historial_ventas(db: Session, hoy: date, ids: dict) -> None:
+    """Ventas cobradas desde el 1/1 del año anterior hasta ayer, para el reporte de ventas.
+
+    Es determinista (semilla fija) y usa productos que no intervienen en los casos
+    de promociones de `_crear_comandas_y_facturas`. Incluye casos que el reporte
+    no cuenta: facturas sin cobrar, anuladas y con el comprobante anulado.
+    """
+    azar = random.Random(2026)
+    m, mozos, p, mp = ids["mesas"], ids["mozos"], ids["productos"], ids["medios_pago"]
+    mesas, personal, medios = list(m.values()), list(mozos.values()), list(mp.values())
+    productos = [p[clave] for clave in ("muzza", "cerveza", "flan", "provoleta", "fugazzeta", "malbec")]
+
+    dia, numero = date(hoy.year - 1, 1, 1), 0
+    while dia < hoy:
+        minimo, maximo = VENTAS_POR_DIA_SEMANA[dia.weekday()]
+        extra = 1 if dia.month in MESES_TEMPORADA_ALTA else 0
+        for _ in range(azar.randint(minimo, maximo) + extra):
+            numero += 1
+            hora = time(azar.choice((12, 13, 14, 20, 21, 22)), azar.choice((0, 15, 30, 45)))
+            comanda = _crear_comanda(
+                db,
+                fecha=dia,
+                hora=hora,
+                mozo_id=azar.choice(personal),
+                mesa_id=azar.choice(mesas),
+                items=[(producto, azar.randint(1, 3), None) for producto in azar.sample(productos, 2)],
+                cerrada=True,
+            )
+            emision = datetime.combine(dia, hora) + timedelta(hours=1)
+            factura = _facturar(db, comanda, emision)
+            if numero % 25 == 0:
+                continue  # Factura pendiente de cobro: no es venta
+            _cobrar(db, factura, [(azar.choice(medios), 1)])
+            if numero % 40 == 0:
+                factura.activo = False  # Factura anulada después de cobrarla
+            elif numero % 55 == 0:
+                factura.comprobantes[0].activo = False  # Comprobante anulado
+            db.commit()
+        dia += timedelta(days=1)
+
+
 # ----------------------------------------------------------------------- principal
 
 
@@ -748,6 +796,7 @@ def poblar_base(motor: Engine, hoy: date | None = None) -> dict:
         ids["promociones"] = _crear_promociones(db, hoy, ids["productos"])
         ids["reservas"] = _crear_reservas(db, hoy, ids)
         _crear_comandas_y_facturas(db, hoy, ids)
+        _crear_historial_ventas(db, hoy, ids)
     return ids
 
 

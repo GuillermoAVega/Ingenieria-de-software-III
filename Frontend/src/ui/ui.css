@@ -393,7 +393,7 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
 .menu-view-item-name { font-weight: 500; }
 .menu-view-price { flex: none; color: var(--c-accent-ink); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
-.bar-row { display: grid; grid-template-columns: minmax(110px, 200px) 1fr 64px; align-items: center; gap: 12px; }
+.bar-row { display: grid; grid-template-columns: minmax(110px, 200px) 1fr minmax(64px, auto); align-items: center; gap: 12px; }
 .bar { height: 8px; border-radius: 4px; background: var(--c-neutral-soft); overflow: hidden; }
 .bar > span { display: block; height: 100%; background: var(--c-accent); }
 
@@ -613,7 +613,7 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
 }
 @media (max-width: 560px) {
   .content { padding: 20px 16px 40px; }
-  .bar-row { grid-template-columns: 1fr 56px; }
+  .bar-row { grid-template-columns: 1fr minmax(56px, auto); }
   .bar-row .bar { grid-column: 1 / -1; grid-row: 2; }
   .menu-view-category { padding: 18px 16px; }
   .menu-view-category-title { font-size: 21px; }
@@ -667,6 +667,26 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
   visibility: hidden; pointer-events: none; z-index: -1;
 }
 
+.print-only { display: none; }
+
+/* Reporte de cantidad de ventas */
+.sales-chart--info .bar > span { background: var(--c-info); }
+.sales-chart--accent { border-top: 3px solid var(--c-accent); }
+.sales-chart--info { border-top: 3px solid var(--c-info); }
+.sales-summary { border-top: 3px solid var(--c-accent); }
+.sales-summary .card-title { color: var(--c-accent-ink); }
+/* El total va centrado en su columna, con el número centrado debajo de su título */
+.sales-total { display: flex; justify-content: center; }
+.sales-total .stat { align-items: center; padding-inline: 0; }
+.sales-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 12px; }
+.sales-kpi { border-radius: var(--radius-lg); border-left: 4px solid var(--kpi-color); background: var(--kpi-soft); }
+.sales-kpi .stat { padding: 12px 14px; }
+.sales-kpi .stat-value { color: var(--kpi-color); font-size: 22px; }
+.sales-kpi--accent { --kpi-color: var(--c-accent); --kpi-soft: var(--c-accent-soft); }
+.sales-kpi--info { --kpi-color: var(--c-info); --kpi-soft: var(--c-info-soft); }
+.sales-kpi--success { --kpi-color: var(--c-success); --kpi-soft: var(--c-success-soft); }
+.sales-kpi--warning { --kpi-color: var(--c-warning); --kpi-soft: var(--c-warning-soft); }
+
 @media print {
   @page {
     size: A4;
@@ -676,8 +696,37 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
   .sidebar,
   .page-actions,
   .nav,
-  .user {
+  .user,
+  .breadcrumb,
+  .no-print {
     display: none !important;
+  }
+
+  .card {
+    break-inside: avoid;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  /* Los cuatro indicadores del resumen en una sola fila */
+  .sales-kpis {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  /* Filas más compactas para que el reporte entre en una hoja */
+  .card-body .stack {
+    gap: 6px;
+  }
+
+  /* Los navegadores omiten los fondos al imprimir: las barras los necesitan */
+  .bar,
+  .bar > span,
+  .sales-summary,
+  .sales-chart {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
   }
 
   .main {

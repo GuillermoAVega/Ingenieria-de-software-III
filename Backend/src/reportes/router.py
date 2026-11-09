@@ -1,13 +1,14 @@
 from datetime import date
 
+"""Rutas HTTP de reportes."""
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from src.database import get_db
 from src.productos.services import obtener_hoy
 from src.reportes import services
-from src.reportes.constants import PREFIJO
-from src.reportes.schemas import VentasComparativaRespuesta
+from src.reportes.constants import PREFIJO, ANIO_MAX, ANIO_MIN, PREFIJO
+from src.reportes.schemas import VentasComparativaRespuesta, CantidadVentasRespuesta
 
 router = APIRouter(prefix=PREFIJO, tags=["Reportes"])
 
@@ -25,3 +26,11 @@ def ventas_comparativa(
         anio if anio is not None else hoy.year,
         mes if mes is not None else hoy.month,
     )
+
+
+
+@router.get("/ventas/cantidad", response_model=CantidadVentasRespuesta)
+def cantidad_ventas(
+    anio: int = Query(ge=ANIO_MIN, le=ANIO_MAX), sesion: Session = Depends(get_db)
+):
+    return services.cantidad_ventas(sesion, anio)
