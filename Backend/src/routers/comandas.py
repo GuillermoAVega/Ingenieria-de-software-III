@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import select
+from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
 
 from src.database import get_db
@@ -52,7 +52,12 @@ def crear_comanda(datos: ComandaCreate, db: Session = Depends(get_db)):
 def listar_comandas(
     activo: bool | None = True, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
 ):
-    q = select(Comanda).offset(skip).limit(limit)
+    q = (
+        select(Comanda)
+        .order_by(desc(Comanda.fecha), desc(Comanda.hora), desc(Comanda.id))
+        .offset(skip)
+        .limit(limit)
+    )
     if activo is not None:
         q = q.where(Comanda.activo == activo)
     return db.scalars(q).all()
