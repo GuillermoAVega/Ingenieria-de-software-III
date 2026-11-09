@@ -672,7 +672,9 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
 .sales-chart--info { border-top: 3px solid var(--c-info); }
 .sales-summary { border-top: 3px solid var(--c-accent); }
 .sales-summary .card-title { color: var(--c-accent-ink); }
-.sales-total .stat { padding: 0; }
+/* El total va centrado en su columna, con el número centrado debajo de su título */
+.sales-total { display: flex; justify-content: center; }
+.sales-total .stat { align-items: center; padding-inline: 0; }
 .sales-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 12px; }
 .sales-kpi { border-radius: var(--radius-lg); border-left: 4px solid var(--kpi-color); background: var(--kpi-soft); }
 .sales-kpi .stat { padding: 12px 14px; }
