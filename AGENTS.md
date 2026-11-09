@@ -55,6 +55,7 @@ Todo cambio nuevo y toda refactorización debe mantener el código modularizado,
 - `openspec/specs/` es la fuente de verdad del comportamiento esperado.
 - Los cambios de comportamiento deben reflejarse en `openspec/changes/` según el flujo de OpenSpec.
 - Si el código y la especificación difieren, revisar la especificación antes de dar por correcta una implementación.
+- Antes de crear, modificar o revisar un gráfico, leer `.opencode/skills/graficos-recharts/SKILL.md` y respetar su estética. La skill es Markdown estándar y no depende de OpenCode.
 
 ## Convenciones globales
 

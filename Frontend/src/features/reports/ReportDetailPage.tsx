@@ -9,6 +9,7 @@
 import { useState } from 'react'
 import { BarRow, Breadcrumb, Button, Card, EmptyState, DateInput, Field, PageHeader } from '../../ui/ui'
 import { DEMO_PRODUCT_RANKING, DEMO_REPORTS } from './demo'
+import { SalesComparisonReport } from './SalesComparisonReport'
 
 export function ReportDetailPage({ slug }: { slug: string }) {
   const [period, setPeriod] = useState({ from: '2026-10-01', to: '2026-10-16' })
@@ -50,32 +51,38 @@ export function ReportDetailPage({ slug }: { slug: string }) {
         }
       />
 
-      <Card title="Período">
-        <div className="form-grid">
-          <Field label="Desde">
-            <DateInput value={period.from} onChange={(from) => setPeriod((previous) => ({ ...previous, from }))} />
-          </Field>
-          <Field label="Hasta">
-            <DateInput value={period.to} onChange={(to) => setPeriod((previous) => ({ ...previous, to }))} />
-          </Field>
-        </div>
-      </Card>
-
-      {report.slug === 'productos' ? (
-        <Card title="Productos más vendidos" subtitle="Unidades vendidas en el período seleccionado.">
-          <div className="stack">
-            {DEMO_PRODUCT_RANKING.map((product) => (
-              <BarRow key={product.id} label={product.name} value={product.value} max={maxValue} />
-            ))}
-          </div>
-        </Card>
+      {report.slug === 'comparativa-mensual' ? (
+        <SalesComparisonReport />
       ) : (
-        <Card>
-          <EmptyState title="Reporte en preparación">
-            La visualización de este reporte todavía no está implementada.
-            {/* TODO(equipo-administracion): construir la visualización de este reporte. */}
-          </EmptyState>
-        </Card>
+        <>
+          <Card title="Período">
+            <div className="form-grid">
+              <Field label="Desde">
+                <DateInput value={period.from} onChange={(from) => setPeriod((previous) => ({ ...previous, from }))} />
+              </Field>
+              <Field label="Hasta">
+                <DateInput value={period.to} onChange={(to) => setPeriod((previous) => ({ ...previous, to }))} />
+              </Field>
+            </div>
+          </Card>
+
+          {report.slug === 'productos' ? (
+            <Card title="Productos más vendidos" subtitle="Unidades vendidas en el período seleccionado.">
+              <div className="stack">
+                {DEMO_PRODUCT_RANKING.map((product) => (
+                  <BarRow key={product.id} label={product.name} value={product.value} max={maxValue} />
+                ))}
+              </div>
+            </Card>
+          ) : (
+            <Card>
+              <EmptyState title="Reporte en preparación">
+                La visualización de este reporte todavía no está implementada.
+                {/* TODO(equipo-administracion): construir la visualización de este reporte. */}
+              </EmptyState>
+            </Card>
+          )}
+        </>
       )}
     </>
   )

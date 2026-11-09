@@ -1,4 +1,5 @@
 export type ReportSlug =
+  | 'comparativa-mensual'
   | 'ventas'
   | 'productos'
   | 'comandas-mozo'
@@ -16,4 +17,23 @@ export type ProductRanking = {
   id: string
   name: string
   value: number
+}
+
+export type SalesComparisonDay = {
+  dia: number
+  importe: number
+}
+
+export type SalesComparisonReport = {
+  anio: number
+  mes: number
+  anio_anterior: number
+  mes_anterior: number
+  actual: SalesComparisonDay[]
+  anterior: SalesComparisonDay[]
+}
+
+export type SalesComparisonParams = {
+  anio: number
+  mes: number
 }

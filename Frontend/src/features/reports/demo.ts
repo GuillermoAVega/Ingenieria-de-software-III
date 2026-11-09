@@ -2,6 +2,11 @@ import type { ProductRanking, ReportDefinition } from './types'
 
 export const DEMO_REPORTS: ReportDefinition[] = [
   {
+    slug: 'comparativa-mensual',
+    title: 'Comparativa con el mes anterior',
+    description: 'Ventas por día del mes seleccionado contra el mes anterior.',
+  },
+  {
     slug: 'ventas',
     title: 'Ventas por período',
     description: 'Evolución de la facturación por día, semana o mes.',
