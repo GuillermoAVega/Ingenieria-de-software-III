@@ -17,3 +17,9 @@ export type ProductRanking = {
   name: string
   value: number
 }
+
+export type SalesCountResponse = {
+  anio: number
+  por_mes: { mes: number; cantidad: number }[]
+  por_dia_semana: { dia: number; cantidad: number }[]
+}

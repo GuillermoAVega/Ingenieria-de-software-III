@@ -3,8 +3,8 @@ import type { ProductRanking, ReportDefinition } from './types'
 export const DEMO_REPORTS: ReportDefinition[] = [
   {
     slug: 'ventas',
-    title: 'Ventas por período',
-    description: 'Evolución de la facturación por día, semana o mes.',
+    title: 'Cantidad de ventas',
+    description: 'Ventas cobradas por mes y por día de la semana en un año.',
   },
   {
     slug: 'productos',

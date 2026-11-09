@@ -393,7 +393,7 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
 .menu-view-item-name { font-weight: 500; }
 .menu-view-price { flex: none; color: var(--c-accent-ink); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
-.bar-row { display: grid; grid-template-columns: minmax(110px, 200px) 1fr 64px; align-items: center; gap: 12px; }
+.bar-row { display: grid; grid-template-columns: minmax(110px, 200px) 1fr minmax(64px, auto); align-items: center; gap: 12px; }
 .bar { height: 8px; border-radius: 4px; background: var(--c-neutral-soft); overflow: hidden; }
 .bar > span { display: block; height: 100%; background: var(--c-accent); }
 
@@ -610,7 +610,7 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
 }
 @media (max-width: 560px) {
   .content { padding: 20px 16px 40px; }
-  .bar-row { grid-template-columns: 1fr 56px; }
+  .bar-row { grid-template-columns: 1fr minmax(56px, auto); }
   .bar-row .bar { grid-column: 1 / -1; grid-row: 2; }
   .menu-view-category { padding: 18px 16px; }
   .menu-view-category-title { font-size: 21px; }

@@ -1,0 +1,5 @@
+PREFIJO = "/reportes"
+ANIO_MIN = 1000
+ANIO_MAX = 9999
+MESES = 12
+DIAS_SEMANA = 7

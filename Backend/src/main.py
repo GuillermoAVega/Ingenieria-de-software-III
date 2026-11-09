@@ -40,6 +40,7 @@ from src.productos_menu.router import MANEJADORES_EXCEPCIONES as MANEJADORES_PRO
 from src.productos_menu.router import router as router_productos_menu
 from src.secciones.router import MANEJADORES_EXCEPCIONES as MANEJADORES_SECCIONES
 from src.secciones.router import router as router_secciones
+from src.reportes.router import router as router_reportes
 
 load_dotenv()
 
@@ -81,6 +82,7 @@ app.include_router(router_productos)
 app.include_router(router_secciones)
 app.include_router(router_productos_menu)
 app.include_router(router_promociones)
+app.include_router(router_reportes)
 app.include_router(medios_pago.router)
 app.include_router(comandas.router)
 app.include_router(detalles_comanda.router)

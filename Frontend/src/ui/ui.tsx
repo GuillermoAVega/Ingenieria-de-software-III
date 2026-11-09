@@ -601,7 +601,17 @@ export function KeyValue({ label, value, total = false }: { label: ReactNode; va
   )
 }
 
-export function BarRow({ label, value, max }: { label: string; value: number; max: number }) {
+export function BarRow({
+  label,
+  value,
+  max,
+  display = value,
+}: {
+  label: string
+  value: number
+  max: number
+  display?: ReactNode
+}) {
   const percent = max > 0 ? Math.round((value / max) * 100) : 0
   return (
     <div className="bar-row">
@@ -609,7 +619,7 @@ export function BarRow({ label, value, max }: { label: string; value: number; ma
       <div className="bar">
         <span style={{ width: `${percent}%` }} />
       </div>
-      <span className="num">{value}</span>
+      <span className="num">{display}</span>
     </div>
   )
 }
