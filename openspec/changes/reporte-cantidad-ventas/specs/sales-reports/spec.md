@@ -165,3 +165,16 @@ La pantalla DEBE mostrar la cantidad total de ventas del año seleccionado (suma
 - DADO un año sin ventas
 - CUANDO se renderiza la pantalla
 - ENTONCES el total es 0 y cada fila muestra "0 (0 %)"
+
+### Requirement: RCV-13 Exportar a PDF
+El botón "Exportar PDF" DEBE abrir el diálogo de impresión del navegador (`window.print()`), desde el que se guarda el PDF. La impresión DEBE ocultar la navegación, el botón y el selector de año. DEBE mostrar un resumen del año que solo aparece al imprimir, con la fecha de emisión y cuatro indicadores: total de ventas, promedio mensual, mes con más ventas y día con más ventas (cantidad y porcentaje; ante empate, el primero; "—" si no hay ventas). Debajo de los indicadores DEBE explicar qué se cuenta como venta. Las barras DEBEN imprimirse con color y el título del documento DEBE ser "Cantidad de ventas <año>".
+
+#### Scenario: RCV-13-S1 Exportar un año con ventas
+- DADO el reporte de 2025 cargado
+- CUANDO el usuario presiona "Exportar PDF"
+- ENTONCES se abre el diálogo de impresión con el título "Cantidad de ventas 2025", el resumen con los cuatro indicadores y los dos gráficos, sin la navegación ni el selector de año
+
+#### Scenario: RCV-13-S2 Resumen de un año sin ventas
+- DADO un año sin ventas
+- CUANDO se imprime el reporte
+- ENTONCES el total es 0 y el mes y el día con más ventas muestran "—" con la leyenda "Sin ventas"

@@ -38,6 +38,27 @@ export function toChartRows(items: { cantidad: number }[], labels: string[]): Ch
   }))
 }
 
+export function formatShare(share: number): string {
+  return SHARE_FORMAT.format(share)
+}
+
 export function formatCountWithShare(row: ChartRow): string {
-  return `${row.value} (${SHARE_FORMAT.format(row.share)})`
+  return `${row.value} (${formatShare(row.share)})`
+}
+
+const AVERAGE_FORMAT = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 1 })
+
+export function formatAverage(total: number, count: number): string {
+  return AVERAGE_FORMAT.format(count > 0 ? total / count : 0)
+}
+
+/** Fila con la mayor cantidad; ante empate, la primera. */
+export function topRow(rows: ChartRow[]): ChartRow {
+  return rows.reduce((top, row) => (row.value > top.value ? row : top))
+}
+
+const ISSUE_DATE_FORMAT = new Intl.DateTimeFormat('es-AR')
+
+export function formatIssueDate(date: Date): string {
+  return ISSUE_DATE_FORMAT.format(date)
 }

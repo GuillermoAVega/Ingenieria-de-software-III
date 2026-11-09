@@ -49,6 +49,7 @@ Sin runner de pruebas: la verificación es `npm run build` y `npx eslint src/fea
 - [x] 2.6 `Frontend/src/features/reports/ReportDetailPage.tsx`: renderizar `<SalesCountReport />` si `report.slug === 'ventas'`; los demás slugs conservan filtros Desde/Hasta y contenido (RCV-11).
 - [x] 2.7 `Frontend/src/features/reports/demo.ts`: título "Cantidad de ventas", descripción "Ventas cobradas por mes y por día de la semana en un año."; sin datos de demostración para `ventas` (RCV-09).
 - [x] 2.9 Total anual (`Stat` en la tarjeta Período) y porcentaje por fila: `countTotal`, `toChartRows` con `share` y `formatCountWithShare` en `salesLabels.ts`; `BarRow` acepta `display` opcional (RCV-12).
+- [x] 2.10 Exportar PDF con `window.print()`: `SalesPrintSummary` (solo impresión, 4 indicadores), `topRow`, `formatAverage`, `formatShare`, `formatIssueDate`; título del documento por año; estilos de impresión y colores por gráfico en `ui/ui.css` (RCV-13).
 - [ ] 2.8 Verificar `cd Frontend && npm run build && npx eslint src/features/reports`; verificación manual en navegador (año por defecto, cambio de año, error, otro slug sin selector).
 
 ## Anexo: cobertura RCV → tarea
@@ -61,3 +62,4 @@ Sin runner de pruebas: la verificación es `npm run build` y `npx eslint src/fea
 | 04 | 1.3, 1.7 | 10 | 2.3, 2.5 |
 | 05 | 1.4, 1.7 | 11 | 2.6 |
 | 06 | 1.1, 1.6 | 12 | 2.9 |
+| | | 13 | 2.10 |

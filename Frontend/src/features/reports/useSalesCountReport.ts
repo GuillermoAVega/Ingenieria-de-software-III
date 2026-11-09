@@ -36,6 +36,15 @@ export function useSalesCountReport() {
     }
   }, [year])
 
+  // El título del documento es el nombre sugerido del PDF al imprimir
+  useEffect(() => {
+    const previousTitle = document.title
+    document.title = `Cantidad de ventas ${year}`
+    return () => {
+      document.title = previousTitle
+    }
+  }, [year])
+
   const updateYear = (nextYear: number) =>
     setState((previous) => ({ ...previous, year: nextYear, data: null, loading: true, error: null }))
 

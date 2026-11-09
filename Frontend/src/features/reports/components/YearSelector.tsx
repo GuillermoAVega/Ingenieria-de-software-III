@@ -10,7 +10,7 @@ export function YearSelector({
   onChange: (year: number) => void
 }) {
   return (
-    <Field label="Año">
+    <Field label="Año" className="no-print">
       <Select value={year} onChange={(event) => onChange(Number(event.target.value))}>
         {options.map((option) => (
           <option key={option} value={option}>
