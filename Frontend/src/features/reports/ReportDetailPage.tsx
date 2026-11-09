@@ -43,7 +43,7 @@ export function ReportDetailPage({ slug }: { slug: string }) {
         title={report.title}
         subtitle={report.description}
         actions={
-          isSales ? (
+          canExport ? (
             <Button variant="primary" onClick={() => window.print()}>
               Exportar PDF
             </Button>
