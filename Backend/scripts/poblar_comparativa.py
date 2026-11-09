@@ -30,7 +30,12 @@ from sqlalchemy import func, select  # noqa: E402
 from sqlalchemy.engine import Engine  # noqa: E402
 from sqlalchemy.orm import Session, sessionmaker  # noqa: E402
 
-from scripts.poblar_db import _crear_comanda, _facturar, poblar_base  # noqa: E402
+from scripts.poblar_db import (  # noqa: E402
+    _crear_comanda,
+    _facturar,
+    _mesas_disponibles,
+    poblar_base,
+)
 from src.models import Factura  # noqa: E402
 
 MESES = (10, 11)
@@ -71,7 +76,9 @@ def _tickets_del_dia(rng: random.Random, fecha: date) -> int:
 
 def _agregar_ventas(db: Session, anio: int, ids: dict, hoy: date) -> None:
     mozos = list(ids["mozos"].values())
-    mesas = list(ids["mesas"].values())
+    mesas = _mesas_disponibles(db)
+    if not mesas:
+        raise RuntimeError("No hay mesas disponibles para generar las ventas.")
     productos = ids["productos"]
 
     for mes in MESES:

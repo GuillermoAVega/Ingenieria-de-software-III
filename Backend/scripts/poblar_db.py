@@ -29,7 +29,7 @@ from pathlib import Path
 # Permite también `python scripts/poblar_db.py` (agrega Backend/ al path)
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from sqlalchemy import MetaData  # noqa: E402
+from sqlalchemy import MetaData, select  # noqa: E402
 from sqlalchemy.engine import Engine  # noqa: E402
 from sqlalchemy.orm import Session, sessionmaker  # noqa: E402
 
@@ -37,8 +37,14 @@ from src.atencion import services as atencion_services  # noqa: E402
 from src.atencion.schema import AtencionCreate, AtencionUpdate  # noqa: E402
 from src.cliente import services as cliente_services  # noqa: E402
 from src.cliente.schemas import ClienteCreate  # noqa: E402
+from src.comanda.services import (  # noqa: E402
+    liberar_mesas,
+    obtener_mesas_disponibles,
+    ocupar_mesas,
+)
 from src.detalleReserva import models as detalle_reserva_models  # noqa: E402,F401
 from src.mesa import services as mesa_services  # noqa: E402
+from src.mesa.models import Mesa  # noqa: E402
 from src.mesa.schemas import MesaCreate  # noqa: E402
 from src.models import (  # noqa: E402
     Comanda,
@@ -533,6 +539,12 @@ def _crear_reservas(db: Session, hoy: date, ids: dict) -> dict:
 # -------------------------------------------------------------- comandas y facturas
 
 
+def _mesas_disponibles(db: Session) -> list[int]:
+    return db.scalars(
+        select(Mesa.id).where(Mesa.estado.is_(True), Mesa.disponible.is_(True))
+    ).all()
+
+
 def _crear_comanda(
     db: Session,
     *,
@@ -547,6 +559,7 @@ def _crear_comanda(
     entregado: bool = True,
 ) -> Comanda:
     """Replica `POST /comandas`: los productos deben existir y estar activos."""
+    mesas = obtener_mesas_disponibles(db, [mesa_id])
     comanda = Comanda(
         fecha=fecha,
         hora=hora,
@@ -554,6 +567,7 @@ def _crear_comanda(
         mesa_id=mesa_id,
         cliente_id=cliente_id,
         reserva_id=reserva_id,
+        mesas_asociadas=mesas,
     )
     detalles = []
     for producto_id, cantidad, observaciones in items:
@@ -567,6 +581,7 @@ def _crear_comanda(
             )
         )
     comanda.detalles = detalles
+    ocupar_mesas(mesas)
     db.add(comanda)
     db.commit()
     if cerrada:
@@ -585,6 +600,7 @@ def _facturar(db: Session, comanda: Comanda, emision: datetime) -> Factura:
     """
     factura = Factura(comanda_id=comanda.id, fecha_hora_emision=emision, importe_total=0)
     db.add(factura)
+    liberar_mesas(list(comanda.mesas_asociadas))
     db.commit()
     productos_ids = set()
     for dc in comanda.detalles:
@@ -733,8 +749,11 @@ def _crear_historial_ventas(db: Session, hoy: date, ids: dict) -> None:
     no cuenta: facturas sin cobrar, anuladas y con el comprobante anulado.
     """
     azar = random.Random(2026)
-    m, mozos, p, mp = ids["mesas"], ids["mozos"], ids["productos"], ids["medios_pago"]
-    mesas, personal, medios = list(m.values()), list(mozos.values()), list(mp.values())
+    mozos, p, mp = ids["mozos"], ids["productos"], ids["medios_pago"]
+    mesas = _mesas_disponibles(db)
+    if not mesas:
+        raise RuntimeError("No hay mesas disponibles para generar el historial.")
+    personal, medios = list(mozos.values()), list(mp.values())
     productos = [p[clave] for clave in ("muzza", "cerveza", "flan", "provoleta", "fugazzeta", "malbec")]
 
     dia, numero = date(hoy.year - 1, 1, 1), 0

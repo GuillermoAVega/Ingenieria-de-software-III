@@ -5,4 +5,4 @@
 - [x] Conectar los filtros y mostrar resumen/detalle en la pantalla.
 - [x] Habilitar impresión del reporte.
 - [x] Ejecutar `pytest tests/reportes` y `npx eslint src/features/reports`.
-- [ ] Completar `npm run build`; está bloqueado por errores TypeScript existentes en `menu-view`, `orders` y `products`.
+- [ ] Completar `npm run build`; está bloqueado por errores TypeScript existentes en `orders` y `products`.
