@@ -1,4 +1,19 @@
+from datetime import date
+
 from pydantic import BaseModel
+
+
+class ComandasPorMozoItem(BaseModel):
+    mozo_id: int
+    nombre: str
+    cantidad_comandas: int
+    importe_ventas: float
+
+
+class ComandasPorMozoRespuesta(BaseModel):
+    desde: date
+    hasta: date
+    por_mozo: list[ComandasPorMozoItem]
 
 
 class PuntoVentaDia(BaseModel):

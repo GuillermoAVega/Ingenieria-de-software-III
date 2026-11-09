@@ -1,5 +1,10 @@
 import { apiFetch } from '../../api/client'
-import type { SalesComparisonParams, SalesComparisonReport, SalesCountResponse } from './types'
+import type {
+  SalesComparisonParams,
+  SalesComparisonReport,
+  SalesCountResponse,
+  WaiterOrderReport,
+} from './types'
 
 export function getSalesComparison({
   anio,
@@ -11,4 +16,9 @@ export function getSalesComparison({
 
 export function getSalesCount(year: number): Promise<SalesCountResponse> {
   return apiFetch<SalesCountResponse>(`/reportes/ventas/cantidad?anio=${year}`)
+}
+
+export function getWaiterOrderReport(desde: string, hasta: string): Promise<WaiterOrderReport> {
+  const params = new URLSearchParams({ desde, hasta })
+  return apiFetch<WaiterOrderReport>(`/reportes/comandas-por-mozo?${params}`)
 }

@@ -203,6 +203,7 @@ sketch
 !/Backend/scripts/__init__.py
 !/Backend/scripts/poblar_db.py
 !/Backend/scripts/poblar_comparativa.py
+!/Backend/scripts/poblar_comparativa_atenciones.py
 pyvenv.cfg
 pip-selfcheck.json
 

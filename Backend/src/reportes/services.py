@@ -1,14 +1,19 @@
 from calendar import monthrange
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from src.models import Factura
-from src.reportes.schemas import PuntoVentaDia, VentasComparativaRespuesta
+from src.models import Comanda, Factura
+from src.mozo.models import Mozo
+from src.reportes.schemas import (
+    ComandasPorMozoItem,
+    ComandasPorMozoRespuesta,
+    PuntoVentaDia,
+    VentasComparativaRespuesta,
+)
 from collections import Counter
 from collections.abc import Iterable
-from datetime import datetime
 
 from sqlalchemy import exists, select
 from sqlalchemy.orm import Session
@@ -20,6 +25,59 @@ from src.reportes.schemas import (
     CantidadPorMes,
     CantidadVentasRespuesta,
 )
+
+
+def comandas_por_mozo(
+    sesion: Session, desde: date, hasta: date
+) -> ComandasPorMozoRespuesta:
+    """Cuenta comandas activas por fecha y suma las facturas activas asociadas."""
+    facturas_por_comanda = (
+        select(
+            Factura.comanda_id.label("comanda_id"),
+            func.sum(Factura.importe_total).label("importe_ventas"),
+        )
+        .where(Factura.activo.is_(True))
+        .group_by(Factura.comanda_id)
+        .subquery()
+    )
+    filas = sesion.execute(
+        select(
+            Mozo.id,
+            Mozo.nombre,
+            func.count(Comanda.id),
+            func.coalesce(func.sum(facturas_por_comanda.c.importe_ventas), 0),
+        )
+        .select_from(Mozo)
+        .join(
+            Comanda,
+            (Comanda.mozo_id == Mozo.id)
+            & Comanda.activo.is_(True)
+            & Comanda.fecha.between(desde, hasta),
+        )
+        .outerjoin(
+            facturas_por_comanda,
+            facturas_por_comanda.c.comanda_id == Comanda.id,
+        )
+        .group_by(Mozo.id, Mozo.nombre)
+        .order_by(
+            func.sum(facturas_por_comanda.c.importe_ventas).desc(),
+            func.count(Comanda.id).desc(),
+            Mozo.nombre,
+        )
+    ).all()
+    return ComandasPorMozoRespuesta(
+        desde=desde,
+        hasta=hasta,
+        por_mozo=[
+            ComandasPorMozoItem(
+                mozo_id=mozo_id,
+                nombre=nombre,
+                cantidad_comandas=cantidad_comandas,
+                importe_ventas=float(importe_ventas),
+            )
+            for mozo_id, nombre, cantidad_comandas, importe_ventas in filas
+        ],
+    )
 
 
 

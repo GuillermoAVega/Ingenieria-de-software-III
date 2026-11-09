@@ -43,3 +43,14 @@ export type SalesCountResponse = {
   por_mes: { mes: number; cantidad: number }[]
   por_dia_semana: { dia: number; cantidad: number }[]
 }
+
+export type WaiterOrderReport = {
+  desde: string
+  hasta: string
+  por_mozo: {
+    mozo_id: number
+    nombre: string
+    cantidad_comandas: number
+    importe_ventas: number
+  }[]
+}

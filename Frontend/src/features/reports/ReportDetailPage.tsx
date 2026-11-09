@@ -11,6 +11,7 @@ import { BarRow, Breadcrumb, Button, Card, EmptyState, DateInput, Field, PageHea
 import { DEMO_PRODUCT_RANKING, DEMO_REPORTS } from './demo'
 import { SalesComparisonReport } from './SalesComparisonReport'
 import { SalesCountReport } from './SalesCountReport'
+import { WaiterOrderReport } from './WaiterOrderReport'
 
 export function ReportDetailPage({ slug }: { slug: string }) {
   const [period, setPeriod] = useState({ from: '2026-10-01', to: '2026-10-16' })
@@ -33,7 +34,7 @@ export function ReportDetailPage({ slug }: { slug: string }) {
   }
 
   const isSales = report.slug === 'ventas'
-  const canExport = isSales || report.slug === 'comparativa-mensual'
+  const canExport = isSales || report.slug === 'comparativa-mensual' || report.slug === 'comandas-mozo'
   const maxValue = Math.max(...DEMO_PRODUCT_RANKING.map((product) => product.value))
 
   return (
@@ -55,6 +56,8 @@ export function ReportDetailPage({ slug }: { slug: string }) {
         <SalesComparisonReport />
       ) : isSales ? (
         <SalesCountReport />
+      ) : report.slug === 'comandas-mozo' ? (
+        <WaiterOrderReport />
       ) : (
         <>
           <Card title="Período">

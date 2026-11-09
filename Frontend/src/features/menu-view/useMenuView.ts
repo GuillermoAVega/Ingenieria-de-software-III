@@ -79,28 +79,31 @@ export function useMenuView() {
   const sections = useMemo<MenuViewSectionGroup[]>(() => {
     if (!state.data) return []
 
-    const { dailyMenus, executiveMenus, platos, postres, bebidas, sections: allSections } =
-      state.data
+    const {
+      dailyMenus,
+      menusDelDia,
+      executiveMenus,
+      platos,
+      postres,
+      bebidas,
+      sections: allSections,
+    } = state.data
     const platosById = new Map(platos.map((plato) => [plato.id, plato]))
     const postresById = new Map(postres.map((postre) => [postre.id, postre]))
+    const menusDelDiaById = new Map(menusDelDia.map((menu) => [menu.id, menu]))
 
     const dailyItems = dailyMenus
-      .filter(
-        (menu) =>
-          menu.fecha === state.date &&
-          menu.producto_tipo === 'plato' &&
-          !menu.producto_dado_de_baja,
-      )
-      .flatMap((menu) => {
-        const plato = platosById.get(menu.producto_id)
-        return plato
+      .filter((assignment) => assignment.fecha === state.date && !assignment.menu_del_dia_dado_de_baja)
+      .flatMap((assignment) => {
+        const menu = menusDelDiaById.get(assignment.menu_del_dia_id)
+        return menu
           ? [
               {
-                key: `daily-${menu.id}`,
-                nombre: plato.nombre,
-                descripcion: plato.descripcion,
-                precio: plato.precio,
-                seccionId: plato.seccion_id,
+                key: `daily-${assignment.id}`,
+                nombre: menu.nombre,
+                descripcion: menu.descripcion,
+                precio: menu.precio,
+                seccionId: menu.seccion_id,
               },
             ]
           : []

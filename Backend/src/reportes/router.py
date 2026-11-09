@@ -1,16 +1,35 @@
 from datetime import date
 
 """Rutas HTTP de reportes."""
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from src.database import get_db
 from src.productos.services import obtener_hoy
 from src.reportes import services
 from src.reportes.constants import PREFIJO, ANIO_MAX, ANIO_MIN, PREFIJO
-from src.reportes.schemas import VentasComparativaRespuesta, CantidadVentasRespuesta
+from src.reportes.schemas import (
+    CantidadVentasRespuesta,
+    ComandasPorMozoRespuesta,
+    VentasComparativaRespuesta,
+)
 
 router = APIRouter(prefix=PREFIJO, tags=["Reportes"])
+
+
+@router.get("/comandas-por-mozo", response_model=ComandasPorMozoRespuesta)
+def comandas_por_mozo(
+    desde: date = Query(),
+    hasta: date = Query(),
+    sesion: Session = Depends(get_db),
+):
+    """Cantidad de comandas y ventas por mozo en un período inclusivo."""
+    if desde > hasta:
+        raise HTTPException(
+            status_code=422,
+            detail="La fecha Desde debe ser anterior o igual a la fecha Hasta.",
+        )
+    return services.comandas_por_mozo(sesion, desde, hasta)
 
 
 @router.get("/ventas-comparativa", response_model=VentasComparativaRespuesta)
