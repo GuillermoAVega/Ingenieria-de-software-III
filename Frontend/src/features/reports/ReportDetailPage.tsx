@@ -3,11 +3,11 @@
  * FUNCIONALIDAD: Detalle de un reporte
  * COMPLETAR:
  * 1. Reemplazar DEMO_PRODUCT_RANKING por la llamada a la API del reporte.
- * 2. Implementar los filtros Desde/Hasta y la exportación.
+ * 2. Implementar los filtros Desde/Hasta.
  * 3. Construir la visualización de cada slug restante.
  */
 import { useState } from 'react'
-import { BarRow, Breadcrumb, Button, Card, EmptyState, DateInput, Field, PageHeader } from '../../ui/ui'
+import { BarRow, Breadcrumb, Card, EmptyState, DateInput, Field, PageHeader } from '../../ui/ui'
 import { DEMO_PRODUCT_RANKING, DEMO_REPORTS } from './demo'
 import { SalesComparisonReport } from './SalesComparisonReport'
 
@@ -39,16 +39,6 @@ export function ReportDetailPage({ slug }: { slug: string }) {
         breadcrumb={<Breadcrumb items={[{ label: 'Reportes', href: '#/reportes' }, { label: report.title }]} />}
         title={report.title}
         subtitle={report.description}
-        actions={
-          <Button
-            variant="primary"
-            onClick={() => {
-              // TODO(equipo-administracion): exportar el reporte en el formato acordado.
-            }}
-          >
-            Exportar
-          </Button>
-        }
       />
 
       {report.slug === 'comparativa-mensual' ? (

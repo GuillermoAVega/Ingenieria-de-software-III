@@ -46,7 +46,7 @@ Sin parámetros `anio` ni `mes`, el endpoint DEBE usar el mes actual. El paráme
 - ENTONCES devuelve `422`
 
 ### Requirement: Visualización comparativa
-El reporte `comparativa-mensual` DEBE permitir elegir mes y año. DEBE mostrar un gráfico de dos líneas con las ventas por día en pesos, una para el mes seleccionado y otra para el mes anterior. La línea del mes anterior DEBE ser discontinua. El eje X DEBE cubrir todos los días de los meses comparados. La serie del mes seleccionado DEBE cortarse en la fecha actual, mientras que la del mes anterior DEBE continuar hasta el último día de su mes cuando ese mes ya transcurrió. Por encima del gráfico DEBEN mostrarse los totales acumulados de ambos meses hasta el mismo día de corte. La interfaz DEBE mostrar estados de carga y error en español.
+El reporte `comparativa-mensual` DEBE permitir elegir mes y año. DEBE mostrar un gráfico de dos líneas con las ventas por día en pesos, una para el mes seleccionado y otra para el mes anterior. La línea del mes anterior DEBE ser discontinua. El eje X DEBE cubrir todos los días de los meses comparados. La serie del mes seleccionado DEBE cortarse en la fecha actual, mientras que la del mes anterior DEBE continuar hasta el último día de su mes cuando ese mes ya transcurrió. Por encima del gráfico DEBEN mostrarse los totales acumulados de ambos meses hasta el mismo día de corte. El total del mes anterior DEBE incluir además su total completo del mes, sin aplicar el día de corte y con menor jerarquía visual. La interfaz DEBE mostrar estados de carga y error en español.
 
 #### Scenario: SCR-08 Gráfico con el mes seleccionado
 - DADO el reporte abierto en el mes de junio de 2026
@@ -63,6 +63,7 @@ El reporte `comparativa-mensual` DEBE permitir elegir mes y año. DEBE mostrar u
 - CUANDO se calculan los totales
 - ENTONCES el total de noviembre suma del 1 al 9 de noviembre
 - Y el total de octubre suma del 1 al 9 de octubre
+- Y debajo se muestra además el total completo de octubre con menor jerarquía visual
 - Y el gráfico muestra la línea de octubre como discontinua
 
 #### Scenario: SCR-11 Corte solo en la serie del mes actual

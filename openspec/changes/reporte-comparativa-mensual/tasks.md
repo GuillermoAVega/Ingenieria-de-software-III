@@ -21,7 +21,7 @@
 - [x] 3.2 Crear `features/reports/api.ts` y `useSalesComparison.ts`.
 - [x] 3.3 Crear `MonthYearFilter`, `SalesComparisonChart`, `SalesComparisonTotals` y `SalesComparisonReport`.
 - [x] 3.4 Integrar el reporte en `ReportDetailPage` y agregar la tarjeta en `demo.ts`.
-- [x] 3.5 Marcar la línea del mes anterior como discontinua, cortar solo la serie del mes actual en la fecha actual y mostrar los totales acumulados al mismo día de corte.
+- [x] 3.5 Marcar la línea del mes anterior como discontinua, cortar solo la serie del mes actual en la fecha actual y mostrar los totales acumulados al mismo día de corte, con el total completo del mes anterior como dato secundario.
 - [x] 3.6 Verificar tipos de la feature y ejecutar `npx eslint src/features/reports`.
 
 ## Fase 4: Datos de ejemplo

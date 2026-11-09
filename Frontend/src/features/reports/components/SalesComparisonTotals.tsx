@@ -22,7 +22,13 @@ export function SalesComparisonTotals({ report }: { report: SalesComparisonRepor
       <Stat
         label={`Total de ${formatMonthYear(report.mes_anterior, report.anio_anterior)}`}
         value={formatCurrency(totals.anterior)}
-        hint={periodHint(totals.cutoffDay, report.mes_anterior)}
+        hint={
+          <>
+            {periodHint(totals.cutoffDay, report.mes_anterior)}
+            <br />
+            Total completo del mes: {formatCurrency(totals.anteriorCompleto)}
+          </>
+        }
       />
     </div>
   )

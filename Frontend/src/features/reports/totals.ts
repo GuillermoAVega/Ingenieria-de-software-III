@@ -3,6 +3,7 @@ import type { SalesComparisonDay, SalesComparisonReport } from './types'
 export type ComparisonTotals = {
   actual: number
   anterior: number
+  anteriorCompleto: number
   cutoffDay: number | null
 }
 
@@ -64,6 +65,7 @@ export function buildComparisonTotals(
   return {
     actual: sumarHasta(report.actual, cutoffDay),
     anterior: sumarHasta(report.anterior, cutoffDay),
+    anteriorCompleto: sumarHasta(report.anterior, null),
     cutoffDay,
   }
 }
