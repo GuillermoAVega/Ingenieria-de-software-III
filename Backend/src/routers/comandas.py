@@ -41,7 +41,6 @@ def crear_comanda(datos: ComandaCreate, db: Session = Depends(get_db)):
     comanda = Comanda(**valores, mesas_asociadas=mesas)
     for detalle in datos.detalles:
         exigir_producto_activo(db, detalle.producto_id)
-    comanda = Comanda(**datos.model_dump(exclude={"detalles"}))
     comanda.detalles = [DetalleComanda(**d.model_dump()) for d in datos.detalles]
     db.add(comanda)
     db.commit()
