@@ -61,6 +61,10 @@ def modificar_detalle_comanda(id: int, datos: DetalleComandaUpdate, db: Session 
     # marcar la entrega sigue permitido con la comanda cerrada; el resto no
     if set(cambios) - {"entregado"}:
         _exigir_abierta(detalle.comanda)
+    if detalle.comanda.estado != "abierta" and cambios.get("entregado") is False:
+        raise BadRequest(
+            detail="La comanda está cerrada: no se puede volver a marcar un producto como pendiente"
+        )
     nuevo_producto = cambios.get("producto_id")
     if nuevo_producto is not None and nuevo_producto != detalle.producto_id:
         exigir_producto_activo(db, nuevo_producto)

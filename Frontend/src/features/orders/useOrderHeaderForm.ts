@@ -20,7 +20,7 @@ type OrderHeaderFormState = OrderHeaderFormValues & {
 function createInitialState(order: Order): OrderHeaderFormState {
   return {
     mesaId: String(order.mesa_id),
-    mozoId: String(order.mozo_id),
+    mozoId: order.mozo_id === null ? '' : String(order.mozo_id),
     clienteId: order.cliente_id === null ? '' : String(order.cliente_id),
     reservaId: order.reserva_id === null ? '' : String(order.reserva_id),
     saving: false,
@@ -38,7 +38,7 @@ export function useOrderHeaderForm(order: Order, onSaved: () => void) {
 
   const isDirty =
     state.mesaId !== String(order.mesa_id) ||
-    state.mozoId !== String(order.mozo_id) ||
+    state.mozoId !== (order.mozo_id === null ? '' : String(order.mozo_id)) ||
     state.clienteId !== (order.cliente_id === null ? '' : String(order.cliente_id)) ||
     state.reservaId !== (order.reserva_id === null ? '' : String(order.reserva_id))
 

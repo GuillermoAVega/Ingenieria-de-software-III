@@ -110,8 +110,14 @@ function OrderDetail({ id }: { id: number }) {
           onClick={() => {
             void items.toggleDelivered(item)
           }}
-          disabled={items.state.deliveryUpdatingId === item.id}
-          title={item.entregado ? 'Marcar como pendiente' : 'Marcar como entregado'}
+          disabled={items.state.deliveryUpdatingId === item.id || (!abierta && item.entregado)}
+          title={
+            !abierta && item.entregado
+              ? 'Reabrí la comanda para cambiar la entrega'
+              : item.entregado
+                ? 'Marcar como pendiente'
+                : 'Marcar como entregado'
+          }
           aria-label={item.entregado ? 'Marcar como pendiente' : 'Marcar como entregado'}
         >
           <Badge tone={item.entregado ? 'success' : 'warning'}>
