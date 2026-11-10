@@ -11,6 +11,7 @@ from src.reportes.constants import PREFIJO, ANIO_MAX, ANIO_MIN, PREFIJO
 from src.reportes.schemas import (
     CantidadVentasRespuesta,
     ComandasPorMozoRespuesta,
+    ProductosMasVendidosRespuesta,
     VentasComparativaRespuesta,
 )
 
@@ -30,6 +31,22 @@ def comandas_por_mozo(
             detail="La fecha Desde debe ser anterior o igual a la fecha Hasta.",
         )
     return services.comandas_por_mozo(sesion, desde, hasta)
+
+
+@router.get("/productos-mas-vendidos", response_model=ProductosMasVendidosRespuesta)
+def productos_mas_vendidos(
+    desde: date = Query(),
+    hasta: date = Query(),
+    limite: int = Query(default=10, ge=1, le=50),
+    sesion: Session = Depends(get_db),
+):
+    """Ranking de productos facturados por unidades en un período inclusivo."""
+    if desde > hasta:
+        raise HTTPException(
+            status_code=422,
+            detail="La fecha Desde debe ser anterior o igual a la fecha Hasta.",
+        )
+    return services.productos_mas_vendidos(sesion, desde, hasta, limite)
 
 
 @router.get("/ventas-comparativa", response_model=VentasComparativaRespuesta)

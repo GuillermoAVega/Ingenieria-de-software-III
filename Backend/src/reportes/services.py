@@ -1,14 +1,17 @@
 from calendar import monthrange
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from src.models import Comanda, Factura
+from src.models import Comanda, DetalleComanda, DetalleFactura, Factura
 from src.mozo.models import Mozo
+from src.productos.models import Producto
 from src.reportes.schemas import (
     ComandasPorMozoItem,
     ComandasPorMozoRespuesta,
+    ProductoMasVendidoItem,
+    ProductosMasVendidosRespuesta,
     PuntoVentaDia,
     VentasComparativaRespuesta,
 )
@@ -79,6 +82,46 @@ def comandas_por_mozo(
         ],
     )
 
+
+
+def productos_mas_vendidos(
+    sesion: Session, desde: date, hasta: date, limite: int
+) -> ProductosMasVendidosRespuesta:
+    """Ranking de productos facturados (líneas y facturas activas) en un período inclusivo."""
+    unidades = func.sum(DetalleFactura.cantidad)
+    importe = func.sum(DetalleFactura.precio_final)
+    filas = sesion.execute(
+        select(Producto.id, Producto.nombre, Producto.tipo, unidades, importe)
+        .select_from(DetalleFactura)
+        .join(Factura, Factura.id == DetalleFactura.factura_id)
+        .join(DetalleComanda, DetalleComanda.id == DetalleFactura.detalle_comanda_id)
+        .join(Producto, Producto.id == DetalleComanda.producto_id)
+        .where(
+            DetalleFactura.activo.is_(True),
+            Factura.activo.is_(True),
+            Factura.fecha_hora_emision >= datetime.combine(desde, datetime.min.time()),
+            Factura.fecha_hora_emision
+            < datetime.combine(hasta + timedelta(days=1), datetime.min.time()),
+        )
+        .group_by(Producto.id, Producto.nombre, Producto.tipo)
+        .order_by(unidades.desc(), importe.desc(), Producto.nombre)
+        .limit(limite)
+    ).all()
+    return ProductosMasVendidosRespuesta(
+        desde=desde,
+        hasta=hasta,
+        limite=limite,
+        productos=[
+            ProductoMasVendidoItem(
+                producto_id=producto_id,
+                nombre=nombre,
+                tipo=tipo,
+                unidades=int(total_unidades),
+                importe=round(float(total_importe or 0), 2),
+            )
+            for producto_id, nombre, tipo, total_unidades, total_importe in filas
+        ],
+    )
 
 
 def _mes_anterior(anio: int, mes: int) -> tuple[int, int]:

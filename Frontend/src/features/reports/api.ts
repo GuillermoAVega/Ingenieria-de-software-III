@@ -1,5 +1,6 @@
 import { apiFetch } from '../../api/client'
 import type {
+  ProductSalesReport,
   SalesComparisonParams,
   SalesComparisonReport,
   SalesCountResponse,
@@ -21,4 +22,13 @@ export function getSalesCount(year: number): Promise<SalesCountResponse> {
 export function getWaiterOrderReport(desde: string, hasta: string): Promise<WaiterOrderReport> {
   const params = new URLSearchParams({ desde, hasta })
   return apiFetch<WaiterOrderReport>(`/reportes/comandas-por-mozo?${params}`)
+}
+
+export function getProductSalesReport(
+  desde: string,
+  hasta: string,
+  limite: number,
+): Promise<ProductSalesReport> {
+  const params = new URLSearchParams({ desde, hasta, limite: String(limite) })
+  return apiFetch<ProductSalesReport>(`/reportes/productos-mas-vendidos?${params}`)
 }

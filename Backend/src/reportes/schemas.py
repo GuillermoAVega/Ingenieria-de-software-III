@@ -16,6 +16,21 @@ class ComandasPorMozoRespuesta(BaseModel):
     por_mozo: list[ComandasPorMozoItem]
 
 
+class ProductoMasVendidoItem(BaseModel):
+    producto_id: int
+    nombre: str
+    tipo: str
+    unidades: int
+    importe: float
+
+
+class ProductosMasVendidosRespuesta(BaseModel):
+    desde: date
+    hasta: date
+    limite: int
+    productos: list[ProductoMasVendidoItem]
+
+
 class PuntoVentaDia(BaseModel):
     dia: int
     importe: float
