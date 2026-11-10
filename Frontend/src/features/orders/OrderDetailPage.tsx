@@ -27,6 +27,9 @@ import { useOrderHeaderForm } from './useOrderHeaderForm'
 import { useOrderItems } from './useOrderItems'
 import { useOrderCatalog } from './useOrderCatalog'
 import type { Order, OrderItem } from './types'
+import { PaymentsCard } from '../payments/components/PaymentsCard'
+import { PaymentVoucherModal } from '../payments/components/PaymentVoucherModal'
+import { usePaymentVouchers } from '../payments/usePaymentVouchers'
 
 export function OrderDetailPage({ id }: { id: string }) {
   const numericId = Number(id)
@@ -46,6 +49,7 @@ function OrderDetail({ id }: { id: number }) {
   const detail = useOrderDetail(id)
   const catalog = useOrderCatalog()
   const items = useOrderItems(id, detail.reload, catalog.state.products)
+  const payments = usePaymentVouchers(detail.state.invoice)
   const order = detail.state.order
 
   if (detail.state.loading && !order) {
@@ -272,6 +276,23 @@ function OrderDetail({ id }: { id: number }) {
               <p className="hint">{pendientes > 0 ? 'Entregá todos los productos para cerrar la comanda.' : 'La factura se genera una vez cerrada la comanda.'}</p>
             )}
           </Card>
+
+          {detail.state.invoice && (
+            <PaymentsCard
+              rows={payments.rows}
+              total={payments.total}
+              paid={payments.paid}
+              balance={payments.balance}
+              status={payments.status}
+              loading={payments.state.loading}
+              error={payments.state.error}
+              deletingId={payments.state.deletingId}
+              onRegister={payments.openModal}
+              onRemove={(voucherId) => {
+                void payments.remove(voucherId)
+              }}
+            />
+          )}
         </aside>
       </div>
 
@@ -393,6 +414,22 @@ function OrderDetail({ id }: { id: number }) {
         })}
         <KeyValue label="Total de la factura" value={formatCurrency(invoiceTotal)} total />
       </Modal>
+
+      <PaymentVoucherModal
+        open={payments.state.modalOpen}
+        methods={payments.state.methods}
+        medioPagoId={payments.state.medioPagoId}
+        importe={payments.state.importe}
+        balance={payments.balance}
+        saving={payments.state.saving}
+        error={payments.state.formError}
+        fieldErrors={payments.state.fieldErrors}
+        onChange={payments.updateField}
+        onSubmit={() => {
+          void payments.submit()
+        }}
+        onClose={payments.closeModal}
+      />
 
       <Modal
         open={detail.state.closeConfirmationOpen}

@@ -1,12 +1,18 @@
 import { useEffect, useState } from 'react'
 import { getErrorMessage } from '../../api/client'
 import type { Invoice } from '../orders/types'
+import { getVouchers } from '../payments/api'
+import { fromCents, toCents } from '../payments/money'
+import { getPaymentStatus } from '../payments/status'
+import type { PaymentVoucher } from '../payments/types'
 import { getInvoices } from './api'
+import type { BillingRow } from './types'
 
 const PAGE_SIZE = 10
 
 type BillingListState = {
   invoices: Invoice[]
+  vouchers: PaymentVoucher[]
   loading: boolean
   error: string | null
   search: string
@@ -16,6 +22,7 @@ type BillingListState = {
 
 const initialState: BillingListState = {
   invoices: [],
+  vouchers: [],
   loading: true,
   error: null,
   search: '',
@@ -31,15 +38,16 @@ export function useBillingList() {
 
     async function loadInvoices() {
       try {
-        const invoices = await getInvoices()
+        const [invoices, vouchers] = await Promise.all([getInvoices(), getVouchers()])
         if (cancelled) return
         const sorted = [...invoices].sort((first, second) => second.id - first.id)
-        setState((previous) => ({ ...previous, invoices: sorted, loading: false }))
+        setState((previous) => ({ ...previous, invoices: sorted, vouchers, loading: false }))
       } catch (requestError) {
         if (cancelled) return
         setState((previous) => ({
           ...previous,
           invoices: [],
+          vouchers: [],
           loading: false,
           error: getErrorMessage(requestError),
         }))
@@ -65,8 +73,20 @@ export function useBillingList() {
     setState((previous) => ({ ...previous, page }))
   }
 
+  const paidCentsByInvoice = new Map<number, number>()
+  for (const voucher of state.vouchers) {
+    paidCentsByInvoice.set(
+      voucher.factura_id,
+      (paidCentsByInvoice.get(voucher.factura_id) ?? 0) + toCents(voucher.importe),
+    )
+  }
+  const rows: BillingRow[] = state.invoices.map((invoice) => {
+    const paid = fromCents(paidCentsByInvoice.get(invoice.id) ?? 0)
+    return { ...invoice, paid, paymentStatus: getPaymentStatus(invoice.importe_total, paid) }
+  })
+
   const search = state.search.trim().toLowerCase()
-  const filtered = state.invoices.filter((invoice) => {
+  const filtered = rows.filter((invoice) => {
     const matchesDate = !state.date || invoice.fecha_hora_emision.startsWith(state.date)
     const matchesSearch =
       !search ||

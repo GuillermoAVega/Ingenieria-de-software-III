@@ -6,6 +6,7 @@
  */
 import {
   Alert,
+  Badge,
   Button,
   Card,
   DataTable,
@@ -21,10 +22,11 @@ import {
 import type { DataTableColumn } from '../../ui/ui'
 import { navigate } from '../../app/navigation'
 import { formatCurrency, formatDateTime } from '../../utils/format'
+import { PAYMENT_STATUS_LABEL, PAYMENT_STATUS_TONE } from '../payments/status'
 import { useBillingList } from './useBillingList'
-import type { Invoice } from '../orders/types'
+import type { BillingRow } from './types'
 
-const columns: DataTableColumn<Invoice>[] = [
+const columns: DataTableColumn<BillingRow>[] = [
   {
     key: 'id',
     header: 'Factura',
@@ -46,6 +48,21 @@ const columns: DataTableColumn<Invoice>[] = [
     num: true,
     render: (invoice) => formatCurrency(invoice.importe_total),
   },
+  {
+    key: 'pagado',
+    header: 'Pagado',
+    num: true,
+    render: (invoice) => formatCurrency(invoice.paid),
+  },
+  {
+    key: 'estado',
+    header: 'Estado',
+    render: (invoice) => (
+      <Badge tone={PAYMENT_STATUS_TONE[invoice.paymentStatus]}>
+        {PAYMENT_STATUS_LABEL[invoice.paymentStatus]}
+      </Badge>
+    ),
+  },
 ]
 
 export function BillingListPage() {
@@ -66,7 +83,7 @@ export function BillingListPage() {
     <>
       <PageHeader
         title="Facturación"
-        subtitle="Facturas emitidas y resumen de lo facturado."
+        subtitle="Facturas emitidas, lo cobrado y su estado de pago."
       />
 
       {state.error && (
