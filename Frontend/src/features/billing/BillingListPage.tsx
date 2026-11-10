@@ -1,165 +1,138 @@
 /**
  * EQUIPO: Operación
- * FUNCIONALIDAD: Listado de comprobantes y facturación
- * COMPLETAR:
- * 1. Reemplazar DEMO_INVOICES y DEMO_BILLING_SUMMARY por la API.
- * 2. Implementar filtros por fecha, estado y medio de pago.
- * 3. Definir el contrato de emisión y anulación de comprobantes.
+ * FUNCIONALIDAD: Listado de facturas
+ * La lógica vive en `useBillingList`; la pantalla solo renderiza.
+ * Las facturas se generan desde el detalle de cada comanda cerrada.
  */
-import { useState } from 'react'
-import { Alert, Badge, Button, Card, DataTable, DateInput, Input, PageHeader, Pagination, Select, Stat, Toolbar, ToolbarSpacer } from '../../ui/ui'
-import type { BadgeTone, DataTableColumn } from '../../ui/ui'
+import {
+  Alert,
+  Button,
+  Card,
+  DataTable,
+  DateInput,
+  EmptyState,
+  Input,
+  PageHeader,
+  Pagination,
+  Stat,
+  Toolbar,
+  ToolbarSpacer,
+} from '../../ui/ui'
+import type { DataTableColumn } from '../../ui/ui'
 import { navigate } from '../../app/navigation'
-import { DEMO_BILLING_SUMMARY, DEMO_INVOICES } from './demo'
-import type { Invoice, InvoiceStatus } from './types'
-
-const formatCurrency = (value: number) => `$ ${value.toLocaleString('es-AR')}`
-
-const statusLabel: Record<InvoiceStatus, string> = {
-  emitida: 'Emitida',
-  anulada: 'Anulada',
-  pendiente: 'Pendiente',
-}
-
-const statusTone: Record<InvoiceStatus, BadgeTone> = {
-  emitida: 'success',
-  anulada: 'danger',
-  pendiente: 'warning',
-}
+import { formatCurrency, formatDateTime } from '../../utils/format'
+import { useBillingList } from './useBillingList'
+import type { Invoice } from '../orders/types'
 
 const columns: DataTableColumn<Invoice>[] = [
   {
-    key: 'number',
-    header: 'Comprobante',
+    key: 'id',
+    header: 'Factura',
     render: (invoice) => (
       <>
-        <div className="cell-main">{invoice.number}</div>
-        <div className="cell-sub">Comanda #{invoice.orderId}</div>
+        <div className="cell-main">#{invoice.id}</div>
+        <div className="cell-sub">Comanda #{invoice.comanda_id}</div>
       </>
     ),
   },
   {
-    key: 'issuedAt',
-    header: 'Fecha',
-  },
-  {
-    key: 'customer',
-    header: 'Cliente',
-  },
-  {
-    key: 'paymentMethod',
-    header: 'Medio de pago',
+    key: 'fecha',
+    header: 'Fecha de emisión',
+    render: (invoice) => formatDateTime(invoice.fecha_hora_emision),
   },
   {
     key: 'total',
     header: 'Total',
     num: true,
-    render: (invoice) => formatCurrency(invoice.total),
-  },
-  {
-    key: 'status',
-    header: 'Estado',
-    render: (invoice) => <Badge tone={statusTone[invoice.status]}>{statusLabel[invoice.status]}</Badge>,
+    render: (invoice) => formatCurrency(invoice.importe_total),
   },
 ]
 
 export function BillingListPage() {
-  const [filters, setFilters] = useState({ date: '2026-10-16' })
+  const {
+    state,
+    invoices,
+    total,
+    totalAmount,
+    averageTicket,
+    page,
+    pageSize,
+    updateSearch,
+    updateDate,
+    changePage,
+  } = useBillingList()
 
   return (
     <>
       <PageHeader
         title="Facturación"
-        subtitle="Comprobantes emitidos y resumen de cobros del día."
-        actions={
-          <Button
-            variant="primary"
-            onClick={() => {
-              // TODO(equipo-operacion): abrir el flujo de emisión de factura.
-            }}
-          >
-            Emitir factura
-          </Button>
-        }
+        subtitle="Facturas emitidas y resumen de lo facturado."
       />
 
-      <Alert tone="info" title="Pantalla de referencia">
-        La facturación no aparece en el PDF original. Este listado es un contrato propuesto para que el
-        equipo de Operación lo complete junto con la API.
-      </Alert>
+      {state.error && (
+        <Alert tone="danger" title="No se pudieron cargar las facturas">
+          {state.error}
+        </Alert>
+      )}
 
       <div className="grid-auto">
         <Card flush>
-          <Stat
-            label="Facturado hoy"
-            value={formatCurrency(DEMO_BILLING_SUMMARY.totalToday)}
-            hint="Incluye todos los medios de pago"
-          />
+          <Stat label="Facturado" value={formatCurrency(totalAmount)} hint="Según los filtros aplicados" />
         </Card>
         <Card flush>
-          <Stat
-            label="Comprobantes"
-            value={DEMO_BILLING_SUMMARY.invoiceCount}
-            hint="Emitidos durante la jornada"
-          />
+          <Stat label="Facturas" value={total} hint="Emitidas y vigentes" />
         </Card>
         <Card flush>
-          <Stat
-            label="Ticket promedio"
-            value={formatCurrency(DEMO_BILLING_SUMMARY.averageTicket)}
-            hint="Facturado hoy / comprobantes"
-          />
+          <Stat label="Ticket promedio" value={formatCurrency(averageTicket)} hint="Facturado / facturas" />
         </Card>
       </div>
 
       <Card flush>
         <Toolbar>
           <Input
-            placeholder="Buscar por comprobante o cliente..."
-            onChange={() => {
-              // TODO(equipo-operacion): filtrar comprobantes por texto.
-            }}
+            placeholder="Buscar por número de factura o comanda..."
+            value={state.search}
+            onChange={(event) => updateSearch(event.target.value)}
           />
           <DateInput
-            aria-label="Filtrar por fecha"
-            value={filters.date}
-            onChange={(date) => {
-              // TODO(equipo-operacion): filtrar comprobantes por fecha.
-              setFilters((previous) => ({ ...previous, date }))
-            }}
+            aria-label="Filtrar por fecha de emisión"
+            value={state.date}
+            onChange={updateDate}
           />
-          <Select
-            defaultValue=""
-            onChange={() => {
-              // TODO(equipo-operacion): filtrar comprobantes por estado.
-            }}
-          >
-            <option value="">Todos los estados</option>
-            <option value="emitida">Emitidos</option>
-            <option value="anulada">Anulados</option>
-            <option value="pendiente">Pendientes</option>
-          </Select>
-          <ToolbarSpacer />
-          <span className="muted text-sm">Datos de demostración</span>
-        </Toolbar>
-
-        <DataTable
-          columns={columns}
-          rows={DEMO_INVOICES}
-          actions={(invoice) => (
-            <Button size="sm" onClick={() => navigate(`/comandas/${invoice.orderId}`)}>
-              Ver comanda
+          {state.date && (
+            <Button size="sm" onClick={() => updateDate('')}>
+              Quitar fecha
             </Button>
           )}
-        />
+          <ToolbarSpacer />
+          <span className="muted text-sm">{total} facturas</span>
+        </Toolbar>
+
+        {state.loading ? (
+          <p className="muted">Cargando facturas...</p>
+        ) : (
+          <DataTable
+            columns={columns}
+            rows={invoices}
+            empty={
+              <EmptyState title="Sin facturas para mostrar">
+                Todavía no hay facturas o ninguna coincide con los filtros elegidos.
+              </EmptyState>
+            }
+            actions={(invoice) => (
+              <Button size="sm" onClick={() => navigate(`/comandas/${invoice.comanda_id}`)}>
+                Ver comanda
+              </Button>
+            )}
+          />
+        )}
 
         <Pagination
-          page={1}
-          pageSize={10}
-          total={DEMO_INVOICES.length}
-          onPageChange={() => {
-            // TODO(equipo-operacion): implementar la paginación contra la API.
-          }}
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          onPageChange={changePage}
+          label={`Página ${page} · ${total} facturas`}
         />
       </Card>
     </>

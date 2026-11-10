@@ -3,7 +3,7 @@
  * FUNCIONALIDAD: Alta de comanda
  * La lógica del formulario vive en `useOrderForm`; la pantalla solo renderiza.
  */
-import { Alert, Button, Card, DateInput, Field, Input, PageHeader, Select } from '../../ui/ui'
+import { Alert, Button, Card, Field, Input, PageHeader, Select } from '../../ui/ui'
 import { navigate } from '../../app/navigation'
 import { useOrderForm } from './useOrderForm'
 

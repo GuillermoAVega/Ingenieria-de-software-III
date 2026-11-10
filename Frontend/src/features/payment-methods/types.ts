@@ -1,7 +1,9 @@
 export type PaymentMethod = {
-  id: string
-  name: string
-  type: string
-  surcharge: number
-  active: boolean
+  id: number
+  descripcion: string
+  activo: boolean
+}
+
+export type PaymentMethodPayload = {
+  descripcion: string
 }

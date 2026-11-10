@@ -1,50 +1,43 @@
 /**
  * EQUIPO: Administración
  * FUNCIONALIDAD: Listado de medios de pago
- * COMPLETAR:
- * 1. Reemplazar DEMO_PAYMENT_METHODS por la llamada a la API.
- * 2. Implementar búsqueda, filtro por estado y paginación.
- * 3. Conectar Editar y Dar de baja con la API.
+ * La lógica vive en `usePaymentMethodsList`; la pantalla solo renderiza.
  */
-import { Badge, Button, Card, DataTable, DeleteButton, Input, PageHeader, Pagination, Select, Toolbar, ToolbarSpacer } from '../../ui/ui'
+import {
+  Alert,
+  Button,
+  Card,
+  DataTable,
+  DeleteButton,
+  EmptyState,
+  Input,
+  PageHeader,
+  Pagination,
+  Toolbar,
+  ToolbarSpacer,
+} from '../../ui/ui'
 import type { DataTableColumn } from '../../ui/ui'
 import { navigate } from '../../app/navigation'
-import { DEMO_PAYMENT_METHODS } from './demo'
+import { usePaymentMethodsList } from './usePaymentMethodsList'
 import type { PaymentMethod } from './types'
 
 const columns: DataTableColumn<PaymentMethod>[] = [
   {
-    key: 'name',
+    key: 'descripcion',
     header: 'Medio de pago',
-    render: (method) => <span className="cell-main">{method.name}</span>,
-  },
-  {
-    key: 'type',
-    header: 'Tipo',
-  },
-  {
-    key: 'surcharge',
-    header: 'Recargo',
-    num: true,
-    render: (method) => `${method.surcharge}%`,
-  },
-  {
-    key: 'active',
-    header: 'Estado',
-    render: (method) => (
-      <Badge tone={method.active ? 'success' : 'neutral'}>
-        {method.active ? 'Activo' : 'Inactivo'}
-      </Badge>
-    ),
+    render: (method) => <span className="cell-main">{method.descripcion}</span>,
   },
 ]
 
 export function PaymentMethodsListPage() {
+  const { state, methods, total, page, pageSize, updateSearch, changePage, remove } =
+    usePaymentMethodsList()
+
   return (
     <>
       <PageHeader
         title="Medios de pago"
-        subtitle="Formas de cobro disponibles, recargos y estado de cada medio."
+        subtitle="Formas de cobro disponibles para los comprobantes de pago."
         actions={
           <Button variant="primary" onClick={() => navigate('/medios-de-pago/nuevo')}>
             Nuevo medio de pago
@@ -52,57 +45,65 @@ export function PaymentMethodsListPage() {
         }
       />
 
+      {state.error && (
+        <Alert tone="danger" title="No se pudo completar la operación">
+          {state.error}
+        </Alert>
+      )}
+
       <Card flush>
         <Toolbar>
           <Input
             placeholder="Buscar medio de pago..."
-            onChange={() => {
-              // TODO(equipo-administracion): filtrar medios de pago por texto.
-            }}
+            value={state.search}
+            onChange={(event) => updateSearch(event.target.value)}
           />
-          <Select
-            defaultValue=""
-            onChange={() => {
-              // TODO(equipo-administracion): filtrar medios de pago por estado.
-            }}
-          >
-            <option value="">Todos los estados</option>
-            <option value="activo">Activos</option>
-            <option value="inactivo">Inactivos</option>
-          </Select>
           <ToolbarSpacer />
-          <span className="muted text-sm">Datos de demostración</span>
+          <span className="muted text-sm">{total} medios de pago</span>
         </Toolbar>
 
-        <DataTable
-          columns={columns}
-          rows={DEMO_PAYMENT_METHODS}
-          actions={(method) => (
-            <div className="row">
-              <Button size="sm" onClick={() => navigate(`/medios-de-pago/${method.id}/editar`)}>
-                Editar
-              </Button>
-              <DeleteButton
-                label="Dar de baja"
-                title="Dar de baja medio de pago"
-                confirmLabel="Dar de baja"
-                onConfirm={() => {
-                  // TODO(equipo-administracion): dar de baja el medio de pago en la API.
-                }}
-              >
-                ¿Querés dar de baja <strong>{method.name}</strong>?
-              </DeleteButton>
-            </div>
-          )}
-        />
+        {state.loading ? (
+          <p className="muted">Cargando medios de pago...</p>
+        ) : (
+          <DataTable
+            columns={columns}
+            rows={methods}
+            empty={
+              <EmptyState title="Sin medios de pago">
+                No hay medios de pago que coincidan con la búsqueda.
+              </EmptyState>
+            }
+            actions={(method) => (
+              <div className="row">
+                <Button
+                  size="sm"
+                  onClick={() => navigate(`/medios-de-pago/${method.id}/editar`)}
+                  disabled={state.deletingId === method.id}
+                >
+                  Editar
+                </Button>
+                <DeleteButton
+                  label="Dar de baja"
+                  title="Dar de baja medio de pago"
+                  confirmLabel="Dar de baja"
+                  onConfirm={() => {
+                    void remove(method.id)
+                  }}
+                >
+                  ¿Querés dar de baja <strong>{method.descripcion}</strong>? No se puede dar de baja
+                  si tiene comprobantes de pago asociados.
+                </DeleteButton>
+              </div>
+            )}
+          />
+        )}
 
         <Pagination
-          page={1}
-          pageSize={10}
-          total={DEMO_PAYMENT_METHODS.length}
-          onPageChange={() => {
-            // TODO(equipo-administracion): implementar la paginación contra la API.
-          }}
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          onPageChange={changePage}
+          label={`Página ${page} · ${total} medios de pago`}
         />
       </Card>
     </>
