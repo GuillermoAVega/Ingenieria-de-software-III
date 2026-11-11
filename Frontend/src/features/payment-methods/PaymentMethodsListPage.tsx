@@ -18,6 +18,8 @@ import {
 } from '../../ui/ui'
 import type { DataTableColumn } from '../../ui/ui'
 import { navigate } from '../../app/navigation'
+import { PencilIcon } from '../../ui/PencilIcon'
+import { TrashIcon } from '../../ui/TrashIcon'
 import { usePaymentMethodsList } from './usePaymentMethodsList'
 import type { PaymentMethod } from './types'
 
@@ -74,16 +76,20 @@ export function PaymentMethodsListPage() {
               </EmptyState>
             }
             actions={(method) => (
-              <div className="row">
+              <div className="row row-icons">
                 <Button
                   size="sm"
+                  className="btn-icon"
+                  title="Editar"
+                  aria-label={`Editar ${method.descripcion}`}
                   onClick={() => navigate(`/medios-de-pago/${method.id}/editar`)}
                   disabled={state.deletingId === method.id}
                 >
-                  Editar
+                  <PencilIcon />
                 </Button>
                 <DeleteButton
                   label="Dar de baja"
+                  icon={<TrashIcon />}
                   title="Dar de baja medio de pago"
                   confirmLabel="Dar de baja"
                   onConfirm={() => {
