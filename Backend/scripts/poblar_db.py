@@ -495,6 +495,15 @@ def _crear_reservas(db: Session, hoy: date, ids: dict) -> dict:
     reservas["ausente"] = reservar(
         hoy - timedelta(days=5), time(20, 30), 2, "bruno", ["s1"]
     )
+    reservas["ausente_carla"] = reservar(
+        hoy - timedelta(days=20), time(21, 0), 3, "carla", ["p1"]
+    )
+    reservas["ausente_diego"] = reservar(
+        hoy - timedelta(days=30), time(13, 30), 2, "diego", ["p2"]
+    )
+    reservas["ausente_hugo"] = reservar(
+        hoy - timedelta(days=45), time(20, 0), 5, "hugo", ["t3"]
+    )
     reservas["cancelada"] = reservar(
         hoy - timedelta(days=3), time(13, 0), 6, "carla", ["s5"], "Almuerzo familiar"
     )
@@ -530,6 +539,9 @@ def _crear_reservas(db: Session, hoy: date, ids: dict) -> dict:
     # Estados finales de las reservas pasadas (no hay servicio para esto)
     reservas["asistio"].estado = EstadoReserva.CON_COMANDA
     reservas["ausente"].estado = EstadoReserva.AUSENTE
+    reservas["ausente_carla"].estado = EstadoReserva.AUSENTE
+    reservas["ausente_diego"].estado = EstadoReserva.AUSENTE
+    reservas["ausente_hugo"].estado = EstadoReserva.AUSENTE
     # `cancelar_reserva` rechaza fechas pasadas, por eso se asigna el estado directo
     reservas["cancelada"].estado = EstadoReserva.CANCELADA
     db.commit()

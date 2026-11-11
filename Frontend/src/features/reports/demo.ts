@@ -28,8 +28,8 @@ export const DEMO_REPORTS: ReportDefinition[] = [
   },
   {
     slug: 'reservas',
-    title: 'Reservas canceladas y ausencias',
-    description: 'Seguimiento de cancelaciones y clientes ausentes.',
+    title: 'Clientes ausentes a reservas',
+    description: 'Clientes que faltaron a reservas y cantidad total de inasistencias.',
   },
   {
     slug: 'medios-pago',

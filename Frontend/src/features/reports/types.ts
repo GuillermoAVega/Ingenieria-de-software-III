@@ -63,3 +63,30 @@ export type WaiterOrderReport = {
     importe_ventas: number
   }[]
 }
+
+export type AbsentClientRow = {
+  dni: string
+  nombre: string
+  apellido: string
+  ultima_fecha: string
+  ultima_hora: string
+  cantidad_ausencias: number
+}
+
+export type AbsentClientsReport = {
+  clientes: AbsentClientRow[]
+}
+
+export type OccupancyBySectorRow = {
+  sector_id: number
+  sector: string
+  mesas_atendidas: number
+  cantidad_comandas: number
+  rotacion: number
+}
+
+export type OccupancyBySectorReport = {
+  desde: string
+  hasta: string
+  por_sector: OccupancyBySectorRow[]
+}

@@ -12,6 +12,8 @@ import { ProductSalesReport } from './ProductSalesReport'
 import { SalesComparisonReport } from './SalesComparisonReport'
 import { SalesCountReport } from './SalesCountReport'
 import { WaiterOrderReport } from './WaiterOrderReport'
+import { AbsentClientsReport } from './AbsentClientsReport'
+import { OccupancyBySectorReport } from './OccupancyBySectorReport'
 
 export function ReportDetailPage({ slug }: { slug: string }) {
   const [period, setPeriod] = useState({ from: '2026-10-01', to: '2026-10-16' })
@@ -38,7 +40,8 @@ export function ReportDetailPage({ slug }: { slug: string }) {
     isSales ||
     report.slug === 'comparativa-mensual' ||
     report.slug === 'comandas-mozo' ||
-    report.slug === 'productos'
+    report.slug === 'productos' ||
+    report.slug === 'reservas'
 
   return (
     <>
@@ -63,6 +66,10 @@ export function ReportDetailPage({ slug }: { slug: string }) {
         <WaiterOrderReport />
       ) : report.slug === 'productos' ? (
         <ProductSalesReport />
+      ) : report.slug === 'reservas' ? (
+        <AbsentClientsReport />
+      ) : report.slug === 'ocupacion' ? (
+        <OccupancyBySectorReport />
       ) : (
         <>
           <Card title="Período">

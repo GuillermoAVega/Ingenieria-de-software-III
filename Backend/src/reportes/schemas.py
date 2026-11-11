@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, time
 
 from pydantic import BaseModel
 
@@ -59,3 +59,30 @@ class CantidadVentasRespuesta(BaseModel):
     anio: int
     por_mes: list[CantidadPorMes]
     por_dia_semana: list[CantidadPorDiaSemana]
+
+
+class ClienteAusenteItem(BaseModel):
+    dni: str
+    nombre: str
+    apellido: str
+    ultima_fecha: date
+    ultima_hora: time
+    cantidad_ausencias: int
+
+
+class ClientesAusentesRespuesta(BaseModel):
+    clientes: list[ClienteAusenteItem]
+
+
+class OcupacionPorSectorItem(BaseModel):
+    sector_id: int
+    sector: str
+    mesas_atendidas: int
+    cantidad_comandas: int
+    rotacion: float
+
+
+class OcupacionPorSectorRespuesta(BaseModel):
+    desde: date
+    hasta: date
+    por_sector: list[OcupacionPorSectorItem]

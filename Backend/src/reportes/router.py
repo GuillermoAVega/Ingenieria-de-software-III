@@ -10,9 +10,11 @@ from src.reportes import services
 from src.reportes.constants import PREFIJO, ANIO_MAX, ANIO_MIN, PREFIJO
 from src.reportes.schemas import (
     CantidadVentasRespuesta,
+    ClientesAusentesRespuesta,
     ComandasPorMozoRespuesta,
     ProductosMasVendidosRespuesta,
     VentasComparativaRespuesta,
+    OcupacionPorSectorRespuesta,
 )
 
 router = APIRouter(prefix=PREFIJO, tags=["Reportes"])
@@ -70,3 +72,24 @@ def cantidad_ventas(
     anio: int = Query(ge=ANIO_MIN, le=ANIO_MAX), sesion: Session = Depends(get_db)
 ):
     return services.cantidad_ventas(sesion, anio)
+
+
+@router.get("/clientes-ausentes", response_model=ClientesAusentesRespuesta)
+def clientes_ausentes(sesion: Session = Depends(get_db)):
+    """Clientes que faltaron a una o más reservas."""
+    return services.clientes_ausentes(sesion)
+
+
+@router.get("/ocupacion-por-sector", response_model=OcupacionPorSectorRespuesta)
+def ocupacion_por_sector(
+    desde: date = Query(),
+    hasta: date = Query(),
+    sesion: Session = Depends(get_db),
+):
+    """Uso de mesas y rotación por sector en un período inclusivo."""
+    if desde > hasta:
+        raise HTTPException(
+            status_code=422,
+            detail="La fecha Desde debe ser anterior o igual a la fecha Hasta.",
+        )
+    return services.ocupacion_por_sector(sesion, desde, hasta)

@@ -1,19 +1,28 @@
 from calendar import monthrange
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import distinct, func, select
 from sqlalchemy.orm import Session
 
 from src.models import Comanda, DetalleComanda, DetalleFactura, Factura
+from src.cliente.models import Cliente
+from src.mesa.models import Mesa
 from src.mozo.models import Mozo
 from src.productos.models import Producto
+from src.reserva import models as reserva_models
+from src.reserva.estados import EstadoReserva
+from src.sector.models import Sector
 from src.reportes.schemas import (
+    ClienteAusenteItem,
+    ClientesAusentesRespuesta,
     ComandasPorMozoItem,
     ComandasPorMozoRespuesta,
     ProductoMasVendidoItem,
     ProductosMasVendidosRespuesta,
     PuntoVentaDia,
     VentasComparativaRespuesta,
+    OcupacionPorSectorItem,
+    OcupacionPorSectorRespuesta,
 )
 from collections import Counter
 from collections.abc import Iterable
@@ -204,3 +213,85 @@ def cantidad_ventas(sesion: Session, anio: int) -> CantidadVentasRespuesta:
     if anio < ANIO_MAX:  # datetime(10000, 1, 1) no existe
         consulta = consulta.where(Factura.fecha_hora_emision < datetime(anio + 1, 1, 1))
     return agrupar_ventas(anio, sesion.scalars(consulta).all())
+
+
+def clientes_ausentes(sesion: Session) -> ClientesAusentesRespuesta:
+    """Lista clientes con reservas ausentes, agrupados por cliente."""
+    filas = sesion.execute(
+        select(
+            Cliente.dni,
+            Cliente.nombre,
+            Cliente.apellido,
+            reserva_models.Reserva.fecha,
+            reserva_models.Reserva.hora,
+        )
+        .join(
+            reserva_models.Reserva,
+            reserva_models.Reserva.cliente_id == Cliente.id,
+        )
+        .where(reserva_models.Reserva.estado == EstadoReserva.AUSENTE)
+        .order_by(
+            reserva_models.Reserva.fecha.desc(),
+            reserva_models.Reserva.hora.desc(),
+            reserva_models.Reserva.id.desc(),
+        )
+    ).all()
+
+    agrupados: dict[str, ClienteAusenteItem] = {}
+    for dni, nombre, apellido, fecha, hora in filas:
+        if dni not in agrupados:
+            agrupados[dni] = ClienteAusenteItem(
+                dni=dni,
+                nombre=nombre,
+                apellido=apellido,
+                ultima_fecha=fecha,
+                ultima_hora=hora,
+                cantidad_ausencias=0,
+            )
+        agrupados[dni].cantidad_ausencias += 1
+
+    return ClientesAusentesRespuesta(clientes=list(agrupados.values()))
+
+
+def ocupacion_por_sector(
+    sesion: Session, desde: date, hasta: date
+) -> OcupacionPorSectorRespuesta:
+    """Calcula mesas atendidas, comandas y rotación por sector."""
+    filas = sesion.execute(
+        select(
+            Sector.id,
+            Sector.nombre,
+            func.count(distinct(Comanda.mesa_id)),
+            func.count(Comanda.id),
+        )
+        .select_from(Sector)
+        .outerjoin(Mesa, Mesa.sector_id == Sector.id)
+        .outerjoin(
+            Comanda,
+            (Comanda.mesa_id == Mesa.id)
+            & Comanda.activo.is_(True)
+            & Comanda.fecha.between(desde, hasta),
+        )
+        .group_by(Sector.id, Sector.nombre)
+        .order_by(Sector.nombre)
+    ).all()
+
+    por_sector = []
+    for sector_id, nombre, mesas_atendidas, cantidad_comandas in filas:
+        mesas = int(mesas_atendidas or 0)
+        comandas = int(cantidad_comandas or 0)
+        por_sector.append(
+            OcupacionPorSectorItem(
+                sector_id=sector_id,
+                sector=nombre,
+                mesas_atendidas=mesas,
+                cantidad_comandas=comandas,
+                rotacion=round(comandas / mesas, 2) if mesas else 0.0,
+            )
+        )
+
+    return OcupacionPorSectorRespuesta(
+        desde=desde,
+        hasta=hasta,
+        por_sector=por_sector,
+    )

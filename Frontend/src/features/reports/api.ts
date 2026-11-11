@@ -1,11 +1,25 @@
 import { apiFetch } from '../../api/client'
 import type {
   ProductSalesReport,
+  AbsentClientsReport,
+  OccupancyBySectorReport,
   SalesComparisonParams,
   SalesComparisonReport,
   SalesCountResponse,
   WaiterOrderReport,
 } from './types'
+
+export function getAbsentClientsReport(): Promise<AbsentClientsReport> {
+  return apiFetch<AbsentClientsReport>('/reportes/clientes-ausentes')
+}
+
+export function getOccupancyBySectorReport(
+  desde: string,
+  hasta: string,
+): Promise<OccupancyBySectorReport> {
+  const params = new URLSearchParams({ desde, hasta })
+  return apiFetch<OccupancyBySectorReport>(`/reportes/ocupacion-por-sector?${params}`)
+}
 
 export function getSalesComparison({
   anio,
