@@ -12,6 +12,8 @@ import {
 } from '../../ui/ui'
 import type { DataTableColumn } from '../../ui/ui'
 import { navigate } from '../../app/navigation'
+import { CheckIcon } from '../../ui/CheckIcon'
+import { formatDate } from '../../utils/format'
 import { listSectors } from '../tables/api'
 import { createAttention, finishAttention, getWaiter, listAttentions } from './api'
 import type { Attention, Waiter } from './types'
@@ -155,12 +157,16 @@ export function WaiterAttentionsPage({ id }: { id: string }) {
 
   const currentColumns: DataTableColumn<AttentionRow>[] = [
     { key: 'sector', header: 'Sector' },
-    { key: 'fecha_desde', header: 'Desde' },
+    { key: 'fecha_desde', header: 'Desde', render: (attention) => formatDate(attention.fecha_desde) },
   ]
   const historyColumns: DataTableColumn<AttentionRow>[] = [
     { key: 'sector', header: 'Sector' },
-    { key: 'fecha_desde', header: 'Desde' },
-    { key: 'fecha_hasta', header: 'Hasta' },
+    { key: 'fecha_desde', header: 'Desde', render: (attention) => formatDate(attention.fecha_desde) },
+    {
+      key: 'fecha_hasta',
+      header: 'Hasta',
+      render: (attention) => (attention.fecha_hasta ? formatDate(attention.fecha_hasta) : '—'),
+    },
   ]
 
   return (
@@ -219,7 +225,7 @@ export function WaiterAttentionsPage({ id }: { id: string }) {
                   />
                 </Field>
               </div>
-              <div className="row">
+              <div className="row form-actions">
                 <Button
                   type="submit"
                   variant="primary"
@@ -231,7 +237,7 @@ export function WaiterAttentionsPage({ id }: { id: string }) {
             </form>
           </Card>
 
-          <Card title="Atenciones actuales" subtitle="Ingresá la fecha hasta para finalizar una atención.">
+          <Card title="Atenciones actuales" subtitle="Ingresá la fecha hasta para finalizar una atención." flush>
             <DataTable
               columns={currentColumns}
               rows={activeAttentions}
@@ -239,19 +245,24 @@ export function WaiterAttentionsPage({ id }: { id: string }) {
               actions={(attention) => {
                 const finishDate = finishDates[attention.id] ?? localDate()
                 return (
-                  <div className="row">
-                    <DateInput
-                      aria-label={`Fecha hasta de ${attention.sector}`}
-                      min={attention.fecha_desde}
-                      max={today}
-                      value={finishDate}
-                      required
-                      onChange={(value) =>
-                        setFinishDates((current) => ({ ...current, [attention.id]: value }))
-                      }
-                    />
+                  <div className="row row-icons">
+                    <div className="attention-finish-date">
+                      <DateInput
+                        aria-label={`Fecha hasta de ${attention.sector}`}
+                        min={attention.fecha_desde}
+                        max={today}
+                        value={finishDate}
+                        required
+                        onChange={(value) =>
+                          setFinishDates((current) => ({ ...current, [attention.id]: value }))
+                        }
+                      />
+                    </div>
                     <Button
                       size="sm"
+                      className="btn-icon"
+                      title="Finalizar atención"
+                      aria-label={`Finalizar atención de ${attention.sector}`}
                       onClick={() => void handleFinish(attention)}
                       disabled={
                         finalizingId !== null ||
@@ -260,7 +271,7 @@ export function WaiterAttentionsPage({ id }: { id: string }) {
                         finishDate > today
                       }
                     >
-                      {finalizingId === attention.id ? 'Finalizando...' : 'Finalizar'}
+                      <CheckIcon />
                     </Button>
                   </div>
                 )
@@ -273,7 +284,7 @@ export function WaiterAttentionsPage({ id }: { id: string }) {
             />
           </Card>
 
-          <Card title="Historial de atenciones" subtitle="Las atenciones finalizadas se muestran solo para consulta.">
+          <Card title="Historial de atenciones" subtitle="Las atenciones finalizadas se muestran solo para consulta." flush>
             <DataTable
               columns={historyColumns}
               rows={historyAttentions}

@@ -70,6 +70,21 @@ def migrar_detalle_reserva_legacy(database_engine=engine):
     DetalleReserva.__table__.create(bind=database_engine)
 
 
+def migrar_unidades_gratis_detalle_factura(database_engine=engine):
+    """Agrega detalle_factura.unidades_gratis a bases creadas antes de las promociones."""
+    with database_engine.begin() as connection:
+        inspector = inspect(connection)
+        if "detalle_factura" not in inspector.get_table_names():
+            return
+        columnas = {c["name"] for c in inspector.get_columns("detalle_factura")}
+        if "unidades_gratis" in columnas:
+            return
+        connection.execute(text(
+            "ALTER TABLE detalle_factura "
+            "ADD COLUMN unidades_gratis INTEGER NOT NULL DEFAULT 0"
+        ))
+
+
 def migrar_estado_reserva_legacy(database_engine=engine):
     with database_engine.begin() as connection:
         inspector = inspect(connection)

@@ -21,7 +21,8 @@ def _validar_importe(factura: Factura, importe: float, excluir_id: int | None = 
     """La suma de comprobantes activos no puede superar el total de la factura."""
     pagado = sum(c.importe for c in factura.comprobantes if c.activo and c.id != excluir_id)
     if pagado + importe > factura.importe_total + 1e-9:
-        raise BadRequest()
+        saldo = max(factura.importe_total - pagado, 0)
+        raise BadRequest(detail=f"El importe supera el saldo pendiente de la factura (${saldo:,.2f})")
 
 
 @router.post("", response_model=ComprobantePagoOut, status_code=201)

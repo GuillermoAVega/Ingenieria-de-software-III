@@ -1,12 +1,7 @@
-export type InvoiceStatus = 'emitida' | 'anulada' | 'pendiente'
+import type { Invoice } from '../orders/types'
+import type { PaymentStatus } from '../payments/types'
 
-export type Invoice = {
-  id: string
-  number: string
-  issuedAt: string
-  customer: string
-  orderId: string
-  paymentMethod: string
-  total: number
-  status: InvoiceStatus
+export type BillingRow = Invoice & {
+  paid: number
+  paymentStatus: PaymentStatus
 }

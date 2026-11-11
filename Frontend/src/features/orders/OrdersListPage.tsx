@@ -20,6 +20,8 @@ import {
 } from '../../ui/ui'
 import type { DataTableColumn } from '../../ui/ui'
 import { navigate } from '../../app/navigation'
+import { EyeIcon } from '../../ui/EyeIcon'
+import { TrashIcon } from '../../ui/TrashIcon'
 import { formatDate, formatTime } from '../../utils/format'
 import { ORDER_STATUS_LABEL, ORDER_STATUS_TONE } from './status'
 import { useOrdersList } from './useOrdersList'
@@ -117,11 +119,19 @@ export function OrdersListPage() {
               </EmptyState>
             }
             actions={(order) => (
-              <div className="row">
-                <Button size="sm" onClick={() => navigate(`/comandas/${order.id}`)}>
-                  Ver
+              <div className="row row-icons">
+                <Button
+                  size="sm"
+                  className="btn-icon"
+                  title="Ver comanda"
+                  aria-label={`Ver comanda #${order.id}`}
+                  onClick={() => navigate(`/comandas/${order.id}`)}
+                >
+                  <EyeIcon />
                 </Button>
                 <DeleteButton
+                  label="Eliminar comanda"
+                  icon={<TrashIcon />}
                   title="Eliminar comanda"
                   onConfirm={() => {
                     void remove(order.id)

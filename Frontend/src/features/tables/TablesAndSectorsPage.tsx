@@ -6,6 +6,9 @@ import { useEffect, useState } from 'react'
 import { Alert, Badge, Button, Card, DeleteButton, PageHeader } from '../../ui/ui'
 import type { BadgeTone } from '../../ui/ui'
 import { navigate } from '../../app/navigation'
+import { PencilIcon } from '../../ui/PencilIcon'
+import { RestoreIcon } from '../../ui/RestoreIcon'
+import { TrashIcon } from '../../ui/TrashIcon'
 import { listAttentions, listWaiters } from '../waiters/api'
 import type { Attention, Waiter } from '../waiters/types'
 import {
@@ -141,11 +144,18 @@ export function TablesAndSectorsPage() {
           <div className="row">
             {sector.estado ? (
               <>
-                <Button size="sm" onClick={() => navigate(`/mesas/sectores/${sector.id}/editar`)}>
-                  Editar sector
+                <Button
+                  size="sm"
+                  className="btn-icon"
+                  title="Editar sector"
+                  aria-label={`Editar sector ${sector.nombre}`}
+                  onClick={() => navigate(`/mesas/sectores/${sector.id}/editar`)}
+                >
+                  <PencilIcon />
                 </Button>
                 <DeleteButton
-                  label="Dar de baja"
+                  label="Dar de baja sector"
+                  icon={<TrashIcon />}
                   title="Dar de baja sector"
                   confirmLabel="Dar de baja"
                   onConfirm={() => void handleDeactivateSector(sector)}
@@ -156,8 +166,14 @@ export function TablesAndSectorsPage() {
             ) : (
               <>
                 <Badge tone="neutral">Inactivo</Badge>
-                <Button size="sm" onClick={() => void handleReactivateSector(sector)}>
-                  Reactivar
+                <Button
+                  size="sm"
+                  className="btn-icon"
+                  title="Reactivar sector"
+                  aria-label={`Reactivar sector ${sector.nombre}`}
+                  onClick={() => void handleReactivateSector(sector)}
+                >
+                  <RestoreIcon />
                 </Button>
               </>
             )}
@@ -171,7 +187,7 @@ export function TablesAndSectorsPage() {
               const tone: BadgeTone = table.disponible ? 'success' : 'info'
 
               return (
-                <div key={table.id} className="stack">
+                <div key={table.id} className="mesa-wrap">
                   {table.estado ? (
                     <button
                       type="button"
@@ -189,25 +205,30 @@ export function TablesAndSectorsPage() {
                       <Badge tone="neutral">Inactiva</Badge>
                     </div>
                   )}
-                  {table.estado && (
-                    <div className="row">
+                  <div className="mesa-action">
+                    {table.estado ? (
                       <DeleteButton
-                        label="Dar de baja"
+                        label="Dar de baja mesa"
+                        icon={<TrashIcon />}
                         title="Dar de baja mesa"
                         confirmLabel="Dar de baja"
                         onConfirm={() => void handleDeactivateTable(table)}
                       >
                         ¿Querés dar de baja la <strong>Mesa {table.id}</strong>?
                       </DeleteButton>
-                    </div>
-                  )}
-                  {!table.estado && (
-                    <div className="row">
-                      <Button size="sm" onClick={() => void handleReactivateTable(table)}>
-                        Dar de alta
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="btn-icon"
+                        title="Dar de alta mesa"
+                        aria-label={`Dar de alta la Mesa ${table.id}`}
+                        onClick={() => void handleReactivateTable(table)}
+                      >
+                        <RestoreIcon />
                       </Button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               )
             })}

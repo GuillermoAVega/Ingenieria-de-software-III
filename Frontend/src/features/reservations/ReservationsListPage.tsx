@@ -16,6 +16,11 @@ import {
 } from '../../ui/ui'
 import type { BadgeTone, DataTableColumn } from '../../ui/ui'
 import { navigate } from '../../app/navigation'
+import { ClipboardIcon } from '../../ui/ClipboardIcon'
+import { EyeIcon } from '../../ui/EyeIcon'
+import { PencilIcon } from '../../ui/PencilIcon'
+import { TrashIcon } from '../../ui/TrashIcon'
+import { UserXIcon } from '../../ui/UserXIcon'
 import { createOrder } from '../orders/api'
 import {
   cancelReservation,
@@ -36,10 +41,10 @@ const statusLabel: Record<ReservationStatus, string> = {
 }
 
 const statusTone: Record<ReservationStatus, BadgeTone> = {
-  pendiente: 'neutral',
-  con_comanda: 'info',
+  pendiente: 'warning',
+  con_comanda: 'success',
   cancelada: 'danger',
-  ausente: 'warning',
+  ausente: 'neutral',
 }
 
 function formatReservationDate(value: string): string {
@@ -246,27 +251,42 @@ export function ReservationsListPage() {
           empty={<div className="empty"><span className="empty-title">{loading ? 'Cargando reservas...' : 'No hay reservas para mostrar'}</span></div>}
           actions={(reservation) => (
             <div className="reservation-list-actions">
-              <Button size="sm" onClick={() => navigate(`/reservas/${reservation.id}`)}>
-                Ver
+              <Button
+                size="sm"
+                className="btn-icon"
+                title="Ver reserva"
+                aria-label={`Ver reserva de ${reservation.customer}`}
+                onClick={() => navigate(`/reservas/${reservation.id}`)}
+              >
+                <EyeIcon />
               </Button>
               {reservation.status === 'pendiente' && (
                 <Button
                   size="sm"
+                  className="btn-icon"
+                  title="Crear comanda"
                   aria-label={`Crear comanda para ${reservation.customer}`}
                   disabled={creatingReservationId === Number(reservation.id)}
                   onClick={() => void handleCreateOrder(reservation)}
                 >
-                  {creatingReservationId === Number(reservation.id) ? 'Creando...' : 'Crear comanda'}
+                  <ClipboardIcon />
                 </Button>
               )}
               {reservation.status === 'pendiente' && (
-                <Button size="sm" onClick={() => navigate(`/reservas/${reservation.id}/editar`)}>
-                  Editar
+                <Button
+                  size="sm"
+                  className="btn-icon"
+                  title="Editar reserva"
+                  aria-label={`Editar reserva de ${reservation.customer}`}
+                  onClick={() => navigate(`/reservas/${reservation.id}/editar`)}
+                >
+                  <PencilIcon />
                 </Button>
               )}
               {reservation.status === 'pendiente' && (
                 <DeleteButton
-                  label={markingAbsentId === Number(reservation.id) ? 'Marcando...' : 'Marcar ausente'}
+                  label="Marcar ausente"
+                  icon={<UserXIcon />}
                   title="Cancelar por ausencia"
                   confirmLabel="Marcar ausente"
                   onConfirm={() => void handleMarkAbsent(reservation)}
@@ -276,7 +296,8 @@ export function ReservationsListPage() {
               )}
               {reservation.status === 'pendiente' && (
                 <DeleteButton
-                  label="Cancelar"
+                  label="Cancelar reserva"
+                  icon={<TrashIcon />}
                   title="Cancelar reserva"
                   confirmLabel="Cancelar reserva"
                   onConfirm={() => void handleCancel(reservation)}

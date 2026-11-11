@@ -510,6 +510,8 @@ export function ConfirmDialog({
 
 export type DeleteButtonProps = {
   label?: string
+  /** Si se indica, el botón muestra solo este ícono (el `label` queda como tooltip y etiqueta accesible). */
+  icon?: ReactNode
   title: ReactNode
   confirmLabel?: string
   size?: ButtonSize
@@ -520,6 +522,7 @@ export type DeleteButtonProps = {
 
 export function DeleteButton({
   label = 'Eliminar',
+  icon,
   title,
   confirmLabel = 'Eliminar',
   size = 'sm',
@@ -531,8 +534,15 @@ export function DeleteButton({
 
   return (
     <>
-      <Button variant={variant} size={size} onClick={() => setOpen(true)}>
-        {label}
+      <Button
+        variant={variant}
+        size={size}
+        className={icon ? 'btn-icon' : undefined}
+        title={icon ? label : undefined}
+        aria-label={icon ? label : undefined}
+        onClick={() => setOpen(true)}
+      >
+        {icon ?? label}
       </Button>
       <ConfirmDialog
         open={open}

@@ -13,10 +13,19 @@ export type ReportDefinition = {
   description: string
 }
 
-export type ProductRanking = {
-  id: string
-  name: string
-  value: number
+export type ProductSalesRow = {
+  producto_id: number
+  nombre: string
+  tipo: string
+  unidades: number
+  importe: number
+}
+
+export type ProductSalesReport = {
+  desde: string
+  hasta: string
+  limite: number
+  productos: ProductSalesRow[]
 }
 
 export type SalesComparisonDay = {

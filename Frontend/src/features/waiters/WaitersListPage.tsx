@@ -15,6 +15,10 @@ import {
 } from '../../ui/ui'
 import type { DataTableColumn } from '../../ui/ui'
 import { navigate } from '../../app/navigation'
+import { CalendarIcon } from '../../ui/CalendarIcon'
+import { PencilIcon } from '../../ui/PencilIcon'
+import { RestoreIcon } from '../../ui/RestoreIcon'
+import { TrashIcon } from '../../ui/TrashIcon'
 import { listSectors } from '../tables/api'
 import { deactivateWaiter, listAttentions, listWaiters, reactivateWaiter } from './api'
 import type { Waiter } from './types'
@@ -189,17 +193,30 @@ export function WaitersListPage() {
           rows={visibleWaiters}
           rowKey="id"
           actions={(waiter) => (
-            <div className="row">
-              <Button size="sm" onClick={() => navigate(`/mozos/${waiter.id}/atenciones`)}>
-                Atenciones
+            <div className="row row-icons">
+              <Button
+                size="sm"
+                className="btn-icon"
+                title="Atenciones"
+                aria-label={`Atenciones de ${waiter.name}`}
+                onClick={() => navigate(`/mozos/${waiter.id}/atenciones`)}
+              >
+                <CalendarIcon />
               </Button>
               {waiter.estado ? (
                 <>
-                  <Button size="sm" onClick={() => navigate(`/mozos/${waiter.id}/editar`)}>
-                    Editar
+                  <Button
+                    size="sm"
+                    className="btn-icon"
+                    title="Editar"
+                    aria-label={`Editar a ${waiter.name}`}
+                    onClick={() => navigate(`/mozos/${waiter.id}/editar`)}
+                  >
+                    <PencilIcon />
                   </Button>
                   <DeleteButton
                     label="Dar de baja"
+                    icon={<TrashIcon />}
                     title="Dar de baja mozo"
                     confirmLabel="Dar de baja"
                     onConfirm={() => void handleDeactivate(waiter)}
@@ -208,8 +225,14 @@ export function WaitersListPage() {
                   </DeleteButton>
                 </>
               ) : (
-                <Button size="sm" onClick={() => void handleReactivate(waiter)}>
-                  Reactivar
+                <Button
+                  size="sm"
+                  className="btn-icon"
+                  title="Reactivar"
+                  aria-label={`Reactivar a ${waiter.name}`}
+                  onClick={() => void handleReactivate(waiter)}
+                >
+                  <RestoreIcon />
                 </Button>
               )}
             </div>

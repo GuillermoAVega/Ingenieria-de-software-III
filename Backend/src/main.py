@@ -6,6 +6,7 @@ from src.database import (
     engine,
     migrar_detalle_reserva_legacy,
     migrar_estado_reserva_legacy,
+    migrar_unidades_gratis_detalle_factura,
 )
 from src.models import ModeloBase
 from src.cliente.routers import router as clientes_router
@@ -54,6 +55,7 @@ async def db_creation_lifespan(app: FastAPI):
     ModeloBase.metadata.create_all(bind=engine)
     migrar_detalle_reserva_legacy()
     migrar_estado_reserva_legacy()
+    migrar_unidades_gratis_detalle_factura()
     yield
 
 

@@ -7,6 +7,6 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
 }
 
 export const ORDER_STATUS_TONE: Record<OrderStatus, BadgeTone> = {
-  abierta: 'warning',
-  cerrada: 'success',
+  abierta: 'success',
+  cerrada: 'danger',
 }

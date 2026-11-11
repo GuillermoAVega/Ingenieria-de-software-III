@@ -21,6 +21,7 @@ export function ReportsPage() {
         {DEMO_REPORTS.map((report) => (
           <Card
             key={report.slug}
+            className="report-card"
             title={report.title}
             footer={
               <Button onClick={() => navigate(`/reportes/${report.slug}`)}>Ver reporte</Button>

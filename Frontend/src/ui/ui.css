@@ -171,6 +171,13 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
 .btn-danger-ghost { background: transparent; color: var(--c-danger); }
 .btn-danger-ghost:hover { background: var(--c-danger-soft); color: var(--c-danger); }
 .btn-sm { min-height: 32px; padding: 0 12px; font-size: 13px; border-radius: var(--radius-sm); }
+/* Botón solo con ícono (el texto va en title / aria-label) */
+.btn.btn-icon { min-width: 0; width: 36px; padding: 0; }
+/* Formularios dentro de una tarjeta */
+.card-body > .alert:not(:last-child) { margin-bottom: 16px; }
+.form-actions { margin-top: 20px; }
+/* Fecha hasta de una atención: ancho suficiente para mostrar dd/mm/aaaa completo */
+.attention-finish-date { width: 170px; }
 .btn-block { width: 100%; }
 .delivery-status-button {
   min-height: 28px;
@@ -257,6 +264,10 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
 .table .col-actions .row { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 6px; }
 .table .col-actions .btn { min-width: 88px; line-height: 1.25; }
 .table .col-actions .btn-danger-ghost { border-color: var(--c-danger-soft); }
+/* Acción de fila solo con ícono (por ejemplo, el ojo de "Ver") */
+.table .col-actions .btn.btn-icon { min-width: 0; width: 36px; padding: 0; }
+/* Varias acciones de ícono en una fila de tabla: una al lado de la otra */
+.table .col-actions .row.row-icons { flex-direction: row; justify-content: flex-end; align-items: center; gap: 6px; }
 .cell-main { font-weight: 500; }
 .cell-sub { display: block; margin-top: 3px; font-size: 12px; color: var(--c-text-3); }
 .thumb { width: 40px; height: 40px; border-radius: var(--radius-sm); background: var(--c-neutral-soft); border: 1px solid var(--c-border); }
@@ -336,6 +347,11 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
   border: 1px solid var(--c-border); border-radius: var(--radius); background: var(--c-surface);
   font: inherit; color: inherit; text-align: left; cursor: pointer;
 }
+/* La acción de la mesa (dar de baja / alta) va dentro de la tarjeta, arriba a la derecha */
+.mesa-wrap { position: relative; display: flex; }
+.mesa-wrap > .mesa { flex: 1; width: 100%; }
+.mesa-action { position: absolute; top: 6px; right: 6px; }
+.mesa-action .btn.btn-icon { width: 32px; min-height: 32px; }
 .mesa:hover { border-color: var(--c-border-strong); }
 .mesa:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .mesa-num { font-size: 18px; font-weight: 600; }
@@ -589,10 +605,14 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
   gap: 6px;
 }
 .reservation-list-actions .btn { min-height: 34px; padding: 0 10px; }
+.reservation-list-actions .btn.btn-icon { min-width: 0; width: 36px; padding: 0; }
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .grow { flex: 1; }
 .muted { color: var(--c-text-3); }
 .text-sm { font-size: 13px; }
+/* Tarjetas del índice de reportes: el pie queda siempre abajo y el botón centrado */
+.report-card .card-body { flex: 1; }
+.report-card .card-footer { justify-content: center; }
 .grid-auto { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 16px; }
 .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); gap: 16px; align-items: start; }
 .layout-aside { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 24px; }

@@ -2,13 +2,13 @@
  * EQUIPO: Administración
  * FUNCIONALIDAD: Detalle de un reporte
  * COMPLETAR:
- * 1. Reemplazar DEMO_PRODUCT_RANKING por la llamada a la API del reporte.
- * 2. Implementar los filtros Desde/Hasta.
- * 3. Construir la visualización de cada slug restante.
+ * 1. Implementar los filtros Desde/Hasta de los reportes restantes.
+ * 2. Construir la visualización de cada slug restante.
  */
 import { useState } from 'react'
-import { BarRow, Breadcrumb, Button, Card, EmptyState, DateInput, Field, PageHeader } from '../../ui/ui'
-import { DEMO_PRODUCT_RANKING, DEMO_REPORTS } from './demo'
+import { Breadcrumb, Button, Card, EmptyState, DateInput, Field, PageHeader } from '../../ui/ui'
+import { DEMO_REPORTS } from './demo'
+import { ProductSalesReport } from './ProductSalesReport'
 import { SalesComparisonReport } from './SalesComparisonReport'
 import { SalesCountReport } from './SalesCountReport'
 import { WaiterOrderReport } from './WaiterOrderReport'
@@ -34,8 +34,11 @@ export function ReportDetailPage({ slug }: { slug: string }) {
   }
 
   const isSales = report.slug === 'ventas'
-  const canExport = isSales || report.slug === 'comparativa-mensual' || report.slug === 'comandas-mozo'
-  const maxValue = Math.max(...DEMO_PRODUCT_RANKING.map((product) => product.value))
+  const canExport =
+    isSales ||
+    report.slug === 'comparativa-mensual' ||
+    report.slug === 'comandas-mozo' ||
+    report.slug === 'productos'
 
   return (
     <>
@@ -58,6 +61,8 @@ export function ReportDetailPage({ slug }: { slug: string }) {
         <SalesCountReport />
       ) : report.slug === 'comandas-mozo' ? (
         <WaiterOrderReport />
+      ) : report.slug === 'productos' ? (
+        <ProductSalesReport />
       ) : (
         <>
           <Card title="Período">
@@ -71,22 +76,12 @@ export function ReportDetailPage({ slug }: { slug: string }) {
             </div>
           </Card>
 
-          {report.slug === 'productos' ? (
-            <Card title="Productos más vendidos" subtitle="Unidades vendidas en el período seleccionado.">
-              <div className="stack">
-                {DEMO_PRODUCT_RANKING.map((product) => (
-                  <BarRow key={product.id} label={product.name} value={product.value} max={maxValue} />
-                ))}
-              </div>
-            </Card>
-          ) : (
             <Card>
               <EmptyState title="Reporte en preparación">
                 La visualización de este reporte todavía no está implementada.
                 {/* TODO(equipo-administracion): construir la visualización de este reporte. */}
               </EmptyState>
             </Card>
-          )}
         </>
       )}
     </>

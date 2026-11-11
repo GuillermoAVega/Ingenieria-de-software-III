@@ -1,4 +1,4 @@
-import type { ProductRanking, ReportDefinition } from './types'
+import type { ReportDefinition } from './types'
 
 export const DEMO_REPORTS: ReportDefinition[] = [
   {
@@ -36,12 +36,4 @@ export const DEMO_REPORTS: ReportDefinition[] = [
     title: 'Ingresos por medio de pago',
     description: 'Distribución de cobros por medio de pago.',
   },
-]
-
-export const DEMO_PRODUCT_RANKING: ProductRanking[] = [
-  { id: 'ranking-1', name: 'Milanesa napolitana', value: 148 },
-  { id: 'ranking-2', name: 'Cerveza artesanal', value: 131 },
-  { id: 'ranking-3', name: 'Ravioles de ricota', value: 96 },
-  { id: 'ranking-4', name: 'Bife de chorizo', value: 84 },
-  { id: 'ranking-5', name: 'Flan casero', value: 71 },
 ]

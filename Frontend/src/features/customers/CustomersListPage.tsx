@@ -7,6 +7,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { Alert, Badge, Button, Card, DataTable, DeleteButton, Input, PageHeader, Pagination, Select, Toolbar, ToolbarSpacer } from '../../ui/ui'
 import type { DataTableColumn } from '../../ui/ui'
 import { navigate } from '../../app/navigation'
+import { PencilIcon } from '../../ui/PencilIcon'
+import { RestoreIcon } from '../../ui/RestoreIcon'
+import { TrashIcon } from '../../ui/TrashIcon'
 import { deleteCustomer, listCustomers, reactivateCustomer } from './api'
 import type { Customer } from './types'
 
@@ -180,14 +183,21 @@ export function CustomersListPage() {
           columns={columns}
           rows={visibleCustomers}
           actions={(customer) => (
-            <div className="row">
+            <div className="row row-icons">
               {customer.estado ? (
                 <>
-                  <Button size="sm" onClick={() => navigate(`/clientes/${encodeURIComponent(customer.dni)}/editar`)}>
-                    Editar
+                  <Button
+                    size="sm"
+                    className="btn-icon"
+                    title="Editar"
+                    aria-label={`Editar a ${customer.name}`}
+                    onClick={() => navigate(`/clientes/${encodeURIComponent(customer.dni)}/editar`)}
+                  >
+                    <PencilIcon />
                   </Button>
                   <DeleteButton
                     label="Dar de baja"
+                    icon={<TrashIcon />}
                     title="Dar de baja cliente"
                     confirmLabel="Dar de baja"
                     onConfirm={() => void handleDelete(customer)}
@@ -196,8 +206,14 @@ export function CustomersListPage() {
                   </DeleteButton>
                 </>
               ) : (
-                <Button size="sm" onClick={() => void handleReactivate(customer)}>
-                  Reactivar
+                <Button
+                  size="sm"
+                  className="btn-icon"
+                  title="Reactivar"
+                  aria-label={`Reactivar a ${customer.name}`}
+                  onClick={() => void handleReactivate(customer)}
+                >
+                  <RestoreIcon />
                 </Button>
               )}
             </div>
