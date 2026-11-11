@@ -257,6 +257,8 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
 .table .col-actions .row { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 6px; }
 .table .col-actions .btn { min-width: 88px; line-height: 1.25; }
 .table .col-actions .btn-danger-ghost { border-color: var(--c-danger-soft); }
+/* Acción de fila solo con ícono (por ejemplo, el ojo de "Ver") */
+.table .col-actions .btn.btn-icon { min-width: 0; width: 36px; padding: 0; }
 .cell-main { font-weight: 500; }
 .cell-sub { display: block; margin-top: 3px; font-size: 12px; color: var(--c-text-3); }
 .thumb { width: 40px; height: 40px; border-radius: var(--radius-sm); background: var(--c-neutral-soft); border: 1px solid var(--c-border); }

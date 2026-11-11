@@ -9,6 +9,7 @@
 import { Badge, Button, Card, DataTable, PageHeader, Stat } from '../../ui/ui'
 import type { DataTableColumn } from '../../ui/ui'
 import { navigate } from '../../app/navigation'
+import { EyeIcon } from '../../ui/EyeIcon'
 import { DEMO_ORDERS } from './ordersDemo'
 import type { DemoOrder } from './ordersDemo'
 import { DEMO_RESERVATIONS } from '../reservations/demo'
@@ -51,7 +52,7 @@ const orderColumns: DataTableColumn<DemoOrder>[] = [
     key: 'status',
     header: 'Estado',
     render: (order) => (
-      <Badge tone={order.status === 'abierta' ? 'warning' : 'success'}>
+      <Badge tone={order.status === 'abierta' ? 'success' : 'danger'}>
         {order.status === 'abierta' ? 'Abierta' : 'Cerrada'}
       </Badge>
     ),
@@ -105,8 +106,14 @@ export function DashboardPage() {
               columns={orderColumns}
               rows={DEMO_ORDERS}
               actions={(order) => (
-                <Button size="sm" onClick={() => navigate(`/comandas/${order.id}`)}>
-                  Ver
+                <Button
+                  size="sm"
+                  className="btn-icon"
+                  title="Ver comanda"
+                  aria-label={`Ver comanda #${order.id}`}
+                  onClick={() => navigate(`/comandas/${order.id}`)}
+                >
+                  <EyeIcon />
                 </Button>
               )}
             />
@@ -133,7 +140,7 @@ export function DashboardPage() {
                       {reservation.guests} comensales · {reservation.table}
                     </div>
                   </div>
-                  <Badge>Pendiente</Badge>
+                  <Badge tone="warning">Pendiente</Badge>
                 </div>
               ))}
             </div>
