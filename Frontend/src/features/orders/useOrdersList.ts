@@ -1,15 +1,13 @@
 import { useEffect, useState } from 'react'
 import { getErrorMessage } from '../../api/client'
-import { listWaiters } from '../waiters/api'
-import type { Waiter } from '../waiters/types'
-import { deleteOrder, getOrders } from './api'
-import type { Order, OrderListItem, OrderStatus } from './types'
+import { deleteOrder, getOrdersPage } from './api'
+import type { OrderListItem, OrderStatus } from './types'
 
 const PAGE_SIZE = 10
 
 type OrdersListState = {
-  orders: Order[]
-  waiters: Waiter[]
+  orders: OrderListItem[]
+  total: number
   loading: boolean
   error: string | null
   statusFilter: '' | OrderStatus
@@ -21,7 +19,7 @@ type OrdersListState = {
 
 const initialState: OrdersListState = {
   orders: [],
-  waiters: [],
+  total: 0,
   loading: true,
   error: null,
   statusFilter: '',
@@ -40,15 +38,18 @@ export function useOrdersList() {
     async function loadOrders() {
       setState((previous) => ({ ...previous, loading: true, error: null }))
       try {
-        const [orders, waiters] = await Promise.all([
-          getOrders(),
-          listWaiters().catch((): Waiter[] => []),
-        ])
+        const result = await getOrdersPage({
+          page: state.page,
+          pageSize: PAGE_SIZE,
+          status: state.statusFilter,
+          search: state.search,
+        })
         if (cancelled) return
         setState((previous) => ({
           ...previous,
-          orders: [...orders].sort((first, second) => second.id - first.id),
-          waiters,
+          orders: result.items,
+          total: result.total,
+          page: result.pagina,
           loading: false,
         }))
       } catch (requestError) {
@@ -56,18 +57,20 @@ export function useOrdersList() {
         setState((previous) => ({
           ...previous,
           orders: [],
+          total: 0,
           loading: false,
           error: getErrorMessage(requestError),
         }))
       }
     }
 
-    void loadOrders()
+    const timeoutId = window.setTimeout(() => void loadOrders(), state.search ? 250 : 0)
 
     return () => {
       cancelled = true
+      window.clearTimeout(timeoutId)
     }
-  }, [state.reloadToken])
+  }, [state.page, state.reloadToken, state.search, state.statusFilter])
 
   const updateSearch = (search: string) => {
     setState((previous) => ({ ...previous, search, page: 1 }))
@@ -99,34 +102,11 @@ export function useOrdersList() {
     }
   }
 
-  const waiterNames = new Map(state.waiters.map((waiter) => [waiter.id, waiter.name]))
-  const orders: OrderListItem[] = state.orders.map((order) => ({
-    ...order,
-    waiterName: order.mozo_id === null ? null : waiterNames.get(order.mozo_id) ?? null,
-  }))
-
-  const search = state.search.trim().toLowerCase()
-  const filteredOrders = orders.filter((order) => {
-    const matchesStatus = !state.statusFilter || order.estado === state.statusFilter
-    const matchesSearch =
-      !search ||
-      String(order.id).includes(search) ||
-      String(order.mesa_id).includes(search) ||
-      String(order.mozo_id).includes(search) ||
-      order.waiterName?.toLowerCase().includes(search)
-    return matchesStatus && matchesSearch
-  })
-
-  const total = filteredOrders.length
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
-  const page = Math.min(state.page, totalPages)
-  const visibleOrders = filteredOrders.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-
   return {
     state,
-    orders: visibleOrders,
-    total,
-    page,
+    orders: state.orders,
+    total: state.total,
+    page: state.page,
     pageSize: PAGE_SIZE,
     updateSearch,
     updateStatus,

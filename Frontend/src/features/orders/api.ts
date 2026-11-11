@@ -7,6 +7,7 @@ import type {
   OrderItem,
   OrderItemCreatePayload,
   OrderItemUpdatePayload,
+  OrdersPage,
   OrderPayload,
   OrderUpdatePayload,
 } from './types'
@@ -14,6 +15,21 @@ import type {
 
 export function getOrders(limit = 500): Promise<Order[]> {
   return apiFetch<Order[]>(`/comandas?limit=${limit}`)
+}
+
+export function getOrdersPage(params: {
+  page: number
+  pageSize: number
+  status?: string
+  search?: string
+}): Promise<OrdersPage> {
+  const query = new URLSearchParams({
+    pagina: String(params.page),
+    tamanio_pagina: String(params.pageSize),
+  })
+  if (params.status) query.set('estado', params.status)
+  if (params.search?.trim()) query.set('buscar', params.search.trim())
+  return apiFetch<OrdersPage>(`/comandas/resumen?${query}`)
 }
 
 export function getOrder(id: number): Promise<Order> {

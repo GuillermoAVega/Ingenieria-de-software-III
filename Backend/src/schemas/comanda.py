@@ -54,3 +54,21 @@ class ComandaOut(BaseModel):
     @classmethod
     def solo_activos(cls, detalles):
         return [d for d in detalles if d.activo]
+
+
+class ComandaResumen(BaseModel):
+    id: int
+    fecha: date
+    hora: time
+    estado: str
+    mozo_id: int | None
+    mozo_nombre: str | None
+    mesa_id: int
+    cantidad_items: int
+
+
+class ComandasPaginadas(BaseModel):
+    items: list[ComandaResumen]
+    total: int
+    pagina: int
+    tamanio_pagina: int

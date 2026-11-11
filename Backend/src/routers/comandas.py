@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends
+from typing import Literal
+
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
 
@@ -7,9 +9,10 @@ from src.comanda.services import (
     crear_comanda as servicio_crear_comanda,
     eliminar_comanda as servicio_eliminar_comanda,
     modificar_comanda as servicio_modificar_comanda,
+    listar_comandas_paginadas as servicio_listar_comandas_paginadas,
 )
 from src.models import Comanda
-from src.schemas.comanda import ComandaCreate, ComandaOut, ComandaUpdate
+from src.schemas.comanda import ComandaCreate, ComandaOut, ComandasPaginadas, ComandaUpdate
 from src.schemas.detalle_comanda import DetalleComandaOut
 from src.utils import obtener_activo_o_404
 
@@ -34,6 +37,23 @@ def listar_comandas(
     if activo is not None:
         q = q.where(Comanda.activo == activo)
     return db.scalars(q).all()
+
+
+@router.get("/resumen", response_model=ComandasPaginadas)
+def listar_resumen_comandas(
+    pagina: int = Query(1, ge=1),
+    tamanio_pagina: int = Query(10, ge=1, le=100),
+    estado: Literal["abierta", "cerrada"] | None = None,
+    buscar: str | None = Query(default=None, max_length=100),
+    db: Session = Depends(get_db),
+):
+    return servicio_listar_comandas_paginadas(
+        db,
+        pagina=pagina,
+        tamanio_pagina=tamanio_pagina,
+        estado=estado,
+        buscar=buscar,
+    )
 
 
 @router.get("/{id}", response_model=ComandaOut)

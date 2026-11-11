@@ -1,6 +1,6 @@
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import String, and_, cast, func, or_, select
 from sqlalchemy.orm import Session
 
 from src.cliente.models import Cliente
@@ -16,6 +16,73 @@ from src.utils import exigir_producto_activo
 
 MINUTOS_ANTES_COMANDA_RESERVA = 15
 MINUTOS_DESPUES_COMANDA_RESERVA = 30
+
+
+def listar_comandas_paginadas(
+    db: Session,
+    pagina: int,
+    tamanio_pagina: int,
+    estado: str | None = None,
+    buscar: str | None = None,
+) -> dict:
+    filtros = [Comanda.activo.is_(True)]
+    if estado:
+        filtros.append(Comanda.estado == estado)
+    termino = buscar.strip().casefold() if buscar else ""
+    if termino:
+        patron = f"%{termino}%"
+        filtros.append(
+            or_(
+                cast(Comanda.id, String).like(patron),
+                cast(Comanda.mesa_id, String).like(patron),
+                cast(Comanda.mozo_id, String).like(patron),
+                func.lower(Mozo.nombre).like(patron),
+            )
+        )
+
+    total = int(
+        db.scalar(
+            select(func.count(Comanda.id))
+            .outerjoin(Mozo, Mozo.id == Comanda.mozo_id)
+            .where(*filtros)
+        )
+        or 0
+    )
+    total_paginas = max(1, (total + tamanio_pagina - 1) // tamanio_pagina)
+    pagina = min(pagina, total_paginas)
+
+    consulta = (
+        select(
+            Comanda.id,
+            Comanda.fecha,
+            Comanda.hora,
+            Comanda.estado,
+            Comanda.mozo_id,
+            Mozo.nombre.label("mozo_nombre"),
+            Comanda.mesa_id,
+            func.count(DetalleComanda.id).label("cantidad_items"),
+        )
+        .outerjoin(Mozo, Mozo.id == Comanda.mozo_id)
+        .outerjoin(
+            DetalleComanda,
+            and_(
+                DetalleComanda.comanda_id == Comanda.id,
+                DetalleComanda.activo.is_(True),
+            ),
+        )
+        .where(*filtros)
+        .group_by(Comanda.id, Mozo.nombre)
+        .order_by(Comanda.fecha.desc(), Comanda.hora.desc(), Comanda.id.desc())
+        .offset((pagina - 1) * tamanio_pagina)
+        .limit(tamanio_pagina)
+    )
+    items = [dict(fila) for fila in db.execute(consulta).mappings().all()]
+    return {
+        "items": items,
+        "total": total,
+        "pagina": pagina,
+        "tamanio_pagina": tamanio_pagina,
+    }
 
 
 def ocupar_mesas(mesas: list[Mesa]) -> None:

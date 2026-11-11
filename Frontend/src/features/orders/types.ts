@@ -24,8 +24,22 @@ export type Order = {
   detalles: OrderItem[]
 }
 
-export type OrderListItem = Order & {
-  waiterName: string | null
+export type OrderListItem = {
+  id: number
+  fecha: string
+  hora: string
+  estado: OrderStatus
+  mozo_id: number | null
+  mozo_nombre: string | null
+  mesa_id: number
+  cantidad_items: number
+}
+
+export type OrdersPage = {
+  items: OrderListItem[]
+  total: number
+  pagina: number
+  tamanio_pagina: number
 }
 
 export type OrderItemPayload = {

@@ -42,7 +42,7 @@ const columns: DataTableColumn<OrderListItem>[] = [
     key: 'mozo',
     header: 'Mozo',
     render: (order) =>
-      order.waiterName ?? (order.mozo_id === null ? 'Sin mozo' : `Mozo #${order.mozo_id}`),
+      order.mozo_nombre ?? (order.mozo_id === null ? 'Sin mozo' : `Mozo #${order.mozo_id}`),
   },
   {
     key: 'fecha',
@@ -58,7 +58,7 @@ const columns: DataTableColumn<OrderListItem>[] = [
     key: 'items',
     header: 'Ítems',
     num: true,
-    render: (order) => order.detalles.length,
+    render: (order) => order.cantidad_items,
   },
   {
     key: 'estado',
