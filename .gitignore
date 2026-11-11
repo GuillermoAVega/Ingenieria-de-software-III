@@ -197,6 +197,8 @@ sketch
 [Ll]ib64
 [Ll]ocal
 [Ss]cripts
+!/scripts/
+!/scripts/run-backend.mjs
 # Backend/scripts contiene scripts del proyecto (no es el Scripts/ de un venv)
 !/Backend/scripts/
 /Backend/scripts/*

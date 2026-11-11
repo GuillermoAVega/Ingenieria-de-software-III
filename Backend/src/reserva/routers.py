@@ -41,7 +41,7 @@ def crear_reserva(
         ) from error
     except exceptions.DatosReservaInvalidos as error:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(error),
         ) from error
     except exceptions.RecursoYaExiste as error:
@@ -71,7 +71,7 @@ def modificar_reserva(
         ) from error
     except exceptions.DatosReservaInvalidos as error:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(error),
         ) from error
     except exceptions.RecursoYaExiste as error:

@@ -58,7 +58,7 @@ function getErrorMessage(cause: unknown, fallback: string): string {
 export function ReservationFormPage({ id }: { id?: string }) {
   const isEditing = Boolean(id)
   const formData = useReservationFormData(id)
-  const [step, setStep] = useState<1 | 2>(isEditing ? 2 : 1)
+  const [step, setStep] = useState<1 | 2>(1)
   const [customers, setCustomers] = useState<CustomerRecord[]>([])
   const [tables, setTables] = useState<TableRecord[]>([])
   const [customerSelection, setCustomerSelection] = useState('')
