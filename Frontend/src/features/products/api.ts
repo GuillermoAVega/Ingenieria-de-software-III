@@ -115,8 +115,8 @@ export function getMenusEjecutivos(): Promise<MenuEjecutivoRespuesta[]> {
   return apiFetch<MenuEjecutivoRespuesta[]>('/productos/menus-ejecutivos')
 }
 
-export function getCombos(): Promise<ComboRespuesta[]> {
-  return apiFetch<ComboRespuesta[]>('/productos/combos')
+export function getCombos(): Promise<ComboListado[]> {
+  return apiFetch<ComboListado[]>('/productos/combos')
 }
 
 export function getPostre(id: number): Promise<PostreRespuesta> {

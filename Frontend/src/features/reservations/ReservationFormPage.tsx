@@ -82,27 +82,39 @@ export function ReservationFormPage({ id }: { id?: string }) {
   const loadFailed = formData.loadFailed
 
   useEffect(() => {
-    if (!formData.reservation) {
+    let cancelled = false
+
+    async function synchronizeFormData() {
+      await Promise.resolve()
+      if (cancelled) return
+
+      if (!formData.reservation) {
+        setCustomers(formData.customers)
+        setTables(formData.tables)
+        return
+      }
+
+      const reservation = formData.reservation
       setCustomers(formData.customers)
       setTables(formData.tables)
-      return
+      setCustomerSelection(String(reservation.cliente_id))
+      setDate(reservation.fecha)
+      setTime(reservation.hora.slice(0, 5))
+      setGuests(reservation.cant_comensales)
+      setStatus(reservation.estado)
+      setInitialStatus(reservation.estado)
+      setNotes(reservation.observaciones ?? '')
+      setSelectedTableIds(formData.reservationTables.map((table) => table.id))
+      setDetails(formData.reservationDetails.map((detail) => ({
+        productId: detail.producto_id,
+        quantity: detail.cantidad_producto,
+      })))
     }
 
-    const reservation = formData.reservation
-    setCustomers(formData.customers)
-    setTables(formData.tables)
-    setCustomerSelection(String(reservation.cliente_id))
-    setDate(reservation.fecha)
-    setTime(reservation.hora.slice(0, 5))
-    setGuests(reservation.cant_comensales)
-    setStatus(reservation.estado)
-    setInitialStatus(reservation.estado)
-    setNotes(reservation.observaciones ?? '')
-    setSelectedTableIds(formData.reservationTables.map((table) => table.id))
-    setDetails(formData.reservationDetails.map((detail) => ({
-      productId: detail.producto_id,
-      quantity: detail.cantidad_producto,
-    })))
+    void synchronizeFormData()
+    return () => {
+      cancelled = true
+    }
   }, [formData])
 
   const tableById = useMemo(() => new Map(tables.map((table) => [table.id, table])), [tables])

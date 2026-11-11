@@ -797,6 +797,40 @@ def _crear_historial_ventas(db: Session, hoy: date, ids: dict) -> None:
         dia += timedelta(days=1)
 
 
+def _crear_usuarios_demo(motor: Engine) -> None:
+    """Crea usuarios que permiten demostrar ambos roles y estados."""
+    from src.auth.models import RolUsuario
+    from src.auth.schemas import UsuarioActualizar, UsuarioCrear
+    from src.auth.services import (
+        actualizar_usuario,
+        crear_usuario,
+        crear_usuarios_iniciales,
+    )
+
+    crear_usuarios_iniciales(motor)
+    fabrica = sessionmaker(autocommit=False, autoflush=False, bind=motor)
+    with fabrica() as db:
+        crear_usuario(
+            db,
+            UsuarioCrear(
+                nombre="Supervisor del salón",
+                nombre_usuario="supervisor",
+                clave="supervisor123",
+                rol=RolUsuario.ADMINISTRADOR,
+            ),
+        )
+        inactivo = crear_usuario(
+            db,
+            UsuarioCrear(
+                nombre="Operario inactivo",
+                nombre_usuario="operario_inactivo",
+                clave="inactivo123",
+                rol=RolUsuario.OPERARIO,
+            ),
+        )
+        actualizar_usuario(db, inactivo.id, UsuarioActualizar(activo=False))
+
+
 # ----------------------------------------------------------------------- principal
 
 
@@ -830,9 +864,7 @@ def poblar_base(motor: Engine, hoy: date | None = None) -> dict:
         ids["reservas"] = _crear_reservas(db, hoy, ids)
         _crear_comandas_y_facturas(db, hoy, ids)
         _crear_historial_ventas(db, hoy, ids)
-    from src.auth.services import crear_usuarios_iniciales
-
-    crear_usuarios_iniciales(motor)
+    _crear_usuarios_demo(motor)
     return ids
 
 
@@ -860,6 +892,7 @@ def resumen(motor: Engine) -> dict[str, int]:
         ("Facturas", "factura"),
         ("Detalles de factura", "detalle_factura"),
         ("Comprobantes de pago", "comprobante_pago"),
+        ("Usuarios", "usuarios"),
     )
     cuentas = {}
     with motor.connect() as conexion:

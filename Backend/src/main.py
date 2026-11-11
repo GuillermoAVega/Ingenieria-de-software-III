@@ -11,6 +11,7 @@ from src.auth.dependencies import (
 from src.auth.router import MANEJADORES_EXCEPCIONES as MANEJADORES_AUTH
 from src.auth.router import router as auth_router
 from src.auth.services import crear_usuarios_iniciales
+from src.carta.router import router as carta_router
 from src.database import (
     engine,
     migrar_detalle_reserva_legacy,
@@ -106,6 +107,9 @@ app.include_router(
     router_promociones, dependencies=[Depends(requerir_administrador_o_lectura)]
 )
 app.include_router(router_reportes, dependencies=[Depends(requerir_administrador)])
+app.include_router(
+    carta_router, dependencies=[Depends(requerir_administrador_o_lectura)]
+)
 app.include_router(
     medios_pago.router, dependencies=[Depends(requerir_administrador_o_lectura)]
 )

@@ -84,6 +84,7 @@ export function useMenuView() {
       dailyMenus,
       menusDelDia,
       executiveMenus,
+      combos,
       platos,
       postres,
       bebidas,
@@ -137,6 +138,20 @@ export function useMenuView() {
     const items = [
       ...dailyItems,
       ...executiveItems,
+      ...combos
+        .filter(
+          (combo) =>
+            !combo.dado_de_baja &&
+            combo.fecha_desde <= state.date &&
+            combo.fecha_hasta >= state.date,
+        )
+        .map((combo) => ({
+          key: `combo-${combo.id}`,
+          nombre: combo.nombre,
+          descripcion: combo.descripcion,
+          ...getPromotionPresentation(combo.id, combo.precio, state.date, promotions),
+          seccionId: combo.seccion_id,
+        })),
       ...productItems(platos),
       ...productItems(postres),
       ...productItems(bebidas),

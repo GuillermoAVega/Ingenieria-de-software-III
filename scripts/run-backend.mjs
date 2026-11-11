@@ -9,10 +9,14 @@ const virtualEnvPython = process.platform === 'win32'
   : path.join(backend, '.venv', 'bin', 'python')
 
 const python = existsSync(virtualEnvPython) ? virtualEnvPython : 'python'
-const child = spawn(python, ['-m', 'fastapi', 'dev', 'src/main.py'], {
-  cwd: backend,
-  stdio: 'inherit',
-})
+const child = spawn(
+  python,
+  ['-m', 'uvicorn', 'src.main:app', '--reload', '--host', '127.0.0.1', '--port', '8000'],
+  {
+    cwd: backend,
+    stdio: 'inherit',
+  },
+)
 
 child.on('error', (error) => {
   console.error(`No se pudo iniciar el backend con ${python}: ${error.message}`)

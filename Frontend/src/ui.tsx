@@ -8,6 +8,9 @@ import {
   type ReactNode,
 } from 'react'
 
+/* Este módulo heredado reúne hooks y componentes consumidos por las páginas legacy. */
+/* eslint-disable react-refresh/only-export-components */
+
 // ---- Formato ----
 export const money = (n: number) =>
   '$ ' + n.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })

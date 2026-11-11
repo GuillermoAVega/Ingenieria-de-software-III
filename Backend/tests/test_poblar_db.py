@@ -9,6 +9,7 @@ from sqlalchemy.pool import StaticPool
 
 from scripts.poblar_db import poblar_base, resumen
 from src.database import configurar_sqlite
+from src.auth.models import RolUsuario, Usuario
 from src.models import DetalleComanda, DetalleFactura, Factura
 from src.productos.models import Producto
 from src.productos_menu.models import ProductoMenu
@@ -39,6 +40,23 @@ def test_cantidades_basicas(motor_poblado):
     assert cuentas["Promociones"] == 11
     assert cuentas["Facturas"] >= 1
     assert cuentas["Detalles de factura"] >= 1
+    assert cuentas["Usuarios"] == 4
+
+
+def test_usuarios_demo_cubren_roles_y_estados(motor_poblado):
+    motor, _ = motor_poblado
+    with Session(motor) as sesion:
+        usuarios = sesion.scalars(select(Usuario).order_by(Usuario.id)).all()
+
+    assert {usuario.rol for usuario in usuarios} == {
+        RolUsuario.ADMINISTRADOR,
+        RolUsuario.OPERARIO,
+    }
+    assert {usuario.activo for usuario in usuarios} == {True, False}
+    assert sum(
+        usuario.activo and usuario.rol == RolUsuario.ADMINISTRADOR
+        for usuario in usuarios
+    ) == 2
 
 
 def test_menu_del_dia_solo_referencia_menus_del_dia(motor_poblado):
