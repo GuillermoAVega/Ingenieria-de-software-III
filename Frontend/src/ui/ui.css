@@ -610,6 +610,9 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
 .grow { flex: 1; }
 .muted { color: var(--c-text-3); }
 .text-sm { font-size: 13px; }
+/* Tarjetas del índice de reportes: el pie queda siempre abajo y el botón centrado */
+.report-card .card-body { flex: 1; }
+.report-card .card-footer { justify-content: center; }
 .grid-auto { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 16px; }
 .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); gap: 16px; align-items: start; }
 .layout-aside { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 24px; }
