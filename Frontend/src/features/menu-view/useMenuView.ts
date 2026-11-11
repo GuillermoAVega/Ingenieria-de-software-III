@@ -4,6 +4,7 @@ import { todayISO } from '../../utils/format'
 import { getMenuViewData } from './api'
 import type { MenuViewData } from './api'
 import type { MenuViewItem, MenuViewSectionGroup, MenuViewState } from './types'
+import { getPromotionPresentation } from './promotionPresentation'
 
 function createInitialState(): MenuViewState {
   return {
@@ -87,6 +88,7 @@ export function useMenuView() {
       postres,
       bebidas,
       sections: allSections,
+      promotions,
     } = state.data
     const platosById = new Map(platos.map((plato) => [plato.id, plato]))
     const postresById = new Map(postres.map((postre) => [postre.id, postre]))
@@ -102,7 +104,7 @@ export function useMenuView() {
                 key: `daily-${assignment.id}`,
                 nombre: menu.nombre,
                 descripcion: menu.descripcion,
-                precio: menu.precio,
+                ...getPromotionPresentation(menu.id, menu.precio, state.date, promotions),
                 seccionId: menu.seccion_id,
               },
             ]
@@ -115,7 +117,7 @@ export function useMenuView() {
         key: `executive-${menu.id}`,
         nombre: menu.nombre,
         descripcion: menu.descripcion,
-        precio: menu.precio,
+        ...getPromotionPresentation(menu.id, menu.precio, state.date, promotions),
         seccionId: menu.seccion_id,
         platoNombre: platosById.get(menu.plato_id)?.nombre,
         postreNombre: postresById.get(menu.postre_id)?.nombre,
@@ -128,7 +130,7 @@ export function useMenuView() {
           key: `${product.tipo}-${product.id}`,
           nombre: product.nombre,
           descripcion: product.descripcion,
-          precio: product.precio,
+          ...getPromotionPresentation(product.id, product.precio, state.date, promotions),
           seccionId: product.seccion_id,
         }))
 

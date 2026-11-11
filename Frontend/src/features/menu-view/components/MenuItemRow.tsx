@@ -13,8 +13,20 @@ export function MenuItemRow({ item }: { item: MenuViewItem }) {
         {item.postreNombre && (
           <small className="menu-view-description">Postre: {item.postreNombre}</small>
         )}
+        {item.promociones.length > 0 && (
+          <span className="menu-view-promotions">
+            {item.promociones.map((promotion) => (
+              <small className="menu-view-promotion" key={promotion}>{promotion}</small>
+            ))}
+          </span>
+        )}
       </div>
-      <span className="menu-view-price">{formatCurrency(item.precio)}</span>
+      <span className="menu-view-prices">
+        {item.precioOriginal && (
+          <span className="menu-view-price-original">{formatCurrency(item.precioOriginal)}</span>
+        )}
+        <span className="menu-view-price">{formatCurrency(item.precio)}</span>
+      </span>
     </li>
   )
 }

@@ -13,6 +13,7 @@ import type {
 } from 'react'
 
 import { DateInput } from './DateInput'
+import { LogoutIcon } from './LogoutIcon'
 export { DateInput } from './DateInput'
 export type { DateInputProps } from './DateInput'
 
@@ -249,10 +250,12 @@ export type AppShellUser = {
 export function AppShell({
   nav,
   user,
+  onLogout,
   children,
 }: {
   nav: NavGroup[]
   user?: AppShellUser
+  onLogout?: () => void
   children: ReactNode
 }) {
   return (
@@ -279,17 +282,32 @@ export function AppShell({
             </Fragment>
           ))}
         </nav>
-        {user && (
-          <div className="user">
-            <span className="avatar">{user.initials}</span>
-            <div>
-              <div className="cell-main">{user.name}</div>
-              <div className="cell-sub">{user.role}</div>
-            </div>
-          </div>
-        )}
       </aside>
       <main className="main">
+        {user && (
+          <header className="topbar">
+            <div className="topbar-inner">
+              <div className="topbar-user">
+                <span className="avatar">{user.initials}</span>
+                <div>
+                  <div className="cell-main">{user.name}</div>
+                  <div className="cell-sub">{user.role}</div>
+                </div>
+                {onLogout && (
+                  <button
+                    type="button"
+                    className="user-logout"
+                    onClick={onLogout}
+                    title="Cerrar sesión"
+                    aria-label="Cerrar sesión"
+                  >
+                    <LogoutIcon />
+                  </button>
+                )}
+              </div>
+            </div>
+          </header>
+        )}
         <div className="content">{children}</div>
       </main>
     </div>

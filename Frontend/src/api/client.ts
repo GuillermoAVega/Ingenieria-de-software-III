@@ -5,6 +5,8 @@
  * Las rutas se escriben sin la barra inicial duplicada, por ejemplo `/secciones/1`.
  */
 
+import { AUTH_EXPIRED_EVENT, getAuthToken } from '../auth/session'
+
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/+$/, '')
 
 export type ApiFetchOptions = Omit<RequestInit, 'body'> & {
@@ -88,6 +90,10 @@ async function readResponseBody(response: Response): Promise<unknown> {
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
   const { body, headers, ...rest } = options
   const finalHeaders = new Headers(headers)
+  const token = getAuthToken()
+  if (token && !finalHeaders.has('Authorization')) {
+    finalHeaders.set('Authorization', `Bearer ${token}`)
+  }
 
   let payload: BodyInit | undefined
   if (body instanceof FormData) {
@@ -117,6 +123,9 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
 
   if (!response.ok) {
     const errorBody = await readResponseBody(response)
+    if (response.status === 401 && path !== '/auth/login') {
+      window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT))
+    }
     throw new ApiError(response.status, extractMessage(errorBody), errorBody, errorBody)
   }
 

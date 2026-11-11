@@ -8,47 +8,18 @@ import type {
   ReservationUpdatePayload,
   TableRecord,
 } from './types'
-
-const API_BASE_URL = 'http://localhost:8000'
-
-async function request(path: string, init?: RequestInit): Promise<Response> {
-  const headers = new Headers(init?.headers)
-  if (init?.body) headers.set('Content-Type', 'application/json')
-
-  const response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers })
-  if (response.ok) return response
-
-  const body = await response.text()
-  let message = body
-  try {
-    const error = JSON.parse(body) as { detail?: unknown }
-    if (typeof error.detail === 'string') {
-      message = error.detail
-    } else if (Array.isArray(error.detail)) {
-      message = error.detail
-        .map((item) => (typeof item === 'object' && item !== null && 'msg' in item ? item.msg : ''))
-        .filter(Boolean)
-        .join('. ')
-    }
-  } catch {
-    // Si la respuesta no es JSON, se muestra el texto devuelto por el servidor.
-  }
-
-  throw new Error(message || `Error al comunicarse con el servidor (${response.status}).`)
-}
+import { apiFetch } from '../../api/client'
 
 async function getJson<T>(path: string): Promise<T> {
-  const response = await request(path)
-  return (await response.json()) as T
+  return apiFetch<T>(path)
 }
 
 async function sendJson<T>(path: string, method: 'POST' | 'PUT' | 'PATCH', body: unknown): Promise<T> {
-  const response = await request(path, { method, body: JSON.stringify(body) })
-  return (await response.json()) as T
+  return apiFetch<T>(path, { method, body })
 }
 
 async function remove(path: string): Promise<void> {
-  await request(path, { method: 'DELETE' })
+  await apiFetch(path, { method: 'DELETE' })
 }
 
 export function listReservations(): Promise<ReservationRecord[]> {

@@ -1,16 +1,33 @@
 import type { ReactNode } from 'react'
 import { buildNav } from '../app/routes'
 import { AppShell } from '../ui/ui'
+import type { AuthUser } from '../auth/types'
 
-const DEMO_USER = {
-  name: 'Administrador',
-  role: 'Encargado de salón',
-  initials: 'AD',
+function getInitials(name: string): string {
+  return name.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase()
 }
 
-export function AppLayout({ activePath, children }: { activePath: string; children: ReactNode }) {
+export function AppLayout({
+  activePath,
+  user,
+  onLogout,
+  children,
+}: {
+  activePath: string
+  user: AuthUser
+  onLogout: () => void
+  children: ReactNode
+}) {
   return (
-    <AppShell nav={buildNav(activePath)} user={DEMO_USER}>
+    <AppShell
+      nav={buildNav(activePath, user.rol)}
+      user={{
+        name: user.nombre,
+        role: user.rol === 'administrador' ? 'Administrador' : 'Operario',
+        initials: getInitials(user.nombre),
+      }}
+      onLogout={onLogout}
+    >
       {children}
     </AppShell>
   )

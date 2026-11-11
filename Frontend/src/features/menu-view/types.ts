@@ -5,6 +5,8 @@ export type MenuViewItem = {
   nombre: string
   descripcion: string | null
   precio: string
+  precioOriginal?: string
+  promociones: string[]
   seccionId: number | null
   platoNombre?: string
   postreNombre?: string

@@ -1,7 +1,16 @@
 import os
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
+from src.auth import models as auth_models  # noqa: F401
+from src.auth.dependencies import (
+    obtener_usuario_actual,
+    requerir_administrador,
+    requerir_administrador_o_lectura,
+)
+from src.auth.router import MANEJADORES_EXCEPCIONES as MANEJADORES_AUTH
+from src.auth.router import router as auth_router
+from src.auth.services import crear_usuarios_iniciales
 from src.database import (
     engine,
     migrar_detalle_reserva_legacy,
@@ -52,6 +61,7 @@ ROOT_PATH = os.getenv(f"ROOT_PATH_{ENV.upper()}")
 @asynccontextmanager
 async def db_creation_lifespan(app: FastAPI):
     ModeloBase.metadata.create_all(bind=engine)
+    crear_usuarios_iniciales(engine)
     migrar_detalle_reserva_legacy()
     migrar_estado_reserva_legacy()
     migrar_unidades_gratis_detalle_factura()
@@ -74,29 +84,49 @@ app.add_middleware(
 )
 
 # asociamos los routers a nuestra app
-app.include_router(mozo_router)
-app.include_router(sector_router)
-app.include_router(atencion_router)
-app.include_router(clientes_router)
-app.include_router(mesas_router)
-app.include_router(reservas_router)
-app.include_router(router_productos)
-app.include_router(router_secciones)
-app.include_router(router_productos_menu)
-app.include_router(router_promociones)
-app.include_router(router_reportes)
-app.include_router(medios_pago.router)
-app.include_router(comandas.router)
-app.include_router(detalles_comanda.router)
-app.include_router(facturas.router)
-app.include_router(detalles_factura.router)
-app.include_router(comprobantes_pago.router)
+app.include_router(auth_router)
+app.include_router(mozo_router, dependencies=[Depends(requerir_administrador_o_lectura)])
+app.include_router(sector_router, dependencies=[Depends(requerir_administrador_o_lectura)])
+app.include_router(
+    atencion_router, dependencies=[Depends(requerir_administrador_o_lectura)]
+)
+app.include_router(clientes_router, dependencies=[Depends(obtener_usuario_actual)])
+app.include_router(mesas_router, dependencies=[Depends(requerir_administrador_o_lectura)])
+app.include_router(reservas_router, dependencies=[Depends(obtener_usuario_actual)])
+app.include_router(
+    router_productos, dependencies=[Depends(requerir_administrador_o_lectura)]
+)
+app.include_router(
+    router_secciones, dependencies=[Depends(requerir_administrador_o_lectura)]
+)
+app.include_router(
+    router_productos_menu, dependencies=[Depends(requerir_administrador_o_lectura)]
+)
+app.include_router(
+    router_promociones, dependencies=[Depends(requerir_administrador_o_lectura)]
+)
+app.include_router(router_reportes, dependencies=[Depends(requerir_administrador)])
+app.include_router(
+    medios_pago.router, dependencies=[Depends(requerir_administrador_o_lectura)]
+)
+app.include_router(comandas.router, dependencies=[Depends(obtener_usuario_actual)])
+app.include_router(
+    detalles_comanda.router, dependencies=[Depends(obtener_usuario_actual)]
+)
+app.include_router(facturas.router, dependencies=[Depends(obtener_usuario_actual)])
+app.include_router(
+    detalles_factura.router, dependencies=[Depends(obtener_usuario_actual)]
+)
+app.include_router(
+    comprobantes_pago.router, dependencies=[Depends(obtener_usuario_actual)]
+)
 
 for manejadores in (
     MANEJADORES_PRODUCTOS,
     MANEJADORES_SECCIONES,
     MANEJADORES_PRODUCTOS_MENU,
     MANEJADORES_PROMOCIONES,
+    MANEJADORES_AUTH,
 ):
     for tipo_excepcion, manejador in manejadores.items():
         app.add_exception_handler(tipo_excepcion, manejador)

@@ -6,6 +6,8 @@ import { getBebidas, getMenusDelDia, getPlatos, getPostres } from '../products/a
 import type { BebidaRespuesta, MenuDelDiaListado, PlatoRespuesta, PostreRespuesta } from '../products/api'
 import { getSections } from '../sections/api'
 import type { SeccionRespuesta } from '../sections/api'
+import { getPromotions } from '../promotions/api'
+import type { Promotion } from '../promotions/types'
 
 export type MenuViewData = {
   dailyMenus: ProductoMenuDetalle[]
@@ -15,10 +17,11 @@ export type MenuViewData = {
   postres: PostreRespuesta[]
   bebidas: BebidaRespuesta[]
   sections: SeccionRespuesta[]
+  promotions: Promotion[]
 }
 
 export async function getMenuViewData(): Promise<MenuViewData> {
-  const [dailyMenus, menusDelDia, executiveMenus, platos, postres, bebidas, sections] = await Promise.all([
+  const [dailyMenus, menusDelDia, executiveMenus, platos, postres, bebidas, sections, promotions] = await Promise.all([
     getProductoMenus(),
     getMenusDelDia(),
     getMenusEjecutivos(),
@@ -26,7 +29,8 @@ export async function getMenuViewData(): Promise<MenuViewData> {
     getPostres(),
     getBebidas(),
     getSections(),
+    getPromotions(false),
   ])
 
-  return { dailyMenus, menusDelDia, executiveMenus, platos, postres, bebidas, sections }
+  return { dailyMenus, menusDelDia, executiveMenus, platos, postres, bebidas, sections, promotions }
 }

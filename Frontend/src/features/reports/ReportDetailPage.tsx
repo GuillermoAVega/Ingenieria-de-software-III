@@ -43,6 +43,7 @@ export function ReportDetailPage({ slug }: { slug: string }) {
     report.slug === 'comandas-mozo' ||
     report.slug === 'productos' ||
     report.slug === 'reservas' ||
+    report.slug === 'ocupacion' ||
     report.slug === 'medios-pago'
 
   return (

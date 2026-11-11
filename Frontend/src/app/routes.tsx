@@ -31,6 +31,9 @@ import { PaymentMethodsListPage } from '../features/payment-methods/PaymentMetho
 import { PaymentMethodFormPage } from '../features/payment-methods/PaymentMethodFormPage'
 import { ReportsPage } from '../features/reports/ReportsPage'
 import { ReportDetailPage } from '../features/reports/ReportDetailPage'
+import { UsersListPage } from '../features/users/UsersListPage'
+import { UserFormPage } from '../features/users/UserFormPage'
+import type { UserRole } from '../auth/types'
 
 export type RouteParams = Record<string, string>
 
@@ -42,6 +45,7 @@ export type NavMeta = {
 export type RouteDefinition = {
   path: string
   nav?: NavMeta
+  roles?: UserRole[]
   render: (params: RouteParams) => ReactNode
 }
 
@@ -61,7 +65,7 @@ export type MatchedRoute = {
   params: RouteParams
 }
 
-export const routes: RouteDefinition[] = [
+const baseRoutes: RouteDefinition[] = [
   {
     path: '/',
     nav: { group: 'OPERACIÓN', label: 'Inicio' },
@@ -265,18 +269,60 @@ export const routes: RouteDefinition[] = [
     path: '/reportes/:slug',
     render: (params) => <ReportDetailPage slug={params.slug} />,
   },
+  {
+    path: '/usuarios',
+    nav: { group: 'ADMINISTRACIÓN', label: 'Usuarios' },
+    render: () => <UsersListPage />,
+  },
+  {
+    path: '/usuarios/nuevo',
+    render: () => <UserFormPage />,
+  },
+  {
+    path: '/usuarios/:id/editar',
+    render: (params) => <UserFormPage id={params.id} />,
+  },
 ]
+
+const ADMIN_PREFIXES = [
+  '/productos',
+  '/menus',
+  '/menu-del-dia',
+  '/secciones',
+  '/promociones',
+  '/mesas',
+  '/mozos',
+  '/medios-de-pago',
+  '/reportes',
+  '/usuarios',
+]
+
+export const routes: RouteDefinition[] = baseRoutes.map((route) => ({
+  ...route,
+  roles: ADMIN_PREFIXES.some(
+    (prefix) =>
+      route.path !== '/mesas' &&
+      (route.path === prefix || route.path.startsWith(`${prefix}/`)),
+  )
+    ? ['administrador']
+    : undefined,
+}))
 
 function isActive(routePath: string, activePath: string): boolean {
   if (routePath === '/') return activePath === '/'
   return activePath === routePath || activePath.startsWith(`${routePath}/`)
 }
 
-export function buildNav(activePath: string): NavGroup[] {
+export function canAccessRoute(route: RouteDefinition, role: UserRole): boolean {
+  return !route.roles || route.roles.includes(role)
+}
+
+export function buildNav(activePath: string, role: UserRole): NavGroup[] {
   const groups: NavGroup[] = []
   const normalizedActivePath = normalizePath(activePath)
 
   for (const route of routes) {
+    if (!canAccessRoute(route, role)) continue
     const nav = route.nav
     if (!nav) continue
 

@@ -806,6 +806,8 @@ def poblar_base(motor: Engine, hoy: date | None = None) -> dict:
     `motor` debe tener las claves foráneas activas (`configurar_sqlite`); el
     motor de `src.database` ya las tiene.
     """
+    from src.auth import models as auth_models  # noqa: F401
+
     hoy = hoy or date.today()
     # Se reflejan las tablas reales de la base: así también se eliminan las
     # sobrantes de otras ramas (p. ej. `menu_del_dia`), que bloquearían el drop
@@ -828,6 +830,9 @@ def poblar_base(motor: Engine, hoy: date | None = None) -> dict:
         ids["reservas"] = _crear_reservas(db, hoy, ids)
         _crear_comandas_y_facturas(db, hoy, ids)
         _crear_historial_ventas(db, hoy, ids)
+    from src.auth.services import crear_usuarios_iniciales
+
+    crear_usuarios_iniciales(motor)
     return ids
 
 

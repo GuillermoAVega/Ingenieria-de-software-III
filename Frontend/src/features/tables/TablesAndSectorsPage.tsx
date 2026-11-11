@@ -20,8 +20,11 @@ import {
   reactivateSector,
 } from './api'
 import type { SectorRecord, TableRecord } from './types'
+import { useAuth } from '../../auth/useAuth'
 
 export function TablesAndSectorsPage() {
+  const { user } = useAuth()
+  const canManage = user?.rol === 'administrador'
   const [sectors, setSectors] = useState<SectorRecord[]>([])
   const [tables, setTables] = useState<TableRecord[]>([])
   const [waiters, setWaiters] = useState<Waiter[]>([])
@@ -140,7 +143,7 @@ export function TablesAndSectorsPage() {
         key={sector.id}
         title={sector.nombre}
         subtitle={`${sector.piso} · ${sector.apto_fumadores ? 'Apto fumadores' : 'No fumadores'} · Mozos a cargo: ${currentWaiterNames.join(', ') || 'Sin mozos asignados'}`}
-        actions={
+        actions={canManage ? (
           <div className="row">
             {sector.estado ? (
               <>
@@ -178,7 +181,7 @@ export function TablesAndSectorsPage() {
               </>
             )}
           </div>
-        }
+        ) : undefined}
       >
         {sectorTables.length > 0 ? (
           <div className="mesa-grid">
@@ -189,15 +192,23 @@ export function TablesAndSectorsPage() {
               return (
                 <div key={table.id} className="mesa-wrap">
                   {table.estado ? (
-                    <button
-                      type="button"
-                      className={`mesa${table.disponible ? '' : ' is-busy'}`}
-                      onClick={() => navigate(`/mesas/${table.id}/editar`)}
-                    >
-                      <span className="mesa-num">Mesa {table.id}</span>
-                      <span className="mesa-meta">{table.capacidad} personas</span>
-                      <Badge tone={tone}>{status}</Badge>
-                    </button>
+                    canManage ? (
+                      <button
+                        type="button"
+                        className={`mesa${table.disponible ? '' : ' is-busy'}`}
+                        onClick={() => navigate(`/mesas/${table.id}/editar`)}
+                      >
+                        <span className="mesa-num">Mesa {table.id}</span>
+                        <span className="mesa-meta">{table.capacidad} personas</span>
+                        <Badge tone={tone}>{status}</Badge>
+                      </button>
+                    ) : (
+                      <div className={`mesa${table.disponible ? '' : ' is-busy'}`}>
+                        <span className="mesa-num">Mesa {table.id}</span>
+                        <span className="mesa-meta">{table.capacidad} personas</span>
+                        <Badge tone={tone}>{status}</Badge>
+                      </div>
+                    )
                   ) : (
                     <div className="mesa">
                       <span className="mesa-num">Mesa {table.id}</span>
@@ -205,7 +216,7 @@ export function TablesAndSectorsPage() {
                       <Badge tone="neutral">Inactiva</Badge>
                     </div>
                   )}
-                  <div className="mesa-action">
+                  {canManage && <div className="mesa-action">
                     {table.estado ? (
                       <DeleteButton
                         label="Dar de baja mesa"
@@ -228,7 +239,7 @@ export function TablesAndSectorsPage() {
                         <RestoreIcon />
                       </Button>
                     )}
-                  </div>
+                  </div>}
                 </div>
               )
             })}
@@ -247,14 +258,14 @@ export function TablesAndSectorsPage() {
       <PageHeader
         title="Mesas y sectores"
         subtitle="Estado del salón en tiempo real, agrupado por sector."
-        actions={
+        actions={canManage ? (
           <>
             <Button onClick={() => navigate('/mesas/sectores/nuevo')}>Nuevo sector</Button>
             <Button variant="primary" onClick={() => navigate('/mesas/nueva')}>
               Nueva mesa
             </Button>
           </>
-        }
+        ) : undefined}
       />
 
       <div className="row">

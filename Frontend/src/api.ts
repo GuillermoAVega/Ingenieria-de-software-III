@@ -1,40 +1,12 @@
-const BASE: string = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
+import { apiFetch, ApiError } from './api/client'
 
-export class ApiError extends Error {
-  status: number
-  constructor(status: number, message: string) {
-    super(message)
-    this.status = status
-  }
-}
+export { ApiError }
 
 export async function api<T = void>(
   path: string,
   opts: { method?: string; body?: unknown } = {},
 ): Promise<T> {
-  let res: Response
-  try {
-    res = await fetch(BASE + path, {
-      method: opts.method ?? 'GET',
-      headers: opts.body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
-      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
-    })
-  } catch {
-    throw new ApiError(0, 'No se pudo conectar con el servidor. ¿Está corriendo el backend?')
-  }
-  if (!res.ok) {
-    let detail = `Error ${res.status}`
-    try {
-      const data = await res.json()
-      if (typeof data.detail === 'string') detail = data.detail
-      else if (Array.isArray(data.detail)) detail = 'Datos inválidos: revisá los campos del formulario'
-    } catch {
-      /* respuesta sin cuerpo JSON */
-    }
-    throw new ApiError(res.status, detail)
-  }
-  if (res.status === 204) return undefined as T
-  return res.json()
+  return apiFetch<T>(path, { method: opts.method ?? 'GET', body: opts.body })
 }
 
 // ---- Tipos (reflejan los schemas del backend) ----

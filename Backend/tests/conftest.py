@@ -16,6 +16,8 @@ from sqlalchemy.pool import StaticPool
 from src.database import configurar_sqlite, get_db
 from src.main import app
 from src.models import ModeloBase
+from src.auth.dependencies import obtener_usuario_actual
+from src.auth.models import RolUsuario, Usuario
 from src.productos import registro  # noqa: F401  (carga los mappers de todos los subtipos)
 from src.productos.bebidas.models import Bebida
 from src.productos.combos.models import (
@@ -75,6 +77,14 @@ def cliente(motor):
 
     app.dependency_overrides[get_db] = _obtener_sesion_prueba
     app.dependency_overrides[obtener_hoy] = lambda: HOY_FIJO
+    app.dependency_overrides[obtener_usuario_actual] = lambda: Usuario(
+        id=1,
+        nombre="Administrador de prueba",
+        nombre_usuario="admin-prueba",
+        clave_hash="no-utilizada",
+        rol=RolUsuario.ADMINISTRADOR,
+        activo=True,
+    )
     yield TestClient(app)
     app.dependency_overrides.clear()
 
