@@ -593,6 +593,7 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
   gap: 6px;
 }
 .reservation-list-actions .btn { min-height: 34px; padding: 0 10px; }
+.reservation-list-actions .btn.btn-icon { min-width: 0; width: 36px; padding: 0; }
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .grow { flex: 1; }
 .muted { color: var(--c-text-3); }
