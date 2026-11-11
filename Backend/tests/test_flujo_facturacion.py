@@ -3,14 +3,22 @@ import pytest
 COMANDA = {"fecha": "2026-10-22", "hora": "21:00:00", "mozo_id": 1, "mesa_id": 3}
 
 
+@pytest.fixture(autouse=True)
+def dependencias_comanda(preparar_dependencias_comanda):
+    preparar_dependencias_comanda((3,))
+
+
 @pytest.fixture
 def productos(persistir, crear_plato, crear_bebida, crear_postre):
     """Tres productos reales (ids autogenerados); devuelve sus ids."""
+    from src.cliente.models import Cliente
+
     return persistir(
         crear_plato(nombre="Milanesa", precio="50.00"),
         crear_bebida(nombre="Cerveza", precio="30.00"),
         crear_postre(nombre="Flan", precio="20.00"),
-    )
+        Cliente(id=4, dni="4", nombre="Ana", apellido="P", telefono="4"),
+    )[:3]
 
 
 def _comanda_con_factura(cliente, producto_id):
@@ -19,6 +27,10 @@ def _comanda_con_factura(cliente, producto_id):
         json={**COMANDA, "detalles": [{"cantidad": 2, "producto_id": producto_id, "observaciones": "sin sal"}]},
     ).json()
     assert cliente.post("/facturas", json={"comanda_id": comanda["id"]}).status_code == 400  # abierta
+    for detalle in comanda["detalles"]:
+        assert cliente.put(
+            f"/detalles-comanda/{detalle['id']}", json={"entregado": True}
+        ).status_code == 200
     assert cliente.put(f"/comandas/{comanda['id']}", json={"estado": "cerrada"}).status_code == 200
     factura = cliente.post("/facturas", json={"comanda_id": comanda["id"]}).json()
     return comanda, factura
@@ -82,6 +94,9 @@ def test_comanda_oculta_detalles_quitados_y_permite_limpiar_cliente(cliente, pro
     cliente.delete(f"/detalles-comanda/{comanda['detalles'][0]['id']}")
     r = cliente.put(f"/comandas/{comanda['id']}", json={"cliente_id": None}).json()
     assert r["cliente_id"] is None and len(r["detalles"]) == 1
+    cliente.put(
+        f"/detalles-comanda/{r['detalles'][0]['id']}", json={"entregado": True}
+    )
     assert cliente.put(f"/comandas/{comanda['id']}", json={"estado": "cerrada"}).json()["estado"] == "cerrada"
 
 
@@ -91,6 +106,7 @@ def test_comanda_cerrada_no_admite_cambios_en_productos(cliente, productos):
         "/comandas", json={**COMANDA, "detalles": [{"cantidad": 1, "producto_id": plato}]}
     ).json()
     det = comanda["detalles"][0]["id"]
+    cliente.put(f"/detalles-comanda/{det}", json={"entregado": True})
     cliente.put(f"/comandas/{comanda['id']}", json={"estado": "cerrada"})
     assert cliente.post("/detalles-comanda", json={"comanda_id": comanda["id"], "cantidad": 1, "producto_id": postre}).status_code == 400
     assert cliente.put(f"/detalles-comanda/{det}", json={"cantidad": 5}).status_code == 400

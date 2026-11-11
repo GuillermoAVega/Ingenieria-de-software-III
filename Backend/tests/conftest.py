@@ -266,3 +266,40 @@ def crear_comanda_facturable():
         return comanda
 
     return _crear
+
+
+@pytest.fixture
+def preparar_dependencias_comanda(sesion):
+    """Prepara las entidades requeridas por las comandas creadas directamente."""
+
+    def _preparar(mesa_ids=(1, 3)):
+        from datetime import date
+
+        from src.atencion.models import Atencion
+        from src.mesa.models import Mesa
+        from src.mozo.models import Mozo
+        from src.sector.models import Sector
+
+        sector = Sector(id=1, nombre="Salón", apto_fumadores=False, piso=1)
+        mozo = Mozo(id=1, nombre="Luis", nro_legajo=1)
+        mesas = [
+            Mesa(
+                id=mesa_id,
+                capacidad=4,
+                disponible=True,
+                sector=sector,
+            )
+            for mesa_id in mesa_ids
+        ]
+        sesion.add_all([sector, mozo, *mesas])
+        sesion.flush()
+        sesion.add(
+            Atencion(
+                fecha_desde=date(2020, 1, 1),
+                mozo_id=mozo.id,
+                sector_id=sector.id,
+            )
+        )
+        sesion.commit()
+
+    return _preparar

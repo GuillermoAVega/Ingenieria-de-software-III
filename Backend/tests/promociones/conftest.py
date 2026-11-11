@@ -7,6 +7,11 @@ from src.models import DetalleComanda, Factura
 from tests.promociones.ayudas import EMISION
 
 
+@pytest.fixture(autouse=True)
+def dependencias_comanda(preparar_dependencias_comanda):
+    preparar_dependencias_comanda()
+
+
 @pytest.fixture
 def armar(sesion, persistir, crear_plato, crear_bebida, crear_comanda_facturable):
     """Producto(s) + comanda con una línea por producto + factura emitida en EMISION."""

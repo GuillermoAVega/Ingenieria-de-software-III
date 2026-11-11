@@ -1,4 +1,5 @@
 import subprocess
+import os
 import sys
 from pathlib import Path
 
@@ -170,10 +171,12 @@ def test_main_carga_el_registro_de_modelos_por_si_solo():
         "import sys, src.main; "
         "sys.exit(0 if 'src.productos.registro' in sys.modules else 1)"
     )
+    entorno = os.environ.copy()
+    entorno.update({"ENV": "test", "DB_URL": "sqlite://"})
     resultado = subprocess.run(
         [sys.executable, "-c", codigo],
         cwd=RAIZ_BACKEND,
-        env={"PATH": "", "ENV": "test", "DB_URL": "sqlite://"},
+        env=entorno,
         capture_output=True,
     )
 

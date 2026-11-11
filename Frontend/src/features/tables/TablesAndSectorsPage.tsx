@@ -3,7 +3,7 @@
  * FUNCIONALIDAD: Mapa de mesas y sectores
  */
 import { useEffect, useState } from 'react'
-import { Alert, Badge, Button, Card, DeleteButton, PageHeader } from '../../ui/ui'
+import { Alert, Badge, Button, Card, DeleteButton, EmptyState, PageHeader } from '../../ui/ui'
 import type { BadgeTone } from '../../ui/ui'
 import { navigate } from '../../app/navigation'
 import { PencilIcon } from '../../ui/PencilIcon'
@@ -234,9 +234,9 @@ export function TablesAndSectorsPage() {
             })}
           </div>
         ) : (
-          <p className="muted text-sm">
+          <EmptyState title={sector.estado ? 'Sin mesas activas' : 'Sin mesas'}>
             {sector.estado ? 'No hay mesas activas en este sector.' : 'No hay mesas activas.'}
-          </p>
+          </EmptyState>
         )}
       </Card>
     )
@@ -269,7 +269,11 @@ export function TablesAndSectorsPage() {
       ) : orderedSectors.length > 0 ? (
         orderedSectors.map(renderSector)
       ) : (
-        <p className="muted">No hay sectores para mostrar.</p>
+        <Card flush>
+          <EmptyState title="Sin sectores">
+            Todavía no hay sectores cargados para organizar las mesas.
+          </EmptyState>
+        </Card>
       )}
     </>
   )

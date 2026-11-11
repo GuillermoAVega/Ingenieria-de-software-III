@@ -2,7 +2,7 @@
  * EQUIPO: Carta
  * FUNCIONALIDAD: Consulta de la carta del restaurante
  */
-import { Alert, Button, PageHeader } from '../../ui/ui'
+import { Alert, Button, Card, EmptyState, PageHeader } from '../../ui/ui'
 import { formatDate } from '../../utils/format'
 import { MenuCover } from './components/MenuCover'
 import { MenuSectionFrame } from './components/MenuSectionFrame'
@@ -63,7 +63,11 @@ export function MenuViewPage() {
               </div>
             ))
           ) : (
-            <p className="muted">No hay elementos con sección para mostrar.</p>
+            <Card flush>
+              <EmptyState title="Sin elementos en la carta">
+                Todavía no hay productos o menús con sección cargados.
+              </EmptyState>
+            </Card>
           )}
         </div>
       )}

@@ -42,7 +42,6 @@ from src.productos_menu.router import router as router_productos_menu
 from src.reportes.router import router as router_reportes
 from src.secciones.router import MANEJADORES_EXCEPCIONES as MANEJADORES_SECCIONES
 from src.secciones.router import router as router_secciones
-from src.reportes.router import router as router_reportes
 
 load_dotenv()
 

@@ -8,6 +8,11 @@ from src.models import Comanda, DetalleComanda
 COMANDA = {"fecha": "2026-06-15", "hora": "12:00:00", "mozo_id": 1, "mesa_id": 1}
 
 
+@pytest.fixture(autouse=True)
+def dependencias_comanda(preparar_dependencias_comanda):
+    preparar_dependencias_comanda((1,))
+
+
 @pytest.fixture
 def plato(persistir, crear_plato):
     return persistir(crear_plato("Activo"))
