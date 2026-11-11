@@ -21,6 +21,7 @@ import {
 } from '../../ui/ui'
 import type { DataTableColumn } from '../../ui/ui'
 import { navigate } from '../../app/navigation'
+import { EyeIcon } from '../../ui/EyeIcon'
 import { formatCurrency, formatDateTime } from '../../utils/format'
 import { PAYMENT_STATUS_LABEL, PAYMENT_STATUS_TONE } from '../payments/status'
 import { useBillingList } from './useBillingList'
@@ -137,8 +138,14 @@ export function BillingListPage() {
               </EmptyState>
             }
             actions={(invoice) => (
-              <Button size="sm" onClick={() => navigate(`/comandas/${invoice.comanda_id}`)}>
-                Ver comanda
+              <Button
+                size="sm"
+                className="btn-icon"
+                title="Ver comanda"
+                aria-label={`Ver comanda #${invoice.comanda_id}`}
+                onClick={() => navigate(`/comandas/${invoice.comanda_id}`)}
+              >
+                <EyeIcon />
               </Button>
             )}
           />
