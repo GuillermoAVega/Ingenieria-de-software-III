@@ -173,6 +173,11 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
 .btn-sm { min-height: 32px; padding: 0 12px; font-size: 13px; border-radius: var(--radius-sm); }
 /* Botón solo con ícono (el texto va en title / aria-label) */
 .btn.btn-icon { min-width: 0; width: 36px; padding: 0; }
+/* Formularios dentro de una tarjeta */
+.card-body > .alert:not(:last-child) { margin-bottom: 16px; }
+.form-actions { margin-top: 20px; }
+/* Fecha hasta de una atención: ancho suficiente para mostrar dd/mm/aaaa completo */
+.attention-finish-date { width: 170px; }
 .btn-block { width: 100%; }
 .delivery-status-button {
   min-height: 28px;
