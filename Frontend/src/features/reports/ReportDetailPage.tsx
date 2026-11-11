@@ -8,6 +8,7 @@
 import { useState } from 'react'
 import { Breadcrumb, Button, Card, EmptyState, DateInput, Field, PageHeader } from '../../ui/ui'
 import { DEMO_REPORTS } from './demo'
+import { PaymentMethodReport } from './PaymentMethodReport'
 import { ProductSalesReport } from './ProductSalesReport'
 import { SalesComparisonReport } from './SalesComparisonReport'
 import { SalesCountReport } from './SalesCountReport'
@@ -41,7 +42,8 @@ export function ReportDetailPage({ slug }: { slug: string }) {
     report.slug === 'comparativa-mensual' ||
     report.slug === 'comandas-mozo' ||
     report.slug === 'productos' ||
-    report.slug === 'reservas'
+    report.slug === 'reservas' ||
+    report.slug === 'medios-pago'
 
   return (
     <>
@@ -70,6 +72,8 @@ export function ReportDetailPage({ slug }: { slug: string }) {
         <AbsentClientsReport />
       ) : report.slug === 'ocupacion' ? (
         <OccupancyBySectorReport />
+      ) : report.slug === 'medios-pago' ? (
+        <PaymentMethodReport />
       ) : (
         <>
           <Card title="Período">

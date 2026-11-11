@@ -1,10 +1,17 @@
 from calendar import monthrange
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import distinct, func, select
+from sqlalchemy import distinct, exists, func, select
 from sqlalchemy.orm import Session
 
-from src.models import Comanda, DetalleComanda, DetalleFactura, Factura
+from src.models import (
+    Comanda,
+    ComprobantePago,
+    DetalleComanda,
+    DetalleFactura,
+    Factura,
+    MedioPago,
+)
 from src.cliente.models import Cliente
 from src.mesa.models import Mesa
 from src.mozo.models import Mozo
@@ -13,30 +20,26 @@ from src.reserva import models as reserva_models
 from src.reserva.estados import EstadoReserva
 from src.sector.models import Sector
 from src.reportes.schemas import (
+    CantidadPorDiaSemana,
+    CantidadPorMes,
+    CantidadVentasRespuesta,
     ClienteAusenteItem,
     ClientesAusentesRespuesta,
     ComandasPorMozoItem,
     ComandasPorMozoRespuesta,
+    MedioPagoUsoItem,
+    MediosPagoRespuesta,
+    OcupacionPorSectorItem,
+    OcupacionPorSectorRespuesta,
     ProductoMasVendidoItem,
     ProductosMasVendidosRespuesta,
     PuntoVentaDia,
     VentasComparativaRespuesta,
-    OcupacionPorSectorItem,
-    OcupacionPorSectorRespuesta,
 )
 from collections import Counter
 from collections.abc import Iterable
 
-from sqlalchemy import exists, select
-from sqlalchemy.orm import Session
-
-from src.models import ComprobantePago, Factura
 from src.reportes.constants import ANIO_MAX, DIAS_SEMANA, MESES
-from src.reportes.schemas import (
-    CantidadPorDiaSemana,
-    CantidadPorMes,
-    CantidadVentasRespuesta,
-)
 
 
 def comandas_por_mozo(
@@ -294,4 +297,58 @@ def ocupacion_por_sector(
         desde=desde,
         hasta=hasta,
         por_sector=por_sector,
+    )
+
+
+def medios_pago(sesion: Session, desde: date, hasta: date) -> MediosPagoRespuesta:
+    """Uso de medios de pago en un período inclusivo, según comprobantes activos."""
+    inicio = datetime.combine(desde, datetime.min.time())
+    fin = datetime.combine(hasta + timedelta(days=1), datetime.min.time())
+
+    cantidad = func.count(ComprobantePago.id)
+    importe = func.coalesce(func.sum(ComprobantePago.importe), 0)
+    filas = sesion.execute(
+        select(MedioPago.id, MedioPago.descripcion, cantidad, importe)
+        .select_from(ComprobantePago)
+        .join(Factura, Factura.id == ComprobantePago.factura_id)
+        .join(MedioPago, MedioPago.id == ComprobantePago.medio_pago_id)
+        .where(
+            ComprobantePago.activo.is_(True),
+            Factura.activo.is_(True),
+            ComprobantePago.fecha_hora_emision >= inicio,
+            ComprobantePago.fecha_hora_emision < fin,
+        )
+        .group_by(MedioPago.id, MedioPago.descripcion)
+        .order_by(cantidad.desc(), importe.desc(), MedioPago.descripcion)
+    ).all()
+
+    total_comprobantes = sum(int(fila[2]) for fila in filas)
+    total_importe = round(sum(float(fila[3]) for fila in filas), 2)
+    importe_promedio = (
+        round(total_importe / total_comprobantes, 2) if total_comprobantes else 0.0
+    )
+    return MediosPagoRespuesta(
+        desde=desde,
+        hasta=hasta,
+        total_comprobantes=total_comprobantes,
+        total_importe=total_importe,
+        importe_promedio=importe_promedio,
+        medios=[
+            MedioPagoUsoItem(
+                medio_pago_id=medio_id,
+                descripcion=descripcion,
+                cantidad_comprobantes=int(cantidad_medio),
+                importe=round(float(importe_medio), 2),
+                importe_promedio=round(
+                    float(importe_medio) / int(cantidad_medio), 2
+                ),
+                porcentaje_uso=round(int(cantidad_medio) / total_comprobantes * 100, 2),
+                porcentaje_importe=(
+                    round(float(importe_medio) / total_importe * 100, 2)
+                    if total_importe
+                    else 0.0
+                ),
+            )
+            for medio_id, descripcion, cantidad_medio, importe_medio in filas
+        ],
     )

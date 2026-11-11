@@ -33,7 +33,7 @@ export const DEMO_REPORTS: ReportDefinition[] = [
   },
   {
     slug: 'medios-pago',
-    title: 'Ingresos por medio de pago',
-    description: 'Distribución de cobros por medio de pago.',
+    title: 'Medios de pago más utilizados',
+    description: 'Comprobantes, importe y participación de cada medio de pago en el período.',
   },
 ]

@@ -7,11 +7,12 @@ from sqlalchemy.orm import Session
 from src.database import get_db
 from src.productos.services import obtener_hoy
 from src.reportes import services
-from src.reportes.constants import PREFIJO, ANIO_MAX, ANIO_MIN, PREFIJO
+from src.reportes.constants import ANIO_MAX, ANIO_MIN, PREFIJO
 from src.reportes.schemas import (
     CantidadVentasRespuesta,
     ClientesAusentesRespuesta,
     ComandasPorMozoRespuesta,
+    MediosPagoRespuesta,
     ProductosMasVendidosRespuesta,
     VentasComparativaRespuesta,
     OcupacionPorSectorRespuesta,
@@ -93,3 +94,18 @@ def ocupacion_por_sector(
             detail="La fecha Desde debe ser anterior o igual a la fecha Hasta.",
         )
     return services.ocupacion_por_sector(sesion, desde, hasta)
+
+
+@router.get("/medios-pago", response_model=MediosPagoRespuesta)
+def medios_pago(
+    desde: date = Query(),
+    hasta: date = Query(),
+    sesion: Session = Depends(get_db),
+):
+    """Uso de medios de pago por comprobantes emitidos en un período inclusivo."""
+    if desde > hasta:
+        raise HTTPException(
+            status_code=422,
+            detail="La fecha Desde debe ser anterior o igual a la fecha Hasta.",
+        )
+    return services.medios_pago(sesion, desde, hasta)

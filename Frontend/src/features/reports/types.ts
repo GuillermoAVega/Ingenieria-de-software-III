@@ -90,3 +90,22 @@ export type OccupancyBySectorReport = {
   hasta: string
   por_sector: OccupancyBySectorRow[]
 }
+
+export type PaymentMethodUsageRow = {
+  medio_pago_id: number
+  descripcion: string
+  cantidad_comprobantes: number
+  importe: number
+  importe_promedio: number
+  porcentaje_uso: number
+  porcentaje_importe: number
+}
+
+export type PaymentMethodReport = {
+  desde: string
+  hasta: string
+  total_comprobantes: number
+  total_importe: number
+  importe_promedio: number
+  medios: PaymentMethodUsageRow[]
+}

@@ -86,3 +86,22 @@ class OcupacionPorSectorRespuesta(BaseModel):
     desde: date
     hasta: date
     por_sector: list[OcupacionPorSectorItem]
+
+
+class MedioPagoUsoItem(BaseModel):
+    medio_pago_id: int
+    descripcion: str
+    cantidad_comprobantes: int
+    importe: float
+    importe_promedio: float
+    porcentaje_uso: float
+    porcentaje_importe: float
+
+
+class MediosPagoRespuesta(BaseModel):
+    desde: date
+    hasta: date
+    total_comprobantes: int
+    total_importe: float
+    importe_promedio: float
+    medios: list[MedioPagoUsoItem]

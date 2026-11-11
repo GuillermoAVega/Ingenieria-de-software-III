@@ -1,5 +1,6 @@
 import { apiFetch } from '../../api/client'
 import type {
+  PaymentMethodReport,
   ProductSalesReport,
   AbsentClientsReport,
   OccupancyBySectorReport,
@@ -45,4 +46,12 @@ export function getProductSalesReport(
 ): Promise<ProductSalesReport> {
   const params = new URLSearchParams({ desde, hasta, limite: String(limite) })
   return apiFetch<ProductSalesReport>(`/reportes/productos-mas-vendidos?${params}`)
+}
+
+export function getPaymentMethodReport(
+  desde: string,
+  hasta: string,
+): Promise<PaymentMethodReport> {
+  const params = new URLSearchParams({ desde, hasta })
+  return apiFetch<PaymentMethodReport>(`/reportes/medios-pago?${params}`)
 }

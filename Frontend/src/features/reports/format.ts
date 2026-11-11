@@ -32,3 +32,7 @@ export function formatCompactCurrency(value: number): string {
   }
   return formatCurrency(value)
 }
+
+export function formatPercentage(value: number): string {
+  return `${value.toLocaleString('es-AR', { maximumFractionDigits: 2 })} %`
+}
