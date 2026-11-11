@@ -171,6 +171,8 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
 .btn-danger-ghost { background: transparent; color: var(--c-danger); }
 .btn-danger-ghost:hover { background: var(--c-danger-soft); color: var(--c-danger); }
 .btn-sm { min-height: 32px; padding: 0 12px; font-size: 13px; border-radius: var(--radius-sm); }
+/* Botón solo con ícono (el texto va en title / aria-label) */
+.btn.btn-icon { min-width: 0; width: 36px; padding: 0; }
 .btn-block { width: 100%; }
 .delivery-status-button {
   min-height: 28px;
@@ -340,6 +342,11 @@ code { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size:
   border: 1px solid var(--c-border); border-radius: var(--radius); background: var(--c-surface);
   font: inherit; color: inherit; text-align: left; cursor: pointer;
 }
+/* La acción de la mesa (dar de baja / alta) va dentro de la tarjeta, arriba a la derecha */
+.mesa-wrap { position: relative; display: flex; }
+.mesa-wrap > .mesa { flex: 1; width: 100%; }
+.mesa-action { position: absolute; top: 6px; right: 6px; }
+.mesa-action .btn.btn-icon { width: 32px; min-height: 32px; }
 .mesa:hover { border-color: var(--c-border-strong); }
 .mesa:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .mesa-num { font-size: 18px; font-weight: 600; }
