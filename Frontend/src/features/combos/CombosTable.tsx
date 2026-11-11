@@ -4,6 +4,8 @@
  * La lógica vive en `useCombosList`; el componente solo renderiza.
  */
 import { Alert, Button, DataTable, DeleteButton, EmptyState } from '../../ui/ui'
+import { PencilIcon } from '../../ui/PencilIcon'
+import { TrashIcon } from '../../ui/TrashIcon'
 import type { DataTableColumn } from '../../ui/ui'
 import { navigate } from '../../app/navigation'
 import type { ComboListado } from '../products/api'
@@ -54,15 +56,20 @@ export function CombosTable({ search, sectionId }: { search: string; sectionId: 
           rows={combos}
           empty={<EmptyState title="Sin combos">Todavía no hay combos cargados.</EmptyState>}
           actions={(combo) => (
-            <div className="row">
+            <div className="row row-icons">
               <Button
                 size="sm"
+                className="btn-icon"
+                title="Editar"
+                aria-label={`Editar ${combo.nombre}`}
                 onClick={() => navigate(`/productos/combos/${combo.id}/editar`)}
                 disabled={state.deletingId === combo.id}
               >
-                Editar
+                <PencilIcon />
               </Button>
               <DeleteButton
+                label="Dar de baja"
+                icon={<TrashIcon />}
                 title="Dar de baja combo"
                 onConfirm={() => {
                   void remove(combo.id)

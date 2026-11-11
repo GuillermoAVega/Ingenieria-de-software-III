@@ -19,6 +19,8 @@ import {
 } from "../../ui/ui";
 import type { DataTableColumn } from "../../ui/ui";
 import { navigate } from "../../app/navigation";
+import { PencilIcon } from "../../ui/PencilIcon";
+import { TrashIcon } from "../../ui/TrashIcon";
 import { CombosTable } from "../combos/CombosTable";
 import { formatDate } from "../../utils/format";
 import { PRODUCT_TABS, normalizeProductTab, useProductsList } from "./useProductsList";
@@ -146,9 +148,12 @@ function ProductsList({ activeTab }: { activeTab: ProductTabId }) {
               </EmptyState>
             }
             actions={(product) => (
-              <div className="row">
+              <div className="row row-icons">
                 <Button
                   size="sm"
+                  className="btn-icon"
+                  title="Editar"
+                  aria-label={`Editar ${product.nombre}`}
                   onClick={() =>
                     navigate(
                       `/productos/${activeTab}/${product.id}/editar`,
@@ -156,9 +161,11 @@ function ProductsList({ activeTab }: { activeTab: ProductTabId }) {
                   }
                   disabled={state.deletingId === product.id}
                 >
-                  Editar
+                  <PencilIcon />
                 </Button>
                 <DeleteButton
+                  label="Eliminar"
+                  icon={<TrashIcon />}
                   title={`Eliminar ${SINGULAR[activeTab]}`}
                   onConfirm={() => {
                     void remove(product.id);
