@@ -1,0 +1,61 @@
+name: Integración continua
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  backend:
+    name: Pruebas del backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v6
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: Backend/requirements.txt
+
+      - name: Instalar dependencias
+        working-directory: Backend
+        run: pip install -r requirements.txt
+
+      - name: Ejecutar pruebas
+        working-directory: Backend
+        run: pytest
+
+  frontend:
+    name: Validación del frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v6
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: Frontend/package-lock.json
+
+      - name: Instalar dependencias
+        working-directory: Frontend
+        run: npm ci
+
+      - name: Verificar código
+        working-directory: Frontend
+        run: npm run lint
+
+      - name: Compilar frontend
+        working-directory: Frontend
+        run: npm run build
